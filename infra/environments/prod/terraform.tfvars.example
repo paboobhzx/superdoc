@@ -1,0 +1,4 @@
+# Copy to terraform.tfvars and fill in real values.
+# NEVER commit terraform.tfvars — it is in .gitignore.
+
+lambda_handler_s3_bucket = "your-private-lambda-zips-bucket"

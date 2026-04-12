@@ -1,0 +1,96 @@
+name: Frontend
+
+on:
+  push:
+    branches: [dev, stage, main]
+    paths: ["frontend/**"]
+  pull_request:
+    branches: [dev, stage, main]
+    paths: ["frontend/**"]
+
+jobs:
+  test:
+    name: Test & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+  deploy-dev:
+    name: Deploy (dev)
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Trigger Amplify deployment
+        run: |
+          aws amplify start-job \
+            --app-id ${{ secrets.AMPLIFY_APP_ID }} \
+            --branch-name dev \
+            --job-type RELEASE
+
+  deploy-stage:
+    name: Deploy (stage)
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/stage' && github.event_name == 'push'
+    environment: stage
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Trigger Amplify deployment
+        run: |
+          aws amplify start-job \
+            --app-id ${{ secrets.AMPLIFY_APP_ID }} \
+            --branch-name stage \
+            --job-type RELEASE
+
+  deploy-prod:
+    name: Deploy (prod)
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: prod
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Trigger Amplify deployment
+        run: |
+          aws amplify start-job \
+            --app-id ${{ secrets.AMPLIFY_APP_ID }} \
+            --branch-name main \
+            --job-type RELEASE

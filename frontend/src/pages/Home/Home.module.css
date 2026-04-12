@@ -1,0 +1,139 @@
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* Hero */
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+  padding: 72px 0 64px;
+}
+
+.heroText { flex: 1; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--primary-light);
+  color: var(--primary);
+  margin-bottom: 24px;
+}
+
+.headline {
+  font-size: clamp(36px, 4vw, 52px);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -1px;
+  color: var(--text);
+  margin-bottom: 20px;
+}
+
+.accent { color: var(--primary); }
+
+.sub {
+  font-size: 17px;
+  color: var(--subtle);
+  line-height: 1.7;
+  max-width: 480px;
+  margin-bottom: 36px;
+}
+
+.ctas {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ctaPrimary {
+  display: inline-flex;
+  align-items: center;
+  padding: 14px 28px;
+  border-radius: var(--radius-btn);
+  font-size: 16px;
+  font-weight: 700;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(21, 87, 232, 0.3);
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.ctaPrimary:hover  { transform: translateY(-2px); }
+
+.ctaSecondary {
+  padding: 14px 28px;
+  border-radius: var(--radius-btn);
+  font-size: 16px;
+  font-weight: 700;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.ctaSecondary:hover { transform: translateY(-2px); }
+
+.error {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--danger);
+  font-weight: 500;
+}
+
+.dropWrap {
+  flex: 0 0 500px;
+}
+
+/* Tools */
+.tools { padding-top: 16px; }
+
+.toolsHeader { margin-bottom: 28px; }
+
+.toolsTitle {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.toolsSub {
+  font-size: 15px;
+  color: var(--subtle);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.footer {
+  margin-top: 48px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--subtle);
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .hero    { flex-direction: column; padding: 48px 0 40px; }
+  .dropWrap { flex: none; width: 100%; }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .main    { padding: 0 16px 60px; }
+  .grid    { grid-template-columns: 1fr 1fr; }
+  .sub     { font-size: 15px; }
+}
