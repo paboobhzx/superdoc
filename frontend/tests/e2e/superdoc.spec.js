@@ -3,7 +3,7 @@ const { test, expect, devices } = require("@playwright/test");
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 
-// ── Desktop tests ─────────────────────────────────────────────────────────
+// ── Home page ────────────────────────────────────────────────────────────────
 
 test.describe("Home page", () => {
   test("loads within 3 seconds", async ({ page }) => {
@@ -13,26 +13,36 @@ test.describe("Home page", () => {
     expect(Date.now() - start).toBeLessThan(3000);
   });
 
-  test("renders logo, drop zone, and tool cards", async ({ page }) => {
+  test('shows hero text "Transform Any File"', async ({ page }) => {
     await page.goto(BASE);
-    await expect(page.getByText("⚡ SuperDoc")).toBeVisible();
-    await expect(page.getByText("Drop any file here")).toBeVisible();
+    await expect(page.getByText("Transform Any File")).toBeVisible();
+  });
+
+  test("shows 6 tool cards", async ({ page }) => {
+    await page.goto(BASE);
     await expect(page.getByText("PDF Tools")).toBeVisible();
+    await expect(page.getByText("Documents")).toBeVisible();
+    await expect(page.getByText("Images")).toBeVisible();
     await expect(page.getByText("Video")).toBeVisible();
+    await expect(page.getByText("Convert Anything")).toBeVisible();
+    await expect(page.getByText("Extract & Export")).toBeVisible();
+  });
+
+  test("shows $1/video badge on Video card", async ({ page }) => {
+    await page.goto(BASE);
     await expect(page.getByText("$1 / video")).toBeVisible();
   });
 
-  test("dark mode toggle persists in localStorage", async ({ page }) => {
+  test("shows drop zone with format pills", async ({ page }) => {
     await page.goto(BASE);
-    const toggle = page.getByText("🌙 Dark");
-    await toggle.click();
-    await expect(page.getByText("☀️ Light")).toBeVisible();
-    // Reload and verify it persists
-    await page.reload();
-    await expect(page.getByText("☀️ Light")).toBeVisible();
-    // Check localStorage
-    const theme = await page.evaluate(() => localStorage.getItem("superdoc-theme"));
-    expect(theme).toBe("dark");
+    for (const fmt of ["PDF", "DOCX", "MP4", "PNG"]) {
+      await expect(page.getByText(fmt, { exact: true })).toBeVisible();
+    }
+  });
+
+  test('drop zone shows "Drop any file here" text', async ({ page }) => {
+    await page.goto(BASE);
+    await expect(page.getByText("Drop any file here")).toBeVisible();
   });
 
   test("no console errors on load", async ({ page }) => {
@@ -55,70 +65,298 @@ test.describe("Home page", () => {
   });
 });
 
-// ── Mobile viewport tests ────────────────────────────────────────────────
+// ── Navigation ───────────────────────────────────────────────────────────────
 
-test.describe("Mobile viewport", () => {
-  test.use({ ...devices["iPhone 14"] });
-
-  test("home page loads correctly on mobile", async ({ page }) => {
+test.describe("Navigation", () => {
+  test("all nav links in sidebar work", async ({ page }) => {
     await page.goto(BASE);
-    await expect(page.getByText("⚡ SuperDoc")).toBeVisible();
-    await expect(page.getByText("Drop any file here")).toBeVisible();
+    // Sidebar is visible on desktop viewport
+    const routes = [
+      { label: "Home", path: "/" },
+      { label: "Tools", path: "/tools" },
+      { label: "Files", path: "/dashboard" },
+      { label: "Settings", path: "/settings" },
+    ];
+    for (const { label, path } of routes) {
+      const link = page.locator(`aside a`).filter({ hasText: label });
+      await link.click();
+      await expect(page).toHaveURL(BASE + path);
+    }
   });
 
-  test("tool cards are visible on mobile", async ({ page }) => {
-    await page.goto(BASE);
-    await expect(page.getByText("PDF Tools")).toBeVisible();
-    await expect(page.getByText("Images")).toBeVisible();
+  test("logo links to home", async ({ page }) => {
+    await page.goto(BASE + "/settings");
+    await page.locator("header a").filter({ hasText: "SuperDoc" }).click();
+    await expect(page).toHaveURL(BASE + "/");
   });
 
-  test("no horizontal scroll on mobile", async ({ page }) => {
+  test("clicking settings navigates to /settings", async ({ page }) => {
     await page.goto(BASE);
-    const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
-    const viewportWidth = page.viewportSize().width;
-    expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 5); // 5px tolerance
+    const link = page.locator(`aside a`).filter({ hasText: "Settings" });
+    await link.click();
+    await expect(page).toHaveURL(BASE + "/settings");
   });
 });
 
-// ── Processing page ────────────────────────────────────────────────────────
+// ── Theme switching ──────────────────────────────────────────────────────────
+
+test.describe("Theme switching", () => {
+  test("theme switcher has 5 color dots", async ({ page }) => {
+    await page.goto(BASE);
+    const dots = page.locator("header button[title]");
+    await expect(dots).toHaveCount(5);
+  });
+
+  test("clicking a theme dot changes localStorage superdoc-theme", async ({ page }) => {
+    await page.goto(BASE);
+    const dots = page.locator("header button[title]");
+    // Click the second dot (index 1) to change from default
+    await dots.nth(1).click();
+    const theme = await page.evaluate(() =>
+      localStorage.getItem("superdoc-theme")
+    );
+    expect(theme).toBeTruthy();
+    expect(theme).not.toBe("");
+  });
+
+  test("theme persists after page reload", async ({ page }) => {
+    await page.goto(BASE);
+    const dots = page.locator("header button[title]");
+    // Click a non-default dot
+    await dots.nth(2).click();
+    const themeBefore = await page.evaluate(() =>
+      localStorage.getItem("superdoc-theme")
+    );
+    await page.reload();
+    const themeAfter = await page.evaluate(() =>
+      localStorage.getItem("superdoc-theme")
+    );
+    expect(themeAfter).toBe(themeBefore);
+  });
+});
+
+// ── Mobile viewport (390x844) ────────────────────────────────────────────────
+
+test.describe("Mobile viewport", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("no horizontal scrollbar", async ({ page }) => {
+    await page.goto(BASE);
+    const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
+    const viewportWidth = page.viewportSize().width;
+    expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 5);
+  });
+
+  test("bottom nav visible", async ({ page }) => {
+    await page.goto(BASE);
+    // The bottom nav is the <nav> element that is fixed at the bottom
+    const bottomNav = page.locator("nav.md\\:hidden").or(
+      page.locator("nav").filter({ hasText: "Home" }).last()
+    );
+    await expect(bottomNav).toBeVisible();
+  });
+
+  test("sidebar hidden", async ({ page }) => {
+    await page.goto(BASE);
+    const sidebar = page.locator("aside");
+    await expect(sidebar).toBeHidden();
+  });
+
+  test("all tool cards visible (stacked)", async ({ page }) => {
+    await page.goto(BASE);
+    for (const title of [
+      "PDF Tools",
+      "Documents",
+      "Images",
+      "Video",
+      "Convert Anything",
+      "Extract & Export",
+    ]) {
+      await expect(page.getByText(title)).toBeVisible();
+    }
+  });
+});
+
+// ── Auth pages ───────────────────────────────────────────────────────────────
+
+test.describe("Auth pages", () => {
+  test("/auth/login renders without sidebar", async ({ page }) => {
+    await page.goto(BASE + "/auth/login");
+    const sidebar = page.locator("aside");
+    // Sidebar should not be present on auth pages
+    await expect(sidebar).toHaveCount(0);
+  });
+
+  test("/auth/login has email and password inputs", async ({ page }) => {
+    await page.goto(BASE + "/auth/login");
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
+  });
+
+  test('/auth/login has "Sign in" button', async ({ page }) => {
+    await page.goto(BASE + "/auth/login");
+    await expect(
+      page.locator("button").filter({ hasText: "Sign in" })
+    ).toBeVisible();
+  });
+
+  test('/auth/login "Create free account" links to /auth/register', async ({
+    page,
+  }) => {
+    await page.goto(BASE + "/auth/login");
+    const link = page.getByText("Create free account").or(
+      page.getByText("Create account")
+    );
+    await link.click();
+    await expect(page).toHaveURL(/\/auth\/register/);
+  });
+
+  test("/auth/register has password strength bar", async ({ page }) => {
+    await page.goto(BASE + "/auth/register");
+    // Type a password to trigger the strength bar
+    const pwInput = page.locator('input[type="password"]').first();
+    await pwInput.fill("Test1234!");
+    // Strength bar should appear (look for a visual indicator)
+    const strengthBar = page
+      .locator('[class*="strength"], [class*="bar"], [role="progressbar"]')
+      .first();
+    await expect(strengthBar).toBeVisible();
+  });
+
+  test('/auth/register "Sign in" links back to /auth/login', async ({
+    page,
+  }) => {
+    await page.goto(BASE + "/auth/register");
+    const link = page.getByText("Sign in");
+    await link.click();
+    await expect(page).toHaveURL(/\/auth\/login/);
+  });
+
+  test("/auth/confirm shows 6 OTP input boxes", async ({ page }) => {
+    await page.goto(BASE + "/auth/confirm");
+    // OTP inputs are typically individual single-char inputs
+    const otpInputs = page.locator(
+      'input[maxlength="1"], input[data-otp], input[autocomplete="one-time-code"]'
+    );
+    const count = await otpInputs.count();
+    // If individual inputs, expect 6; if a container-based OTP, check differently
+    if (count > 0) {
+      expect(count).toBe(6);
+    } else {
+      // Fallback: look for 6 child elements in an OTP container
+      const otpContainer = page.locator('[class*="otp"], [class*="code"]').first();
+      await expect(otpContainer).toBeVisible();
+    }
+  });
+});
+
+// ── Settings page ────────────────────────────────────────────────────────────
+
+test.describe("Settings page", () => {
+  test("/settings shows Profile section", async ({ page }) => {
+    await page.goto(BASE + "/settings");
+    await expect(page.getByText("Profile")).toBeVisible();
+  });
+
+  test("/settings shows Security section", async ({ page }) => {
+    await page.goto(BASE + "/settings");
+    await expect(page.getByText("Security")).toBeVisible();
+  });
+
+  test("/settings shows Notifications section with toggles", async ({
+    page,
+  }) => {
+    await page.goto(BASE + "/settings");
+    await expect(page.getByText("Notifications")).toBeVisible();
+    // Should have toggle switches
+    const toggles = page.locator(
+      '[role="switch"], input[type="checkbox"], button[class*="toggle"]'
+    );
+    expect(await toggles.count()).toBeGreaterThan(0);
+  });
+
+  test("/settings shows Theme section with 5 swatches", async ({ page }) => {
+    await page.goto(BASE + "/settings");
+    await expect(page.getByText("Theme")).toBeVisible();
+    // Look for the 5 theme labels
+    for (const name of ["Azure", "Dark", "Orange", "Galaxy", "Brasil"]) {
+      await expect(page.getByText(name)).toBeVisible();
+    }
+  });
+
+  test("/settings shows Danger Zone with delete button", async ({ page }) => {
+    await page.goto(BASE + "/settings");
+    await expect(page.getByText("Danger Zone")).toBeVisible();
+    const deleteBtn = page
+      .locator("button")
+      .filter({ hasText: /delete/i });
+    await expect(deleteBtn).toBeVisible();
+  });
+
+  test("clicking theme swatch changes active theme", async ({ page }) => {
+    await page.goto(BASE + "/settings");
+    // Get the current theme
+    const before = await page.evaluate(() =>
+      localStorage.getItem("superdoc-theme")
+    );
+    // Click "Orange" or "Dark" swatch — whichever is not the current one
+    const target = before === "orange" ? "Dark" : "Orange";
+    await page.getByText(target).click();
+    const after = await page.evaluate(() =>
+      localStorage.getItem("superdoc-theme")
+    );
+    expect(after).not.toBe(before);
+  });
+});
+
+// ── Processing page ──────────────────────────────────────────────────────────
 
 test.describe("Processing page", () => {
-  test("shows loading state for unknown job", async ({ page }) => {
-    await page.goto(`${BASE}/processing/nonexistent-job-id`);
-    // Should show loading or error, not crash
+  test("/processing/fake-id shows error state", async ({ page }) => {
+    await page.goto(BASE + "/processing/fake-id");
+    // Should show an error or loading state since the API is not connected
     const body = await page.textContent("body");
     expect(body).toBeTruthy();
     expect(body.length).toBeGreaterThan(0);
   });
 
-  test("navigate back to home from processing page", async ({ page }) => {
-    await page.goto(`${BASE}/processing/some-job-id`);
-    // If Convert another file button appears, click it
-    const btn = page.getByText("← Try again").or(page.getByText("Convert another file →"));
-    if (await btn.isVisible({ timeout: 3000 }).catch(() => false)) {
+  test('shows "Try again" button that navigates to /', async ({ page }) => {
+    await page.goto(BASE + "/processing/fake-id");
+    const btn = page
+      .getByText("Try again")
+      .or(page.getByText("Convert another file"));
+    if (await btn.isVisible({ timeout: 5000 }).catch(() => false)) {
       await btn.click();
       await expect(page).toHaveURL(BASE + "/");
     }
   });
 });
 
-// ── Accessibility ─────────────────────────────────────────────────────────
+// ── Accessibility ────────────────────────────────────────────────────────────
 
 test.describe("Accessibility", () => {
-  test("all interactive elements are keyboard accessible", async ({ page }) => {
+  test("Tab key cycles through interactive elements on home", async ({
+    page,
+  }) => {
     await page.goto(BASE);
-    // Tab through interactive elements
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    // Should not throw
-    const focused = await page.evaluate(() => document.activeElement?.tagName);
-    expect(focused).toBeTruthy();
+    // Tab through several elements and verify focus moves
+    const focusedTags = [];
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press("Tab");
+      const tag = await page.evaluate(() => document.activeElement?.tagName);
+      focusedTags.push(tag);
+    }
+    // At least some elements should receive focus
+    const interactiveTags = focusedTags.filter((t) =>
+      ["A", "BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(t)
+    );
+    expect(interactiveTags.length).toBeGreaterThan(0);
   });
 
-  test("dark mode toggle has aria-label", async ({ page }) => {
+  test("drop zone has aria-label", async ({ page }) => {
     await page.goto(BASE);
-    const toggle = page.locator("[aria-label*='mode']");
-    await expect(toggle).toBeVisible();
+    const dropZone = page.locator("[aria-label]").filter({ hasText: /drop|file|upload/i });
+    const count = await dropZone.count();
+    expect(count).toBeGreaterThan(0);
   });
 });

@@ -184,3 +184,112 @@ describe("Settings page", () => {
     expect(screen.getByText("Brasil")).toBeTruthy();
   });
 });
+
+// ── AppShell ───────────────────────────────────────────────────────────────
+
+describe("AppShell", () => {
+  it("renders header with SuperDoc logo", async () => {
+    const { default: AppShell } = await import(
+      "../components/layout/AppShell"
+    );
+    render(
+      <BrowserRouter>
+        <ThemeProvider>
+          <AppShell>
+            <div>Content</div>
+          </AppShell>
+        </ThemeProvider>
+      </BrowserRouter>
+    );
+    expect(screen.getByText("SuperDoc")).toBeTruthy();
+  });
+
+  it("renders theme switcher with 5 dots", async () => {
+    const { default: AppShell } = await import(
+      "../components/layout/AppShell"
+    );
+    render(
+      <BrowserRouter>
+        <ThemeProvider>
+          <AppShell>
+            <div>Content</div>
+          </AppShell>
+        </ThemeProvider>
+      </BrowserRouter>
+    );
+    // Each theme dot is a button with a title attribute
+    const dots = document.querySelectorAll("header button[title]");
+    expect(dots).toHaveLength(5);
+  });
+
+  it("renders navigation links", async () => {
+    const { default: AppShell } = await import(
+      "../components/layout/AppShell"
+    );
+    render(
+      <BrowserRouter>
+        <ThemeProvider>
+          <AppShell>
+            <div>Content</div>
+          </AppShell>
+        </ThemeProvider>
+      </BrowserRouter>
+    );
+    // Each label appears twice (sidebar + bottom nav)
+    expect(screen.getAllByText("Home").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Tools").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Files").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ── tools config ───────────────────────────────────────────────────────────
+
+describe("tools config", () => {
+  it("exports 6 tools", async () => {
+    const { TOOLS } = await import("../config/tools");
+    expect(TOOLS).toHaveLength(6);
+  });
+
+  it("each tool has icon, title, desc", async () => {
+    const { TOOLS } = await import("../config/tools");
+    for (const tool of TOOLS) {
+      expect(tool).toHaveProperty("icon");
+      expect(tool).toHaveProperty("title");
+      expect(tool).toHaveProperty("desc");
+      expect(tool.icon).toBeTruthy();
+      expect(tool.title).toBeTruthy();
+      expect(tool.desc).toBeTruthy();
+    }
+  });
+
+  it("Video tool has badge", async () => {
+    const { TOOLS } = await import("../config/tools");
+    const video = TOOLS.find((t) => t.title === "Video");
+    expect(video).toBeDefined();
+    expect(video.badge).toBe("$1 / video");
+  });
+
+  it("icon names are Material Symbol format (snake_case)", async () => {
+    const { TOOLS } = await import("../config/tools");
+    for (const tool of TOOLS) {
+      // Material Symbols use snake_case names (lowercase, underscores, no spaces)
+      expect(tool.icon).toMatch(/^[a-z][a-z0-9_]*$/);
+    }
+  });
+});
+
+// ── api module ─────────────────────────────────────────────────────────────
+
+describe("api module", () => {
+  it("exports createJob, getStatus, uploadToS3, triggerProcess, health", async () => {
+    // Re-import the actual module (bypass the mock) to check exports
+    const apiModule = await vi.importActual("../lib/api");
+    const { api: realApi } = apiModule;
+    expect(typeof realApi.createJob).toBe("function");
+    expect(typeof realApi.getStatus).toBe("function");
+    expect(typeof realApi.uploadToS3).toBe("function");
+    expect(typeof realApi.triggerProcess).toBe("function");
+    expect(typeof realApi.health).toBe("function");
+  });
+});
