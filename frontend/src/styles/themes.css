@@ -1,0 +1,181 @@
+/* ── AZURE LIGHT (default) ── */
+:root,
+.theme-azure {
+  --color-primary:                  #005faa;
+  --color-on-primary:               #ffffff;
+  --color-primary-container:        #0078d4;
+  --color-on-primary-container:     #ffffff;
+  --color-secondary:                #006b58;
+  --color-on-secondary:             #ffffff;
+  --color-secondary-container:      #67f7d5;
+  --color-on-secondary-container:   #00705c;
+  --color-tertiary:                 #006a58;
+  --color-on-tertiary:              #ffffff;
+  --color-tertiary-container:       #00866f;
+  --color-on-tertiary-container:    #ffffff;
+  --color-surface:                  #f8f9fb;
+  --color-on-surface:               #191c1e;
+  --color-surface-variant:          #e1e2e4;
+  --color-on-surface-variant:       #404752;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low:    #f3f4f6;
+  --color-surface-container:        #edeef0;
+  --color-surface-container-high:   #e7e8ea;
+  --color-surface-container-highest:#e1e2e4;
+  --color-background:               #f8f9fb;
+  --color-on-background:            #191c1e;
+  --color-outline:                  #717783;
+  --color-outline-variant:          #c0c7d4;
+  --color-error:                    #ba1a1a;
+  --color-on-error:                 #ffffff;
+  --color-error-container:          #ffdad6;
+  --color-on-error-container:       #93000a;
+  --color-inverse-surface:          #2e3132;
+  --color-inverse-on-surface:       #f0f1f3;
+  --color-inverse-primary:          #a3c9ff;
+}
+
+/* ── DARK ── */
+.theme-dark,
+.dark {
+  --color-primary:                  #b0c6ff;
+  --color-on-primary:               #002d6f;
+  --color-primary-container:        #568dff;
+  --color-on-primary-container:     #002662;
+  --color-secondary:                #c1c7d0;
+  --color-on-secondary:             #2b3138;
+  --color-secondary-container:      #41474f;
+  --color-on-secondary-container:   #b0b5be;
+  --color-tertiary:                 #96ccff;
+  --color-on-tertiary:              #003353;
+  --color-tertiary-container:       #4c96d3;
+  --color-on-tertiary-container:    #002c48;
+  --color-surface:                  #10141a;
+  --color-on-surface:               #dfe2eb;
+  --color-surface-variant:          #31353c;
+  --color-on-surface-variant:       #c2c6d6;
+  --color-surface-container-lowest: #0a0e14;
+  --color-surface-container-low:    #181c22;
+  --color-surface-container:        #1c2026;
+  --color-surface-container-high:   #262a31;
+  --color-surface-container-highest:#31353c;
+  --color-background:               #10141a;
+  --color-on-background:            #dfe2eb;
+  --color-outline:                  #8c909f;
+  --color-outline-variant:          #424654;
+  --color-error:                    #ffb4ab;
+  --color-on-error:                 #690005;
+  --color-error-container:          #93000a;
+  --color-on-error-container:       #ffdad6;
+  --color-inverse-surface:          #dfe2eb;
+  --color-inverse-on-surface:       #2d3137;
+  --color-inverse-primary:          #0058cb;
+}
+
+/* ── ORANGE BOMB (dark) ── */
+.theme-orange {
+  --color-primary:                  #ff9159;
+  --color-on-primary:               #531e00;
+  --color-primary-container:        #ff7a2f;
+  --color-on-primary-container:     #401500;
+  --color-secondary:                #fe9400;
+  --color-on-secondary:             #482600;
+  --color-secondary-container:      #8c5000;
+  --color-on-secondary-container:   #fff6f1;
+  --color-tertiary:                 #ffdd7c;
+  --color-on-tertiary:              #634d00;
+  --color-tertiary-container:       #fecb00;
+  --color-on-tertiary-container:    #584500;
+  --color-surface:                  #130e01;
+  --color-on-surface:               #fdf0d0;
+  --color-surface-variant:          #2d250a;
+  --color-on-surface-variant:       #b6aa8d;
+  --color-surface-container-lowest: #000000;
+  --color-surface-container-low:    #191302;
+  --color-surface-container:        #201904;
+  --color-surface-container-high:   #261f06;
+  --color-surface-container-highest:#2d250a;
+  --color-background:               #130e01;
+  --color-on-background:            #fdf0d0;
+  --color-outline:                  #7e755b;
+  --color-outline-variant:          #4f4730;
+  --color-error:                    #ff7351;
+  --color-on-error:                 #450900;
+  --color-error-container:          #b92902;
+  --color-on-error-container:       #ffd2c8;
+  --color-inverse-surface:          #fff8f0;
+  --color-inverse-on-surface:       #5d543c;
+  --color-inverse-primary:          #a14100;
+}
+
+/* ── PURPLE GALAXY (dark) ── */
+.theme-galaxy {
+  --color-primary:                  #ebb2ff;
+  --color-on-primary:               #500a6c;
+  --color-primary-container:        #9b59b6;
+  --color-on-primary-container:     #fffbff;
+  --color-secondary:                #ffb0cc;
+  --color-on-secondary:             #640038;
+  --color-secondary-container:      #d7007f;
+  --color-on-secondary-container:   #fff1f3;
+  --color-tertiary:                 #d3bbff;
+  --color-on-tertiary:              #3c1b74;
+  --color-tertiary-container:       #8264be;
+  --color-on-tertiary-container:    #fffbff;
+  --color-surface:                  #181021;
+  --color-on-surface:               #edddf6;
+  --color-surface-variant:          #3b3143;
+  --color-on-surface-variant:       #d0c2d1;
+  --color-surface-container-lowest: #130a1b;
+  --color-surface-container-low:    #211829;
+  --color-surface-container:        #251c2d;
+  --color-surface-container-high:   #302638;
+  --color-surface-container-highest:#3b3143;
+  --color-background:               #181021;
+  --color-on-background:            #edddf6;
+  --color-outline:                  #998d9a;
+  --color-outline-variant:          #4d434f;
+  --color-error:                    #ffb4ab;
+  --color-on-error:                 #690005;
+  --color-error-container:          #93000a;
+  --color-on-error-container:       #ffdad6;
+  --color-inverse-surface:          #edddf6;
+  --color-inverse-on-surface:       #362d3f;
+  --color-inverse-primary:          #83439e;
+}
+
+/* ── ALMA BRASILEIRA (light, green) ── */
+.theme-brasil {
+  --color-primary:                  #00752a;
+  --color-on-primary:               #ffffff;
+  --color-primary-container:        #84ff92;
+  --color-on-primary-container:     #006122;
+  --color-secondary:                #736400;
+  --color-on-secondary:             #ffffff;
+  --color-secondary-container:      #fcdc00;
+  --color-on-secondary-container:   #5a4e00;
+  --color-tertiary:                 #4660af;
+  --color-on-tertiary:              #ffffff;
+  --color-tertiary-container:       #95adff;
+  --color-on-tertiary-container:    #042a78;
+  --color-surface:                  #fefdf1;
+  --color-on-surface:               #373830;
+  --color-surface-variant:          #e9e9da;
+  --color-on-surface-variant:       #64655c;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low:    #fbfaed;
+  --color-surface-container:        #f5f4e7;
+  --color-surface-container-high:   #efefe0;
+  --color-surface-container-highest:#e9e9da;
+  --color-background:               #fefdf1;
+  --color-on-background:            #373830;
+  --color-outline:                  #818177;
+  --color-outline-variant:          #babaaf;
+  --color-error:                    #be2d06;
+  --color-on-error:                 #ffffff;
+  --color-error-container:          #f95630;
+  --color-on-error-container:       #520c00;
+  --color-inverse-surface:          #0d0f08;
+  --color-inverse-on-surface:       #9d9d93;
+  --color-inverse-primary:          #84ff92;
+}
