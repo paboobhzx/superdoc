@@ -352,6 +352,7 @@ module "lambda_disable_anonymous" {
   common_tags         = local.common_tags
   dynamodb_table_arns = local.dynamodb_arns
   media_bucket_arn    = module.s3.bucket_arn
+  enable_sns_trigger  = true
   sns_trigger_arn     = module.monitoring.auto_disable_topic_arn
   extra_iam_statements = [
     { Effect = "Allow", Action = ["sns:Publish"], Resource = [module.monitoring.alerts_topic_arn] },

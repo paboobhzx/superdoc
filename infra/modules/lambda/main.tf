@@ -148,14 +148,14 @@ resource "aws_lambda_permission" "eventbridge" {
 # ── Optional SNS trigger (disable_anonymous) ─────────────────────────────────
 
 resource "aws_sns_topic_subscription" "trigger" {
-  count     = var.sns_trigger_arn != "" ? 1 : 0
+  count     = var.enable_sns_trigger ? 1 : 0
   topic_arn = var.sns_trigger_arn
   protocol  = "lambda"
   endpoint  = aws_lambda_function.this.arn
 }
 
 resource "aws_lambda_permission" "sns" {
-  count         = var.sns_trigger_arn != "" ? 1 : 0
+  count         = var.enable_sns_trigger ? 1 : 0
   statement_id  = "AllowSNS"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.this.function_name

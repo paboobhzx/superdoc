@@ -105,6 +105,12 @@ resource "aws_api_gateway_deployment" "superdoc" {
     ]))
   }
 
+  depends_on = [
+    aws_api_gateway_integration.health_mock,
+    aws_api_gateway_integration_response.health_200,
+    aws_api_gateway_method_response.health_200,
+  ]
+
   lifecycle {
     create_before_destroy = true
   }

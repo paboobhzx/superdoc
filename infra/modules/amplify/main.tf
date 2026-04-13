@@ -1,7 +1,6 @@
 resource "aws_amplify_app" "superdoc" {
-  name       = "${var.name_prefix}-frontend"
-  repository = var.github_repo
-  tags       = var.common_tags
+  name = "${var.name_prefix}-frontend"
+  tags = var.common_tags
 
   build_spec = <<-EOT
     version: 1
@@ -28,7 +27,6 @@ resource "aws_amplify_app" "superdoc" {
     VITE_ENV     = var.environment
   }
 
-  # Redirect all routes to index.html for SPA
   custom_rule {
     source = "/<*>"
     status = "404-200"

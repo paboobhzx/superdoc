@@ -29,8 +29,14 @@ variable "schedule_expression" {
   default = "rate(15 minutes)"
 }
 
+variable "enable_sns_trigger" {
+  description = "Whether to subscribe this Lambda to an SNS topic"
+  type        = bool
+  default     = false
+}
+
 variable "sns_trigger_arn" {
-  description = "SNS topic ARN to trigger this Lambda (empty = disabled)"
+  description = "SNS topic ARN to trigger this Lambda"
   type        = string
   default     = ""
 }
