@@ -1,14 +1,40 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 
 export function Register() {
+  const navigate = useNavigate()
+  const auth = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPw, setShowPw] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
 
   const strength = [password.length >= 8, /[A-Z]/.test(password), /[0-9]/.test(password), /[^A-Za-z0-9]/.test(password)]
   const filled = strength.filter(Boolean).length
+
+  async function onSubmit() {
+    setErr('')
+    if (!email || !password) {
+      setErr('Email and password are required.')
+      return
+    }
+    if (password !== confirm) {
+      setErr('Passwords do not match.')
+      return
+    }
+    setLoading(true)
+    try {
+      await auth.signUp(email, password)
+      navigate('/auth/confirm')
+    } catch (e) {
+      setErr(e?.message || 'Sign up failed')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
@@ -62,10 +88,21 @@ export function Register() {
             </label>
           </div>
 
-          <button className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity">
-            Create account
+          <button
+            onClick={onSubmit}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Creating…' : 'Create account'}
           </button>
         </div>
+
+        {err && (
+          <div className="mt-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-error-container/20 border border-error/20 text-on-error-container">
+            <span className="material-symbols-outlined text-error text-[20px]">warning</span>
+            <span className="text-sm font-medium">{err}</span>
+          </div>
+        )}
 
         <p className="mt-6 text-center text-xs text-on-surface-variant">
           Already have an account? <Link to="/auth/login" className="text-primary font-semibold no-underline hover:underline">Sign in</Link>

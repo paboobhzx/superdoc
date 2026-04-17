@@ -1,10 +1,33 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 
 export function Login() {
+  const navigate = useNavigate()
+  const auth = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function onSubmit() {
+    setErr('')
+    setLoading(true)
+    try {
+      await auth.signIn(email, password)
+      navigate('/dashboard')
+    } catch (e) {
+      const msg = e?.message || 'Sign in failed'
+      if (msg.toLowerCase().includes('not confirmed')) {
+        navigate('/auth/confirm')
+        return
+      }
+      setErr(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
@@ -38,11 +61,22 @@ export function Login() {
             </button>
           </div>
 
-          <button className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity">
-            Sign in
+          <button
+            onClick={onSubmit}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Signing in…' : 'Sign in'}
             <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
           </button>
         </div>
+
+        {err && (
+          <div className="mt-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-error-container/20 border border-error/20 text-on-error-container">
+            <span className="material-symbols-outlined text-error text-[20px]">warning</span>
+            <span className="text-sm font-medium">{err}</span>
+          </div>
+        )}
 
         <div className="flex items-center gap-4 my-6">
           <div className="flex-1 h-px bg-outline-variant/20" />

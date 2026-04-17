@@ -2,14 +2,16 @@ import { useState, useCallback, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { TOOLS } from "../../config/tools"
 import { api } from "../../lib/api"
+import { useAuth } from "../../context/AuthContext"
 
 const SUPPORTED_FORMATS = ["PDF", "DOCX", "XLSX", "JPG", "PNG", "MP4", "WEBP", "GIF"]
 const ACCEPT = "application/pdf,.docx,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.mp4,.webm"
+const MAX_ITERATION_BYTES = 100 * 1024 * 1024
 
 function detectOperation(file) {
   const ext = file.name.split(".").pop().toLowerCase()
   const map = {
-    pdf: "pdf_to_docx", docx: "docx_to_pdf", doc: "docx_to_pdf",
+    pdf: "pdf_to_docx",
     jpg: "image_convert", jpeg: "image_convert", png: "image_convert",
     gif: "image_convert", webp: "image_convert",
     mp4: "video_process", webm: "video_process",
@@ -20,31 +22,56 @@ function detectOperation(file) {
 
 export function Home() {
   const navigate = useNavigate()
+  const auth = useAuth()
   const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState(null)
   const [dragging, setDragging] = useState(false)
+  const [created, setCreated] = useState([])
   const inputRef = useRef(null)
 
-  const handleFile = useCallback(async (file) => {
-    if (!file) return
+  const handleFiles = useCallback(async (files) => {
+    const list = Array.from(files || []).filter(Boolean)
+    if (list.length === 0) return
     setErr(null)
+    setCreated([])
+
+    const maxFiles = auth?.isAuthenticated ? 10 : 4
+    if (list.length > maxFiles) {
+      setErr(`Too many files. Max ${maxFiles} at a time.`)
+      return
+    }
+
+    const totalBytes = list.reduce((sum, f) => sum + (f?.size || 0), 0)
+    if (totalBytes > MAX_ITERATION_BYTES) {
+      setErr("Batch too large. Max 100MB per upload batch.")
+      return
+    }
+
     setUploading(true)
     try {
       const session_id = sessionStorage.getItem("superdoc_session") || crypto.randomUUID()
       sessionStorage.setItem("superdoc_session", session_id)
-      const operation = detectOperation(file)
-      const { job_id, upload_url } = await api.createJob({
-        operation, file_size_bytes: file.size, file_name: file.name, session_id,
-      })
-      await api.uploadToS3(upload_url, file)
-      await api.triggerProcess(job_id)
-      navigate(`/processing/${job_id}`)
+
+      const createdJobs = []
+      for (const file of list) {
+        const operation = detectOperation(file)
+        const payload = { operation, file_size_bytes: file.size, file_name: file.name }
+        const data = auth?.isAuthenticated ? await api.createUserJob(payload) : await api.createJob({ ...payload, session_id })
+        await api.uploadToS3(data.upload || data.upload_url, file)
+        await api.triggerProcess(data.job_id)
+        createdJobs.push({ job_id: data.job_id, file_name: file.name })
+      }
+
+      setCreated(createdJobs)
+      if (createdJobs.length === 1) {
+        navigate(`/processing/${createdJobs[0].job_id}`)
+      }
     } catch (e) {
       setErr(e.message || "Upload failed — please try again")
     } finally {
       setUploading(false)
     }
-  }, [navigate])
+  }, [navigate, auth?.isAuthenticated])
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 md:py-14">
@@ -71,16 +98,17 @@ export function Home() {
             ? 'border-primary bg-primary/5 scale-[1.01]'
             : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40'
         } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+        aria-label="File upload drop zone"
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false) }}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files?.[0]) }}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files) }}
         onClick={() => !uploading && inputRef.current?.click()}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && !uploading && inputRef.current?.click()}
       >
-        <input ref={inputRef} type="file" accept={ACCEPT} className="hidden"
-          onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = "" }} />
+        <input ref={inputRef} type="file" accept={ACCEPT} multiple className="hidden"
+          onChange={(e) => { handleFiles(e.target.files); e.target.value = "" }} />
         <div className="flex flex-col items-center py-12 gap-3">
           <span className="material-symbols-outlined text-[40px] text-on-surface-variant">
             {dragging ? 'file_download' : 'upload_file'}
@@ -103,6 +131,29 @@ export function Home() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-error-container/20 border border-error/20 text-on-error-container mb-8">
           <span className="material-symbols-outlined text-error text-[20px]">warning</span>
           <span className="text-sm font-medium">{err}</span>
+        </div>
+      )}
+
+      {created.length > 1 && (
+        <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant/10 p-5 mb-10">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <span className="font-bold text-on-surface">Batch started</span>
+            {auth?.isAuthenticated ? (
+              <a href="/dashboard" className="text-sm text-primary font-semibold no-underline hover:underline">
+                View all in Files
+              </a>
+            ) : null}
+          </div>
+          <ul className="space-y-2">
+            {created.map((j) => (
+              <li key={j.job_id} className="flex items-center justify-between gap-3">
+                <span className="text-sm text-on-surface truncate">{j.file_name}</span>
+                <a href={`/processing/${j.job_id}`} className="text-sm text-primary font-semibold no-underline hover:underline">
+                  Open
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -139,7 +190,7 @@ export function Home() {
       {/* Disclaimer */}
       <p className="text-center text-xs text-on-surface-variant pb-8">
         <span className="material-symbols-outlined text-[14px] align-middle mr-1">lock</span>
-        All files are automatically deleted after 12 hours. We never store your data.
+        Anonymous files delete after 12 hours. Registered users keep up to 10 files for 7 days.
       </p>
     </div>
   )

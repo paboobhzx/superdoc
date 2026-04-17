@@ -44,6 +44,7 @@ export function Processing() {
   const isDone = job.status === "DONE"
   const isFailed = job.status === "FAILED"
   const stepIdx = getStepIndex(job.status)
+  const retentionLabel = job.file_key?.startsWith("users/") ? "7 days" : "12 hours"
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
@@ -103,7 +104,7 @@ export function Processing() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container border border-outline-variant/10 mb-6">
           <span className="material-symbols-outlined text-on-surface-variant text-[18px]">schedule</span>
           <span className="text-sm text-on-surface-variant">
-            File automatically deleted after <strong className="text-on-surface">12 hours</strong>
+            File automatically deleted after <strong className="text-on-surface">{retentionLabel}</strong>
           </span>
         </div>
 
