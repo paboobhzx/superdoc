@@ -1,10 +1,13 @@
 terraform {
   backend "s3" {
-    bucket         = "superdoc-tfstate"
-    key            = "superdoc/prod/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "superdoc-tfstate-lock"
-    encrypt        = true
+    bucket                      = "superdoc-tfstate"
+    key                         = "superdoc/prod/terraform.tfstate"
+    region                      = "us-east-1"
+    encrypt                     = true
+    use_lockfile                = true
+    skip_credentials_validation = true
+    skip_requesting_account_id   = true
+    skip_metadata_api_check      = true
   }
 }
 

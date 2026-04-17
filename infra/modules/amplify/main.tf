@@ -23,8 +23,10 @@ resource "aws_amplify_app" "superdoc" {
   EOT
 
   environment_variables = {
-    VITE_API_URL = var.api_url
-    VITE_ENV     = var.environment
+    VITE_API_URL              = var.api_url
+    VITE_ENV                  = var.environment
+    VITE_COGNITO_USER_POOL_ID = var.cognito_user_pool_id
+    VITE_COGNITO_CLIENT_ID    = var.cognito_client_id
   }
 
   custom_rule {
@@ -40,6 +42,8 @@ resource "aws_amplify_branch" "main" {
   tags        = var.common_tags
 
   environment_variables = {
-    VITE_API_URL = var.api_url
+    VITE_API_URL              = var.api_url
+    VITE_COGNITO_USER_POOL_ID = var.cognito_user_pool_id
+    VITE_COGNITO_CLIENT_ID    = var.cognito_client_id
   }
 }

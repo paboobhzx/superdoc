@@ -1,3 +1,9 @@
+# Tracks S3 object etag so Terraform detects code changes automatically
+data "aws_s3_object" "handler_zip" {
+  bucket = var.s3_bucket
+  key    = var.s3_key
+}
+
 data "aws_iam_policy_document" "assume_role" {
   statement {
     effect  = "Allow"
@@ -60,6 +66,7 @@ resource "aws_iam_role_policy" "s3" {
       Resource = [
         "${var.media_bucket_arn}/uploads/*",
         "${var.media_bucket_arn}/outputs/*",
+        "${var.media_bucket_arn}/users/*",
         "${var.media_bucket_arn}/tmp/*",
         "${var.media_bucket_arn}/incidents/*"
       ]
@@ -95,15 +102,18 @@ resource "aws_iam_role_policy" "extra" {
 }
 
 resource "aws_lambda_function" "this" {
-  function_name = "${var.name_prefix}-${var.function_name}"
-  role          = aws_iam_role.lambda.arn
-  handler       = var.handler
-  runtime       = var.runtime
-  memory_size   = var.memory_size
-  timeout       = var.timeout
-  s3_bucket     = var.s3_bucket
-  s3_key        = var.s3_key
-  tags          = var.common_tags
+  function_name                  = "${var.name_prefix}-${var.function_name}"
+  role                           = aws_iam_role.lambda.arn
+  handler                        = var.handler
+  runtime                        = var.runtime
+  memory_size                    = var.memory_size
+  timeout                        = var.timeout
+  s3_bucket                      = var.s3_bucket
+  s3_key                         = var.s3_key
+  layers                         = length(var.layer_arns) > 0 ? var.layer_arns : null
+  reserved_concurrent_executions = var.reserved_concurrent_executions >= 0 ? var.reserved_concurrent_executions : null
+  source_code_hash               = data.aws_s3_object.handler_zip.etag
+  tags                           = var.common_tags
 
   environment {
     variables = var.environment_variables
@@ -143,6 +153,39 @@ resource "aws_lambda_permission" "eventbridge" {
   function_name = aws_lambda_function.this.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.schedule[0].arn
+}
+
+# ── Optional SQS event source mapping ────────────────────────────────────────
+
+resource "aws_lambda_event_source_mapping" "sqs" {
+  count            = var.enable_sqs_trigger ? 1 : 0
+  event_source_arn = var.sqs_event_source_arn
+  function_name    = aws_lambda_function.this.arn
+  batch_size       = 1
+
+  dynamic "filter_criteria" {
+    for_each = var.sqs_filter_operation != "" ? [1] : []
+    content {
+      filter {
+        pattern = jsonencode({ body = { operation = [var.sqs_filter_operation] } })
+      }
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "sqs" {
+  count = var.enable_sqs_trigger ? 1 : 0
+  name  = "${var.name_prefix}-${var.function_name}-sqs"
+  role  = aws_iam_role.lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+      Resource = [var.sqs_event_source_arn]
+    }]
+  })
 }
 
 # ── Optional SNS trigger (disable_anonymous) ─────────────────────────────────

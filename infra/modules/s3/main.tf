@@ -49,6 +49,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "media" {
   }
 
   rule {
+    id     = "delete-users-uploads-7d"
+    status = "Enabled"
+    filter { prefix = "users/" }
+    expiration { days = 7 }
+  }
+
+  rule {
     id     = "delete-tmp-24h"
     status = "Enabled"
     filter { prefix = "tmp/" }

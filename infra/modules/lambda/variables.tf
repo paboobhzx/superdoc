@@ -50,3 +50,33 @@ variable "extra_iam_statements" {
   }))
   default = []
 }
+
+variable "layer_arns" {
+  description = "List of Lambda layer ARNs to attach (max 5)"
+  type        = list(string)
+  default     = []
+}
+
+variable "reserved_concurrent_executions" {
+  description = "Reserved concurrent executions (-1 = unreserved, 0 = throttled)"
+  type        = number
+  default     = -1
+}
+
+variable "enable_sqs_trigger" {
+  description = "Enable SQS event source mapping (use with sqs_event_source_arn)"
+  type        = bool
+  default     = false
+}
+
+variable "sqs_event_source_arn" {
+  description = "SQS queue ARN to use as event source (empty = no SQS trigger)"
+  type        = string
+  default     = ""
+}
+
+variable "sqs_filter_operation" {
+  description = "Filter SQS messages by body.operation value (empty = no filter)"
+  type        = string
+  default     = ""
+}
