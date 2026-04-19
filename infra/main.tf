@@ -79,6 +79,10 @@ module "api_gateway" {
       invoke_arn    = module.lambda_admin_incidents.invoke_arn
       function_name = module.lambda_admin_incidents.function_name
     }
+      list_operations = {
+      invoke_arn    = module.lambda_list_operations.invoke_arn
+      function_name = module.lambda_list_operations.function_name
+    }
   }
 }
 
@@ -363,6 +367,49 @@ module "lambda_pdf_extract_text" {
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
 }
+# Worker Lambda for pdf_to_txt. Matches pdf_extract_text's shape (256MB,
+# 120s timeout) since the underlying pypdf work is identical.
+module "lambda_pdf_to_txt" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "pdf-to-txt"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 256
+  timeout               = 120
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/pdf_to_txt.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+# Read-only Lambda for GET /operations. Minimal memory/timeout since it
+# returns a static dict. The lambda module still attaches DynamoDB/S3
+# policies by default — that's a known over-grant. We accept it for now
+# because fixing the module is out of scope for this task; the blast radius
+# is bounded because the handler code never uses those permissions.
+# TODO(round-2.5): add `disable_dynamodb_access` / `disable_s3_access` flags
+# to modules/lambda and set them true here.
+module "lambda_list_operations" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "list-operations"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 128
+  timeout               = 5
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/list_operations.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
 
 # ── Document + Image handlers ────────────────────────────────────────────────
 
@@ -451,6 +498,7 @@ module "lambda_dispatch_job" {
         module.lambda_pdf_merge.function_arn,
         module.lambda_pdf_split.function_arn,
         module.lambda_pdf_to_docx.function_arn,
+        module.lambda_pdf_to_txt.function_arn,
         module.lambda_pdf_rotate.function_arn,
         module.lambda_pdf_annotate.function_arn,
         module.lambda_pdf_extract_text.function_arn,
