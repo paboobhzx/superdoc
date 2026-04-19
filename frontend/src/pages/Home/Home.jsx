@@ -1,6 +1,6 @@
 // frontend/src/pages/Home/Home.jsx
 import { useState, useCallback, useRef } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { TOOLS } from "../../config/tools"
 import { api } from "../../lib/api"
 import { useAuth } from "../../context/AuthContext"
@@ -242,8 +242,8 @@ export function Home() {
         <p className="text-on-surface-variant mb-6">No bloat, no subscriptions. Just tools that work.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {TOOLS.map((tool) => (
-            <div key={tool.title}
-              className="group relative flex items-start gap-4 p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/10 hover:border-primary/20 hover:shadow-sm transition-all cursor-pointer">
+            <Link key={tool.title} to="/tools"
+              className="group relative flex items-start gap-4 p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/10 hover:border-primary/20 hover:shadow-sm transition-all cursor-pointer no-underline text-inherit">
               <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-primary text-[22px]">{tool.icon}</span>
               </div>
@@ -261,7 +261,7 @@ export function Home() {
               <span className="material-symbols-outlined text-on-surface-variant text-[18px] group-hover:text-primary transition-colors mt-1">
                 arrow_forward
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       </section>

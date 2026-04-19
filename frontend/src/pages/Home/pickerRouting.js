@@ -16,14 +16,17 @@ import { api } from "../../lib/api"
 // only doc_edit, which can apply to docx and xlsx. PDF and image editing
 // could become client-editor ops in future iterations.
 const EDITOR_ROUTES_BY_EXTENSION = {
-  docx: "/docx-editor",
-  xlsx: "/xlsx-editor",
-  pdf: "/pdf-editor",
-  png: "/image-editor",
-  jpg: "/image-editor",
-  jpeg: "/image-editor",
-  gif: "/image-editor",
-  webp: "/image-editor",
+  // Must match the routes in App.jsx. These use the /editor/<type> shape;
+  // the previous /<type>-editor strings were a mismatch that sent users to
+  // the wildcard fallback <Home /> instead of the actual editor page.
+  docx: "/editor/docx",
+  xlsx: "/editor/xlsx",
+  pdf: "/editor/pdf",
+  png: "/editor/image",
+  jpg: "/editor/image",
+  jpeg: "/editor/image",
+  gif: "/editor/image",
+  webp: "/editor/image",
 }
 
 
