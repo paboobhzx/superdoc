@@ -132,3 +132,63 @@ def rate_limit_increment(pk: str, sk: str, ttl: int) -> int:
         ReturnValues="UPDATED_NEW",
     )
     return int(resp["Attributes"]["count"])
+
+# ── Payments table helpers (added in round 3a-2) ────────────────────────────
+# The payments table is used for Stripe-backed conversions. Schema:
+#   payment_id (pk, S)   uuid of the pending/paid payment
+#   status     (S)       "PENDING" | "PAID" | "CONSUMED"
+#   job_id     (S)       uuid of the eventual job (created on payment)
+#   operation  (S)       operation id (e.g. "docx_to_pdf")
+#   session_id (S)       caller's session id or user sub
+#   file_name  (S)
+#   file_size_bytes (N)
+#   created_at (N)
+#   ttl        (N)       24h from creation (auto-cleanup for abandoned checkouts)
+
+def put_payment(*, table, payment_id, status, job_id, operation, file_name,
+                file_size_bytes, session_id, ttl):
+    """Create a pending payment record. Called when a Checkout Session starts."""
+    import time
+    _client().put_item(
+        TableName=table,
+        Item={
+            "payment_id":       {"S": payment_id},
+            "status":           {"S": status},
+            "job_id":           {"S": job_id},
+            "operation":        {"S": operation},
+            "file_name":        {"S": file_name},
+            "file_size_bytes":  {"N": str(int(file_size_bytes))},
+            "session_id":       {"S": session_id},
+            "created_at":       {"N": str(int(time.time()))},
+            "ttl":              {"N": str(int(ttl))},
+        },
+    )
+
+
+def get_payment(table, payment_id):
+    """Return the payment record as a plain dict, or None if missing."""
+    resp = _client().get_item(
+        TableName=table,
+        Key={"payment_id": {"S": payment_id}},
+    )
+    item = resp.get("Item")
+    if item is None:
+        return None
+    result = {}
+    for key, av in item.items():
+        if "S" in av:
+            result[key] = av["S"]
+        elif "N" in av:
+            result[key] = int(av["N"])
+    return result
+
+
+def update_payment_status(table, payment_id, new_status):
+    """Flip status (PENDING -> PAID, PAID -> CONSUMED). Idempotent."""
+    _client().update_item(
+        TableName=table,
+        Key={"payment_id": {"S": payment_id}},
+        UpdateExpression="SET #s = :s",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={":s": {"S": new_status}},
+    )

@@ -1034,11 +1034,260 @@ resource "aws_api_gateway_integration_response" "operations_options_200" {
 }
 
 
+
+# ── /checkout route (added by round 3a-2) ───────────────────────────────────
+# POST /checkout creates a Stripe Checkout Session. No auth - the price id
+# controls what's being charged, so anyone can initiate checkout (but Stripe
+# collects the actual payment, so misuse is self-limiting).
+
+resource "aws_api_gateway_resource" "checkout" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  parent_id   = aws_api_gateway_rest_api.superdoc.root_resource_id
+  path_part   = "checkout"
+}
+
+resource "aws_api_gateway_method" "checkout_post" {
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.checkout.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "checkout_post" {
+  rest_api_id             = aws_api_gateway_rest_api.superdoc.id
+  resource_id             = aws_api_gateway_resource.checkout.id
+  http_method             = aws_api_gateway_method.checkout_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_integrations["stripe_create_checkout"].invoke_arn
+}
+
+resource "aws_lambda_permission" "stripe_create_checkout" {
+  statement_id  = "AllowAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_integrations["stripe_create_checkout"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.api_execution_arn}/*/*"
+}
+
+resource "aws_api_gateway_method_response" "checkout_post_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.checkout.id
+  http_method = aws_api_gateway_method.checkout_post.http_method
+  status_code = "200"
+}
+
+resource "aws_api_gateway_method" "checkout_options" {
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.checkout.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "checkout_options" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.checkout.id
+  http_method = aws_api_gateway_method.checkout_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "checkout_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.checkout.id
+  http_method = aws_api_gateway_method.checkout_options.http_method
+  status_code = "200"
+
+  response_parameters = local.cors_response_parameters
+}
+
+resource "aws_api_gateway_integration_response" "checkout_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.checkout.id
+  http_method = aws_api_gateway_method.checkout_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+  }
+
+  depends_on = [
+    aws_api_gateway_integration.checkout_options,
+    aws_api_gateway_method_response.checkout_options_200,
+  ]
+}
+
+
+
+# ── /stripe/webhook route (added by round 3a-2) ─────────────────────────────
+# POST /stripe/webhook receives Stripe events. No auth and no CORS because
+# Stripe's servers call this directly - never a browser. Signature lives in
+# the body and is verified in the Lambda itself.
+
+resource "aws_api_gateway_resource" "stripe" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  parent_id   = aws_api_gateway_rest_api.superdoc.root_resource_id
+  path_part   = "stripe"
+}
+
+resource "aws_api_gateway_resource" "stripe_webhook" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  parent_id   = aws_api_gateway_resource.stripe.id
+  path_part   = "webhook"
+}
+
+resource "aws_api_gateway_method" "stripe_webhook_post" {
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.stripe_webhook.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "stripe_webhook_post" {
+  rest_api_id             = aws_api_gateway_rest_api.superdoc.id
+  resource_id             = aws_api_gateway_resource.stripe_webhook.id
+  http_method             = aws_api_gateway_method.stripe_webhook_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_integrations["stripe_webhook"].invoke_arn
+}
+
+resource "aws_lambda_permission" "stripe_webhook" {
+  statement_id  = "AllowAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_integrations["stripe_webhook"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.api_execution_arn}/*/*"
+}
+
+resource "aws_api_gateway_method_response" "stripe_webhook_post_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.stripe_webhook.id
+  http_method = aws_api_gateway_method.stripe_webhook_post.http_method
+  status_code = "200"
+}
+
+
+
+# ── /files/download route (added by round 3a-3) ─────────────────────────────
+# GET /files/download?key=<s3_key> returns a presigned GET URL. Auth NONE:
+# the key must already be in an allowed prefix (uploads/, users/), and
+# that's enforced in the handler. The actual S3 URL is time-limited.
+
+resource "aws_api_gateway_resource" "files" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  parent_id   = aws_api_gateway_rest_api.superdoc.root_resource_id
+  path_part   = "files"
+}
+
+resource "aws_api_gateway_resource" "files_download" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  parent_id   = aws_api_gateway_resource.files.id
+  path_part   = "download"
+}
+
+resource "aws_api_gateway_method" "files_download_get" {
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.files_download.id
+  http_method   = "GET"
+  authorization = "NONE"
+
+  request_parameters = {
+    "method.request.querystring.key" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "files_download_get" {
+  rest_api_id             = aws_api_gateway_rest_api.superdoc.id
+  resource_id             = aws_api_gateway_resource.files_download.id
+  http_method             = aws_api_gateway_method.files_download_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_integrations["presign_download"].invoke_arn
+}
+
+resource "aws_lambda_permission" "presign_download" {
+  statement_id  = "AllowAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_integrations["presign_download"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.api_execution_arn}/*/*"
+}
+
+resource "aws_api_gateway_method_response" "files_download_get_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.files_download.id
+  http_method = aws_api_gateway_method.files_download_get.http_method
+  status_code = "200"
+}
+
+resource "aws_api_gateway_method" "files_download_options" {
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.files_download.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "files_download_options" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.files_download.id
+  http_method = aws_api_gateway_method.files_download_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "files_download_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.files_download.id
+  http_method = aws_api_gateway_method.files_download_options.http_method
+  status_code = "200"
+
+  response_parameters = local.cors_response_parameters
+}
+
+resource "aws_api_gateway_integration_response" "files_download_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.files_download.id
+  http_method = aws_api_gateway_method.files_download_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+  }
+
+  depends_on = [
+    aws_api_gateway_integration.files_download_options,
+    aws_api_gateway_method_response.files_download_options_200,
+  ]
+}
+
+
 resource "aws_api_gateway_deployment" "superdoc" {
   rest_api_id = aws_api_gateway_rest_api.superdoc.id
 
   triggers = {
     redeployment = sha1(jsonencode([
+      aws_api_gateway_resource.files.id,
+      aws_api_gateway_resource.files_download.id,
+      aws_api_gateway_method.files_download_get.id,
+      aws_api_gateway_integration.files_download_get.id,
+      aws_api_gateway_resource.checkout.id,
+      aws_api_gateway_method.checkout_post.id,
+      aws_api_gateway_integration.checkout_post.id,
+      aws_api_gateway_resource.stripe.id,
+      aws_api_gateway_resource.stripe_webhook.id,
+      aws_api_gateway_method.stripe_webhook_post.id,
+      aws_api_gateway_integration.stripe_webhook_post.id,
       aws_api_gateway_resource.operations.id,
       aws_api_gateway_method.operations_get.id,
       aws_api_gateway_integration.operations_get.id,
@@ -1086,6 +1335,11 @@ resource "aws_api_gateway_deployment" "superdoc" {
 
   depends_on = [
     aws_api_gateway_integration.health_mock,
+    aws_api_gateway_integration.files_download_get,
+    aws_api_gateway_integration_response.files_download_options_200,
+    aws_api_gateway_integration.checkout_post,
+    aws_api_gateway_integration_response.checkout_options_200,
+    aws_api_gateway_integration.stripe_webhook_post,
     aws_api_gateway_integration.operations_get,
     aws_api_gateway_integration_response.operations_options_200,
     aws_api_gateway_integration_response.health_200,
