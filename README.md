@@ -36,7 +36,19 @@ Convert, edit and transform any file. Free, serverless, no dark patterns.
 # Frontend
 cd frontend
 npm install
+# Configure API base URL
+cp .env.example .env.local  # then set VITE_API_URL
 npm run dev
+
+# Terraform backend bootstrap (one-time)
+cd infra/bootstrap_backend
+terraform init
+terraform apply -var='bucket_name=superdoc-tfstate-<account_id>'
+
+# Recommended entrypoint for real infra applies
+cd ../environments/dev
+terraform init
+terraform apply
 
 # Terraform validate
 cd infra

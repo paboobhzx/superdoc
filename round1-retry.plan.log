@@ -1,0 +1,703 @@
+[0m[1mmodule.superdoc.module.s3.random_id.suffix: Refreshing state... [id=asYb9w][0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_process_job.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.layer_deps.aws_lambda_layer_version.this (deposed object 58762a74): Refreshing state... [id=arn:aws:lambda:us-east-1:288854271409:layer:superdoc-dev-python-deps:3][0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.layer_utils.aws_lambda_layer_version.this (deposed object 7f793934): Refreshing state... [id=arn:aws:lambda:us-east-1:288854271409:layer:superdoc-dev-superdoc-utils:5][0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_get_status.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_rest_api.superdoc: Refreshing state... [id=g590x2ydn4][0m
+[0m[1mmodule.superdoc.module.monitoring.aws_sns_topic.auto_disable: Refreshing state... [id=arn:aws:sns:us-east-1:288854271409:superdoc-dev-auto-disable][0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.acm.aws_acm_certificate.this: Refreshing state... [id=arn:aws:acm:us-east-1:288854271409:certificate/a14d1cf0-c2e0-4fc3-9aae-0bc1538219b8][0m
+[0m[1mmodule.superdoc.module.lambda_get_status.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.budget.aws_budgets_budget.superdoc: Refreshing state... [id=288854271409:superdoc-dev-monthly][0m
+[0m[1mmodule.superdoc.module.s3.aws_s3_bucket.media: Refreshing state... [id=superdoc-dev-media-6ac61bf7][0m
+[0m[1mmodule.superdoc.module.lambda_get_status.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_create_job.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_create_job.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.ssm.aws_ssm_parameter.stripe_webhook_secret: Refreshing state... [id=/superdoc-dev/stripe/webhook_secret][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/disable_anonymous.zip][0m
+[0m[1mmodule.superdoc.module.dynamodb.aws_dynamodb_table.incidents: Refreshing state... [id=superdoc-dev-incidents][0m
+[0m[1mmodule.superdoc.module.lambda_process_job.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/process_job.zip][0m
+[0m[1mmodule.superdoc.module.lambda_user_files.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/user_complete_file.zip][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_get_status.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/get_status.zip][0m
+[0m[1mmodule.superdoc.module.ssm.aws_ssm_parameter.video_processing_enabled: Refreshing state... [id=/superdoc-dev/features/video_processing_enabled][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/pdf_extract_text.zip][0m
+[0m[1mmodule.superdoc.data.aws_route53_zone.main: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.layer_utils.data.aws_s3_object.layer_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_user_files.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/user_files.zip][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_video_process.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_video_process.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.layer_utils.data.aws_s3_object.layer_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/layers/superdoc_utils.zip][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/pdf_to_docx.zip][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/pdf_annotate.zip][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_cloudwatch_log_group.api: Refreshing state... [id=/aws/api-gateway/superdoc-dev][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/kb_cleanup.zip][0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.monitoring.aws_sns_topic.alerts: Refreshing state... [id=arn:aws:sns:us-east-1:288854271409:superdoc-dev-alerts][0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/user_create_file.zip][0m
+[0m[1mmodule.superdoc.module.lambda_user_files.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_user_files.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.ssm.aws_ssm_parameter.stripe_secret_key: Refreshing state... [id=/superdoc-dev/stripe/secret_key][0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/admin_incidents.zip][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_video_process.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.cognito.aws_cognito_user_pool.superdoc: Refreshing state... [id=us-east-1_lYSGZz6m4][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/restore_anonymous.zip][0m
+[0m[1mmodule.superdoc.module.dynamodb.aws_dynamodb_table.jobs: Refreshing state... [id=superdoc-dev-jobs][0m
+[0m[1mmodule.superdoc.data.aws_route53_zone.main: Read complete after 0s [id=Z00715662A3EPIVLR1LS][0m
+[0m[1mmodule.superdoc.module.lambda_video_process.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/video_process.zip][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.aws_cloudwatch_event_rule.schedule[0]: Refreshing state... [id=superdoc-dev-kb-cleanup-schedule][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.ssm.aws_ssm_parameter.bedrock_kb_id: Refreshing state... [id=/superdoc-dev/bedrock/knowledge_base_id][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/doc_edit.zip][0m
+[0m[1mmodule.superdoc.module.layer_deps.data.aws_s3_object.layer_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/pdf_split.zip][0m
+[0m[1mmodule.superdoc.module.lambda_process_job.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_process_job.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_create_job.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.layer_deps.data.aws_s3_object.layer_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/layers/python_deps.zip][0m
+[0m[1mmodule.superdoc.module.ssm.aws_ssm_parameter.maintenance_mode: Refreshing state... [id=/superdoc-dev/features/maintenance_mode][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_create_job.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/create_job.zip][0m
+[0m[1mmodule.superdoc.module.ssm.aws_ssm_parameter.anonymous_ops_enabled: Refreshing state... [id=/superdoc-dev/features/anonymous_ops_enabled][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.dynamodb.aws_dynamodb_table.rate_limits: Refreshing state... [id=superdoc-dev-rate-limits][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/pdf_rotate.zip][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.data.aws_iam_policy_document.assume_role: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.data.aws_iam_policy_document.assume_role: Read complete after 0s [id=2690255455][0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.route53.data.aws_route53_zone.main: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/admin_flags.zip][0m
+[0m[1mmodule.superdoc.module.cloudfront.aws_cloudfront_function.strip_api_prefix: Refreshing state... [id=superdoc-dev-strip-api-prefix][0m
+[0m[1mmodule.superdoc.module.dynamodb.aws_dynamodb_table.api_keys: Refreshing state... [id=superdoc-dev-api-keys][0m
+[0m[1mmodule.superdoc.module.ssm.aws_ssm_parameter.registrations_enabled: Refreshing state... [id=/superdoc-dev/features/registrations_enabled][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.data.aws_s3_object.handler_zip: Read complete after 1s [id=superdoc-lambda-zips-288854271409/handlers/pdf_merge.zip][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.sqs.aws_sqs_queue.jobs_dlq: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/288854271409/superdoc-dev-jobs-dlq][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.data.aws_s3_object.handler_zip: Reading...[0m[0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/pdf_compress.zip][0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-user-complete-file-role][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/image_convert.zip][0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-user-create-file-role][0m
+[0m[1mmodule.superdoc.module.route53.data.aws_route53_zone.main: Read complete after 1s [id=Z00715662A3EPIVLR1LS][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-pdf-merge-role][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.data.aws_s3_object.handler_zip: Read complete after 0s [id=superdoc-lambda-zips-288854271409/handlers/dispatch_job.zip][0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-admin-incidents-role][0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-admin-flags-role][0m
+[0m[1mmodule.superdoc.module.lambda_get_status.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-get-status-role][0m
+[0m[1mmodule.superdoc.module.lambda_create_job.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-create-job-role][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_gateway_response.throttle: Refreshing state... [id=aggr-g590x2ydn4-THROTTLED][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.users: Refreshing state... [id=4d4b8v][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.health: Refreshing state... [id=a9ifvs][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_gateway_response.cors_5xx: Refreshing state... [id=aggr-g590x2ydn4-DEFAULT_5XX][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.jobs: Refreshing state... [id=ulkk5m][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.admin: Refreshing state... [id=uu2iml][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_gateway_response.cors_4xx: Refreshing state... [id=aggr-g590x2ydn4-DEFAULT_4XX][0m
+[0m[1mmodule.superdoc.module.lambda_video_process.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-video-process-role][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-dispatch-job-role][0m
+[0m[1mmodule.superdoc.module.layer_utils.aws_lambda_layer_version.this: Refreshing state... [id=arn:aws:lambda:us-east-1:288854271409:layer:superdoc-dev-superdoc-utils:6][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-pdf-rotate-role][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-pdf-split-role][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-pdf-annotate-role][0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-doc-edit-role][0m
+[0m[1mmodule.superdoc.module.lambda_user_files.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-user-files-role][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-kb-cleanup-role][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-restore-anonymous-role][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-disable-anonymous-role][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-image-convert-role][0m
+[0m[1mmodule.superdoc.module.s3.aws_s3_bucket_versioning.media: Refreshing state... [id=superdoc-dev-media-6ac61bf7][0m
+[0m[1mmodule.superdoc.module.s3.aws_s3_bucket_lifecycle_configuration.media: Refreshing state... [id=superdoc-dev-media-6ac61bf7][0m
+[0m[1mmodule.superdoc.module.s3.aws_s3_bucket_server_side_encryption_configuration.media: Refreshing state... [id=superdoc-dev-media-6ac61bf7][0m
+[0m[1mmodule.superdoc.module.s3.aws_s3_bucket_cors_configuration.media: Refreshing state... [id=superdoc-dev-media-6ac61bf7][0m
+[0m[1mmodule.superdoc.module.s3.aws_s3_bucket_public_access_block.media: Refreshing state... [id=superdoc-dev-media-6ac61bf7][0m
+[0m[1mmodule.superdoc.module.lambda_process_job.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-process-job-role][0m
+[0m[1mmodule.superdoc.module.layer_deps.aws_lambda_layer_version.this: Refreshing state... [id=arn:aws:lambda:us-east-1:288854271409:layer:superdoc-dev-python-deps:4][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-pdf-to-docx-role][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-pdf-extract-text-role][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.aws_iam_role.lambda: Refreshing state... [id=superdoc-dev-pdf-compress-role][0m
+[0m[1mmodule.superdoc.module.cognito.aws_cognito_user_pool_client.superdoc_web: Refreshing state... [id=ejbr9ucrmi7f46t4fv1gdef6][0m
+[0m[1mmodule.superdoc.module.sqs.aws_sqs_queue.jobs: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/288854271409/superdoc-dev-jobs][0m
+[0m[1mmodule.superdoc.module.monitoring.aws_cloudwatch_metric_alarm.billing_warn: Refreshing state... [id=superdoc-dev-billing-10usd-warn][0m
+[0m[1mmodule.superdoc.module.monitoring.aws_sns_topic_subscription.email: Refreshing state... [id=arn:aws:sns:us-east-1:288854271409:superdoc-dev-alerts:4ac7e8e9-3d91-4a2e-9ef0-555b000a87b7][0m
+[0m[1mmodule.superdoc.module.monitoring.aws_cloudwatch_metric_alarm.api_4xx: Refreshing state... [id=superdoc-dev-api-4xx-high][0m
+[0m[1mmodule.superdoc.module.monitoring.aws_cloudwatch_metric_alarm.billing_critical: Refreshing state... [id=superdoc-dev-billing-20usd-disable][0m
+[0m[1mmodule.superdoc.module.monitoring.aws_sns_topic_subscription.auto_disable_email: Refreshing state... [id=arn:aws:sns:us-east-1:288854271409:superdoc-dev-auto-disable:3d60f16d-c03a-4270-8e84-3585a50708ec][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.users_me: Refreshing state... [id=mkrlil][0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-user-complete-file-role-20260418000417748000000002][0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-user-complete-file-role:superdoc-dev-user-complete-file-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-user-create-file-role:superdoc-dev-user-create-file-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-user-create-file-role-20260418000417684700000001][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.health_get: Refreshing state... [id=agm-g590x2ydn4-a9ifvs-GET][0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-admin-flags-role:superdoc-dev-admin-flags-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-admin-flags-role-20260412223423399700000004][0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-admin-incidents-role:superdoc-dev-admin-incidents-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-admin-incidents-role-20260412223423202700000003][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-pdf-merge-role:superdoc-dev-pdf-merge-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-pdf-merge-role-20260412223423911200000006][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.job_id: Refreshing state... [id=jnof3u][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.jobs_post: Refreshing state... [id=agm-g590x2ydn4-ulkk5m-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.jobs_options: Refreshing state... [id=agm-g590x2ydn4-ulkk5m-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.admin_flags: Refreshing state... [id=3g8al2][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.admin_incidents: Refreshing state... [id=wfp4mw][0m
+[0m[1mmodule.superdoc.module.lambda_get_status.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-get-status-role-20260412223422641900000001][0m
+[0m[1mmodule.superdoc.module.lambda_get_status.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-get-status-role:superdoc-dev-get-status-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_create_job.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-create-job-role-20260412223427158600000013][0m
+[0m[1mmodule.superdoc.module.lambda_create_job.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-create-job-role:superdoc-dev-create-job-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_video_process.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-video-process-role-2026041222342541900000000b][0m
+[0m[1mmodule.superdoc.module.lambda_video_process.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-video-process-role:superdoc-dev-video-process-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-pdf-split-role:superdoc-dev-pdf-split-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-pdf-split-role-20260412223422831700000002][0m
+[0m[1mmodule.superdoc.module.acm.aws_route53_record.cert_validation["superdoc.pablobhz.cloud"]: Refreshing state... [id=Z00715662A3EPIVLR1LS__33b21a73e4519b0766556e0f670c74a0.superdoc.pablobhz.cloud._CNAME][0m
+[0m[1mmodule.superdoc.module.lambda_user_files.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-user-files-role-2026041222342589480000000e][0m
+[0m[1mmodule.superdoc.module.lambda_user_files.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-user-files-role:superdoc-dev-user-files-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-pdf-rotate-role:superdoc-dev-pdf-rotate-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-pdf-rotate-role-2026041222342580740000000d][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-pdf-annotate-role-20260412223426182400000010][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-pdf-annotate-role:superdoc-dev-pdf-annotate-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-doc-edit-role:superdoc-dev-doc-edit-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-doc-edit-role-2026041222342557250000000c][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-dispatch-job-role-20260416033336250900000001][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-dispatch-job-role:superdoc-dev-dispatch-job-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-kb-cleanup-role:superdoc-dev-kb-cleanup-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-kb-cleanup-role-20260412223423996700000007][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-restore-anonymous-role-20260412223424100700000008][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-restore-anonymous-role:superdoc-dev-restore-anonymous-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-disable-anonymous-role-20260412223426768000000011][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-disable-anonymous-role:superdoc-dev-disable-anonymous-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-image-convert-role-20260412223423570700000005][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-image-convert-role:superdoc-dev-image-convert-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-pdf-to-docx-role:superdoc-dev-pdf-to-docx-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-pdf-to-docx-role-2026041222342605620000000f][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-pdf-extract-text-role:superdoc-dev-pdf-extract-text-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-pdf-extract-text-role-2026041222342519530000000a][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.aws_iam_role_policy.extra[0]: Refreshing state... [id=superdoc-dev-restore-anonymous-role:superdoc-dev-restore-anonymous-extra][0m
+[0m[1mmodule.superdoc.module.lambda_process_job.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-process-job-role:superdoc-dev-process-job-ssm][0m
+[0m[1mmodule.superdoc.module.lambda_process_job.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-process-job-role-20260415152232392100000001][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.aws_iam_role_policy_attachment.basic: Refreshing state... [id=superdoc-dev-pdf-compress-role-20260412223426897000000012][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.aws_iam_role_policy.ssm: Refreshing state... [id=superdoc-dev-pdf-compress-role:superdoc-dev-pdf-compress-ssm][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.users_me_files: Refreshing state... [id=rit5q3][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.users_me_jobs: Refreshing state... [id=fwkenr][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.health_200: Refreshing state... [id=agmr-g590x2ydn4-a9ifvs-GET-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.health_mock: Refreshing state... [id=agi-g590x2ydn4-a9ifvs-GET][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration_response.health_200: Refreshing state... [id=agir-g590x2ydn4-a9ifvs-GET-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.job_id_options: Refreshing state... [id=agm-g590x2ydn4-jnof3u-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.job_process: Refreshing state... [id=dn3ola][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.job_id_get: Refreshing state... [id=agm-g590x2ydn4-jnof3u-GET][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.jobs_post_200: Refreshing state... [id=agmr-g590x2ydn4-ulkk5m-POST-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.admin_flags_options: Refreshing state... [id=agm-g590x2ydn4-3g8al2-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.jobs_options_200: Refreshing state... [id=agmr-g590x2ydn4-ulkk5m-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.jobs_options: Refreshing state... [id=agi-g590x2ydn4-ulkk5m-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration_response.jobs_options_200: Refreshing state... [id=agir-g590x2ydn4-ulkk5m-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.admin_incidents_options: Refreshing state... [id=agm-g590x2ydn4-wfp4mw-OPTIONS][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-pdf-rotate-role:superdoc-dev-pdf-rotate-s3][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-pdf-to-docx-role:superdoc-dev-pdf-to-docx-s3][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-pdf-compress-role:superdoc-dev-pdf-compress-s3][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-pdf-split-role:superdoc-dev-pdf-split-s3][0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-user-create-file-role:superdoc-dev-user-create-file-s3][0m
+[0m[1mmodule.superdoc.module.lambda_user_files.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-user-files-role:superdoc-dev-user-files-s3][0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-admin-flags-role:superdoc-dev-admin-flags-s3][0m
+[0m[1mmodule.superdoc.module.lambda_get_status.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-get-status-role:superdoc-dev-get-status-s3][0m
+[0m[1mmodule.superdoc.module.lambda_video_process.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-video-process-role:superdoc-dev-video-process-s3][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-pdf-extract-text-role:superdoc-dev-pdf-extract-text-s3][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-restore-anonymous-role:superdoc-dev-restore-anonymous-s3][0m
+[0m[1mmodule.superdoc.module.monitoring.aws_cloudwatch_metric_alarm.s3_puts: Refreshing state... [id=superdoc-dev-s3-puts-high][0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-doc-edit-role:superdoc-dev-doc-edit-s3][0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-admin-incidents-role:superdoc-dev-admin-incidents-s3][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-dispatch-job-role:superdoc-dev-dispatch-job-s3][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-disable-anonymous-role:superdoc-dev-disable-anonymous-s3][0m
+[0m[1mmodule.superdoc.module.lambda_create_job.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-create-job-role:superdoc-dev-create-job-s3][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-image-convert-role:superdoc-dev-image-convert-s3][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-pdf-annotate-role:superdoc-dev-pdf-annotate-s3][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-kb-cleanup-role:superdoc-dev-kb-cleanup-s3][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-pdf-merge-role:superdoc-dev-pdf-merge-s3][0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-user-complete-file-role:superdoc-dev-user-complete-file-s3][0m
+[0m[1mmodule.superdoc.module.lambda_process_job.aws_iam_role_policy.s3: Refreshing state... [id=superdoc-dev-process-job-role:superdoc-dev-process-job-s3][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_authorizer.cognito: Refreshing state... [id=33o57u][0m
+[0m[1mmodule.superdoc.module.sqs.aws_cloudwatch_metric_alarm.dlq_not_empty: Refreshing state... [id=superdoc-dev-dlq-not-empty][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.aws_iam_role_policy.extra[0]: Refreshing state... [id=superdoc-dev-disable-anonymous-role:superdoc-dev-disable-anonymous-extra][0m
+[0m[1mmodule.superdoc.module.acm.aws_acm_certificate_validation.this: Refreshing state... [id=2026-04-17 18:44:54.563 +0000 UTC][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.users_me_files_options: Refreshing state... [id=agm-g590x2ydn4-rit5q3-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.users_me_files_job: Refreshing state... [id=0xjuw8][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.job_id_options: Refreshing state... [id=agi-g590x2ydn4-jnof3u-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.job_id_options_200: Refreshing state... [id=agmr-g590x2ydn4-jnof3u-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration_response.job_id_options_200: Refreshing state... [id=agir-g590x2ydn4-jnof3u-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.users_me_jobs_options: Refreshing state... [id=agm-g590x2ydn4-fwkenr-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.job_process_options: Refreshing state... [id=agm-g590x2ydn4-dn3ola-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.job_process_post: Refreshing state... [id=agm-g590x2ydn4-dn3ola-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.job_id_get_200: Refreshing state... [id=agmr-g590x2ydn4-jnof3u-GET-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.admin_incidents_options_200: Refreshing state... [id=agmr-g590x2ydn4-wfp4mw-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.admin_incidents_options: Refreshing state... [id=agi-g590x2ydn4-wfp4mw-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration_response.admin_incidents_options_200: Refreshing state... [id=agir-g590x2ydn4-wfp4mw-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration_response.admin_flags_options_200: Refreshing state... [id=agir-g590x2ydn4-3g8al2-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.admin_flags_options_200: Refreshing state... [id=agmr-g590x2ydn4-3g8al2-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.admin_flags_options: Refreshing state... [id=agi-g590x2ydn4-3g8al2-OPTIONS][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-pdf-compress-role:superdoc-dev-pdf-compress-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-pdf-rotate-role:superdoc-dev-pdf-rotate-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-kb-cleanup-role:superdoc-dev-kb-cleanup-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-dispatch-job-role:superdoc-dev-dispatch-job-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-disable-anonymous-role:superdoc-dev-disable-anonymous-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-user-create-file-role:superdoc-dev-user-create-file-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-restore-anonymous-role:superdoc-dev-restore-anonymous-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-admin-flags-role:superdoc-dev-admin-flags-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-image-convert-role:superdoc-dev-image-convert-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_create_job.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-create-job-role:superdoc-dev-create-job-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-pdf-merge-role:superdoc-dev-pdf-merge-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-pdf-annotate-role:superdoc-dev-pdf-annotate-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-admin-incidents-role:superdoc-dev-admin-incidents-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_user_files.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-user-files-role:superdoc-dev-user-files-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-user-complete-file-role:superdoc-dev-user-complete-file-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-pdf-extract-text-role:superdoc-dev-pdf-extract-text-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-pdf-to-docx-role:superdoc-dev-pdf-to-docx-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_get_status.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-get-status-role:superdoc-dev-get-status-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_process_job.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-process-job-role:superdoc-dev-process-job-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_video_process.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-video-process-role:superdoc-dev-video-process-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-doc-edit-role:superdoc-dev-doc-edit-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.aws_iam_role_policy.dynamodb: Refreshing state... [id=superdoc-dev-pdf-split-role:superdoc-dev-pdf-split-dynamo][0m
+[0m[1mmodule.superdoc.module.lambda_process_job.aws_iam_role_policy.extra[0]: Refreshing state... [id=superdoc-dev-process-job-role:superdoc-dev-process-job-extra][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.aws_iam_role_policy.sqs[0]: Refreshing state... [id=superdoc-dev-dispatch-job-role:superdoc-dev-dispatch-job-sqs][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.users_me_files_options: Refreshing state... [id=agi-g590x2ydn4-rit5q3-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.users_me_files_options_200: Refreshing state... [id=agmr-g590x2ydn4-rit5q3-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration_response.users_me_files_options_200: Refreshing state... [id=agir-g590x2ydn4-rit5q3-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.admin_incidents_post: Refreshing state... [id=agm-g590x2ydn4-wfp4mw-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.users_me_jobs_post: Refreshing state... [id=agm-g590x2ydn4-fwkenr-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.admin_flags_get: Refreshing state... [id=agm-g590x2ydn4-3g8al2-GET][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.admin_flags_post: Refreshing state... [id=agm-g590x2ydn4-3g8al2-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.users_me_files_post: Refreshing state... [id=agm-g590x2ydn4-rit5q3-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.admin_incidents_get: Refreshing state... [id=agm-g590x2ydn4-wfp4mw-GET][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.users_me_files_get: Refreshing state... [id=agm-g590x2ydn4-rit5q3-GET][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.users_me_files_job_options: Refreshing state... [id=agm-g590x2ydn4-0xjuw8-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.users_me_files_job_delete: Refreshing state... [id=agm-g590x2ydn4-0xjuw8-DELETE][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_resource.users_me_files_job_complete: Refreshing state... [id=g3tjo2][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.users_me_jobs_options_200: Refreshing state... [id=agmr-g590x2ydn4-fwkenr-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.users_me_jobs_options: Refreshing state... [id=agi-g590x2ydn4-fwkenr-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.job_process_post_200: Refreshing state... [id=agmr-g590x2ydn4-dn3ola-POST-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.job_process_options: Refreshing state... [id=agi-g590x2ydn4-dn3ola-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration_response.job_process_options_200: Refreshing state... [id=agir-g590x2ydn4-dn3ola-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.job_process_options_200: Refreshing state... [id=agmr-g590x2ydn4-dn3ola-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-user-complete-file][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-pdf-split][0m
+[0m[1mmodule.superdoc.module.lambda_video_process.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-video-process][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-pdf-merge][0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-doc-edit][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-disable-anonymous][0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-admin-flags][0m
+[0m[1mmodule.superdoc.module.lambda_create_job.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-create-job][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-image-convert][0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-user-create-file][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-pdf-rotate][0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-admin-incidents][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-pdf-extract-text][0m
+[0m[1mmodule.superdoc.module.lambda_user_files.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-user-files][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-pdf-to-docx][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-restore-anonymous][0m
+[0m[1mmodule.superdoc.module.lambda_get_status.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-get-status][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-pdf-compress][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-kb-cleanup][0m
+[0m[1mmodule.superdoc.module.lambda_process_job.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-process-job][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-dispatch-job][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.aws_lambda_function.this: Refreshing state... [id=superdoc-dev-pdf-annotate][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.users_me_jobs_post_200: Refreshing state... [id=agmr-g590x2ydn4-fwkenr-POST-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.admin_flags_post_200: Refreshing state... [id=agmr-g590x2ydn4-3g8al2-POST-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.admin_flags_get_200: Refreshing state... [id=agmr-g590x2ydn4-3g8al2-GET-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.admin_incidents_post_200: Refreshing state... [id=agmr-g590x2ydn4-wfp4mw-POST-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.users_me_files_post_200: Refreshing state... [id=agmr-g590x2ydn4-rit5q3-POST-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.admin_incidents_get_200: Refreshing state... [id=agmr-g590x2ydn4-wfp4mw-GET-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.users_me_files_get_200: Refreshing state... [id=agmr-g590x2ydn4-rit5q3-GET-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.users_me_files_job_options_200: Refreshing state... [id=agmr-g590x2ydn4-0xjuw8-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.users_me_files_job_options: Refreshing state... [id=agi-g590x2ydn4-0xjuw8-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.users_me_files_job_delete_200: Refreshing state... [id=agmr-g590x2ydn4-0xjuw8-DELETE-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.users_me_files_job_complete_post: Refreshing state... [id=agm-g590x2ydn4-g3tjo2-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method.users_me_files_job_complete_options: Refreshing state... [id=agm-g590x2ydn4-g3tjo2-OPTIONS][0m
+[0m[1mmodule.superdoc.module.lambda_user_complete_file.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-user-complete-file][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_split.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-pdf-split][0m
+[0m[1mmodule.superdoc.module.lambda_video_process.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-video-process][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_merge.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-pdf-merge][0m
+[0m[1mmodule.superdoc.module.lambda_doc_edit.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-doc-edit][0m
+[0m[1mmodule.superdoc.module.lambda_create_job.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-create-job][0m
+[0m[1mmodule.superdoc.module.lambda_admin_flags.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-admin-flags][0m
+[0m[1mmodule.superdoc.module.lambda_image_convert.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-image-convert][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-disable-anonymous][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.aws_sns_topic_subscription.trigger[0]: Refreshing state... [id=arn:aws:sns:us-east-1:288854271409:superdoc-dev-auto-disable:ccbb9e55-9e56-45a5-b981-81108f597b82][0m
+[0m[1mmodule.superdoc.module.lambda_disable_anonymous.aws_lambda_permission.sns[0]: Refreshing state... [id=AllowSNS][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_rotate.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-pdf-rotate][0m
+[0m[1mmodule.superdoc.module.lambda_user_create_file.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-user-create-file][0m
+[0m[1mmodule.superdoc.module.lambda_admin_incidents.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-admin-incidents][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_extract_text.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-pdf-extract-text][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_to_docx.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-pdf-to-docx][0m
+[0m[1mmodule.superdoc.module.lambda_restore_anonymous.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-restore-anonymous][0m
+[0m[1mmodule.superdoc.module.lambda_user_files.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-user-files][0m
+[0m[1mmodule.superdoc.module.lambda_get_status.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-get-status][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_compress.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-pdf-compress][0m
+[0m[1mmodule.superdoc.module.lambda_process_job.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-process-job][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-kb-cleanup][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.aws_cloudwatch_event_target.schedule[0]: Refreshing state... [id=superdoc-dev-kb-cleanup-schedule-kb-cleanup-target][0m
+[0m[1mmodule.superdoc.module.lambda_kb_cleanup.aws_lambda_permission.eventbridge[0]: Refreshing state... [id=AllowEventBridge][0m
+[0m[1mmodule.superdoc.module.lambda_pdf_annotate.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-pdf-annotate][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.aws_cloudwatch_log_group.lambda: Refreshing state... [id=/aws/lambda/superdoc-dev-dispatch-job][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.aws_lambda_event_source_mapping.sqs[0]: Refreshing state... [id=5762f4f9-2489-4389-971c-7a7a4c13e2ce][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_lambda_permission.get_status: Refreshing state... [id=AllowAPIGateway][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.job_id_get: Refreshing state... [id=agi-g590x2ydn4-jnof3u-GET][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.jobs_post: Refreshing state... [id=agi-g590x2ydn4-ulkk5m-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_lambda_permission.admin_incidents: Refreshing state... [id=AllowAPIGateway][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_lambda_permission.user_complete_file: Refreshing state... [id=AllowAPIGatewayUserCompleteFile][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.users_me_jobs_post: Refreshing state... [id=agi-g590x2ydn4-fwkenr-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.admin_flags_get: Refreshing state... [id=agi-g590x2ydn4-3g8al2-GET][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.admin_flags_post: Refreshing state... [id=agi-g590x2ydn4-3g8al2-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.admin_incidents_get: Refreshing state... [id=agi-g590x2ydn4-wfp4mw-GET][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_lambda_permission.admin_flags: Refreshing state... [id=AllowAPIGateway][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_lambda_permission.process_job: Refreshing state... [id=AllowAPIGateway][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_lambda_permission.user_files: Refreshing state... [id=AllowAPIGateway][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.job_process_post: Refreshing state... [id=agi-g590x2ydn4-dn3ola-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.admin_incidents_post: Refreshing state... [id=agi-g590x2ydn4-wfp4mw-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_lambda_permission.user_create_file: Refreshing state... [id=AllowAPIGatewayUserCreateFile][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.users_me_files_get: Refreshing state... [id=agi-g590x2ydn4-rit5q3-GET][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_lambda_permission.create_job: Refreshing state... [id=AllowAPIGateway][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.users_me_files_job_delete: Refreshing state... [id=agi-g590x2ydn4-0xjuw8-DELETE][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.users_me_files_post: Refreshing state... [id=agi-g590x2ydn4-rit5q3-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.users_me_files_job_complete_post_200: Refreshing state... [id=agmr-g590x2ydn4-g3tjo2-POST-200][0m
+[0m[1mmodule.superdoc.module.lambda_dispatch_job.aws_iam_role_policy.extra[0]: Refreshing state... [id=superdoc-dev-dispatch-job-role:superdoc-dev-dispatch-job-extra][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.users_me_files_job_complete_post: Refreshing state... [id=agi-g590x2ydn4-g3tjo2-POST][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_integration.users_me_files_job_complete_options: Refreshing state... [id=agi-g590x2ydn4-g3tjo2-OPTIONS][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_response.users_me_files_job_complete_options_200: Refreshing state... [id=agmr-g590x2ydn4-g3tjo2-OPTIONS-200][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_deployment.superdoc: Refreshing state... [id=7la1n1][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_stage.superdoc: Refreshing state... [id=ags-g590x2ydn4-dev][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_method_settings.all: Refreshing state... [id=g590x2ydn4-dev-*/*][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_usage_plan.basic: Refreshing state... [id=o4ycxt][0m
+[0m[1mmodule.superdoc.module.api_gateway.aws_api_gateway_usage_plan.teams: Refreshing state... [id=4naw2v][0m
+[0m[1mmodule.superdoc.module.amplify.aws_amplify_app.superdoc: Refreshing state... [id=d2ibg69ss24krr][0m
+[0m[1mmodule.superdoc.module.amplify.aws_amplify_branch.main: Refreshing state... [id=d2ibg69ss24krr/main][0m
+[0m[1mmodule.superdoc.module.cloudfront.aws_cloudfront_distribution.superdoc: Refreshing state... [id=E1NJJUEZ141IMN][0m
+[0m[1mmodule.superdoc.module.route53.aws_route53_record.superdoc: Refreshing state... [id=Z00715662A3EPIVLR1LS_superdoc.pablobhz.cloud_A][0m
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [32m+[0m create[0m
+  [33m~[0m update in-place[0m
+  [31m-[0m destroy[0m
+[32m+[0m/[31m-[0m create replacement and then destroy[0m
+
+Terraform will perform the following actions:
+
+[1m  # module.superdoc.module.amplify.aws_amplify_app.superdoc[0m will be updated in-place
+[0m  [33m~[0m[0m resource "aws_amplify_app" "superdoc" {
+      [33m~[0m[0m environment_variables         = {
+          [32m+[0m[0m "VITE_API_URL"              = "https://g590x2ydn4.execute-api.us-east-1.amazonaws.com/dev"
+          [32m+[0m[0m "VITE_COGNITO_CLIENT_ID"    = "ejbr9ucrmi7f46t4fv1gdef6"
+          [32m+[0m[0m "VITE_COGNITO_USER_POOL_ID" = "us-east-1_lYSGZz6m4"
+            [90m# (1 unchanged element hidden)[0m[0m
+        }
+        id                            = "d2ibg69ss24krr"
+        name                          = "superdoc-dev-frontend"
+        tags                          = {
+            "Environment" = "dev"
+            "ManagedBy"   = "terraform"
+            "Owner"       = "pablo"
+            "Project"     = "superdoc"
+        }
+        [90m# (17 unchanged attributes hidden)[0m[0m
+
+        [90m# (2 unchanged blocks hidden)[0m[0m
+    }
+
+[1m  # module.superdoc.module.amplify.aws_amplify_branch.main[0m will be updated in-place
+[0m  [33m~[0m[0m resource "aws_amplify_branch" "main" {
+      [33m~[0m[0m environment_variables         = {
+          [32m+[0m[0m "VITE_API_URL"              = "https://g590x2ydn4.execute-api.us-east-1.amazonaws.com/dev"
+          [32m+[0m[0m "VITE_COGNITO_CLIENT_ID"    = "ejbr9ucrmi7f46t4fv1gdef6"
+          [32m+[0m[0m "VITE_COGNITO_USER_POOL_ID" = "us-east-1_lYSGZz6m4"
+        }
+        id                            = "d2ibg69ss24krr/main"
+        tags                          = {
+            "Environment" = "dev"
+            "ManagedBy"   = "terraform"
+            "Owner"       = "pablo"
+            "Project"     = "superdoc"
+        }
+        [90m# (21 unchanged attributes hidden)[0m[0m
+    }
+
+[1m  # module.superdoc.module.api_gateway.aws_api_gateway_deployment.superdoc[0m must be [1m[31mreplaced[0m
+[0m[32m+[0m/[31m-[0m[0m resource "aws_api_gateway_deployment" "superdoc" {
+      [33m~[0m[0m created_date  = "2026-04-15T16:15:17Z" -> (known after apply)
+      [33m~[0m[0m execution_arn = "arn:aws:execute-api:us-east-1::g590x2ydn4/" -> (known after apply)
+      [33m~[0m[0m id            = "7la1n1" -> (known after apply)
+      [33m~[0m[0m invoke_url    = "https://g590x2ydn4.execute-api.us-east-1.amazonaws.com/" -> (known after apply)
+      [33m~[0m[0m triggers      = { [31m# forces replacement[0m[0m
+          [33m~[0m[0m "redeployment" = "ba56bccb4317734b7d303a61d810c9d897b2818c" [33m->[0m[0m "17c5ee62d7c748f611c9fceafcd65ade4fda2b42"
+        }
+        [90m# (2 unchanged attributes hidden)[0m[0m
+    }
+
+[1m  # module.superdoc.module.api_gateway.aws_api_gateway_gateway_response.throttle[0m will be updated in-place
+[0m  [33m~[0m[0m resource "aws_api_gateway_gateway_response" "throttle" {
+        id                  = "aggr-g590x2ydn4-THROTTLED"
+      [31m-[0m[0m status_code         = "429" [90m-> null[0m[0m
+        [90m# (4 unchanged attributes hidden)[0m[0m
+    }
+
+[1m  # module.superdoc.module.api_gateway.aws_api_gateway_integration_response.users_me_files_job_complete_options_200[0m will be created
+[0m  [32m+[0m[0m resource "aws_api_gateway_integration_response" "users_me_files_job_complete_options_200" {
+      [32m+[0m[0m http_method         = "OPTIONS"
+      [32m+[0m[0m id                  = (known after apply)
+      [32m+[0m[0m resource_id         = "g3tjo2"
+      [32m+[0m[0m response_parameters = {
+          [32m+[0m[0m "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
+          [32m+[0m[0m "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+          [32m+[0m[0m "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+        }
+      [32m+[0m[0m rest_api_id         = "g590x2ydn4"
+      [32m+[0m[0m status_code         = "200"
+    }
+
+[1m  # module.superdoc.module.api_gateway.aws_api_gateway_integration_response.users_me_files_job_options_200[0m will be created
+[0m  [32m+[0m[0m resource "aws_api_gateway_integration_response" "users_me_files_job_options_200" {
+      [32m+[0m[0m http_method         = "OPTIONS"
+      [32m+[0m[0m id                  = (known after apply)
+      [32m+[0m[0m resource_id         = "0xjuw8"
+      [32m+[0m[0m response_parameters = {
+          [32m+[0m[0m "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
+          [32m+[0m[0m "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS,DELETE'"
+          [32m+[0m[0m "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+        }
+      [32m+[0m[0m rest_api_id         = "g590x2ydn4"
+      [32m+[0m[0m status_code         = "200"
+    }
+
+[1m  # module.superdoc.module.api_gateway.aws_api_gateway_integration_response.users_me_jobs_options_200[0m will be created
+[0m  [32m+[0m[0m resource "aws_api_gateway_integration_response" "users_me_jobs_options_200" {
+      [32m+[0m[0m http_method         = "OPTIONS"
+      [32m+[0m[0m id                  = (known after apply)
+      [32m+[0m[0m resource_id         = "fwkenr"
+      [32m+[0m[0m response_parameters = {
+          [32m+[0m[0m "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
+          [32m+[0m[0m "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+          [32m+[0m[0m "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+        }
+      [32m+[0m[0m rest_api_id         = "g590x2ydn4"
+      [32m+[0m[0m status_code         = "200"
+    }
+
+[1m  # module.superdoc.module.api_gateway.aws_api_gateway_stage.superdoc[0m will be updated in-place
+[0m  [33m~[0m[0m resource "aws_api_gateway_stage" "superdoc" {
+      [33m~[0m[0m deployment_id         = "7la1n1" -> (known after apply)
+        id                    = "ags-g590x2ydn4-dev"
+        tags                  = {
+            "Environment" = "dev"
+            "ManagedBy"   = "terraform"
+            "Owner"       = "pablo"
+            "Project"     = "superdoc"
+        }
+        [90m# (14 unchanged attributes hidden)[0m[0m
+
+        [90m# (1 unchanged block hidden)[0m[0m
+    }
+
+[1m  # module.superdoc.module.cloudfront.aws_cloudfront_distribution.superdoc[0m will be updated in-place
+[0m  [33m~[0m[0m resource "aws_cloudfront_distribution" "superdoc" {
+        id                              = "E1NJJUEZ141IMN"
+        tags                            = {
+            "Environment" = "dev"
+            "ManagedBy"   = "terraform"
+            "Owner"       = "pablo"
+            "Project"     = "superdoc"
+        }
+        [90m# (22 unchanged attributes hidden)[0m[0m
+
+      [32m+[0m[0m ordered_cache_behavior {
+          [32m+[0m[0m allowed_methods        = [
+              [32m+[0m[0m "DELETE",
+              [32m+[0m[0m "GET",
+              [32m+[0m[0m "HEAD",
+              [32m+[0m[0m "OPTIONS",
+              [32m+[0m[0m "PATCH",
+              [32m+[0m[0m "POST",
+              [32m+[0m[0m "PUT",
+            ]
+          [32m+[0m[0m cached_methods         = [
+              [32m+[0m[0m "GET",
+              [32m+[0m[0m "HEAD",
+            ]
+          [32m+[0m[0m compress               = true
+          [32m+[0m[0m default_ttl            = 0
+          [32m+[0m[0m max_ttl                = 0
+          [32m+[0m[0m min_ttl                = 0
+          [32m+[0m[0m path_pattern           = "/api/*"
+          [32m+[0m[0m target_origin_id       = "api-origin"
+          [32m+[0m[0m viewer_protocol_policy = "redirect-to-https"
+
+          [32m+[0m[0m forwarded_values {
+              [32m+[0m[0m headers                 = [
+                  [32m+[0m[0m "Access-Control-Request-Headers",
+                  [32m+[0m[0m "Access-Control-Request-Method",
+                  [32m+[0m[0m "Authorization",
+                  [32m+[0m[0m "Content-Type",
+                  [32m+[0m[0m "Origin",
+                  [32m+[0m[0m "X-Api-Key",
+                ]
+              [32m+[0m[0m query_string            = true
+              [32m+[0m[0m query_string_cache_keys = (known after apply)
+
+              [32m+[0m[0m cookies {
+                  [32m+[0m[0m forward = "none"
+                }
+            }
+
+          [32m+[0m[0m function_association {
+              [32m+[0m[0m event_type   = "viewer-request"
+              [32m+[0m[0m function_arn = "arn:aws:cloudfront::288854271409:function/superdoc-dev-strip-api-prefix"
+            }
+
+          [32m+[0m[0m grpc_config (known after apply)
+        }
+
+      [31m-[0m[0m origin {
+          [31m-[0m[0m connection_attempts      = 3 [90m-> null[0m[0m
+          [31m-[0m[0m connection_timeout       = 10 [90m-> null[0m[0m
+          [31m-[0m[0m domain_name              = "main.d2ibg69ss24krr.amplifyapp.com" [90m-> null[0m[0m
+          [31m-[0m[0m origin_id                = "amplify-origin" [90m-> null[0m[0m
+            [90m# (2 unchanged attributes hidden)[0m[0m
+
+          [31m-[0m[0m custom_origin_config {
+              [31m-[0m[0m http_port                = 80 [90m-> null[0m[0m
+              [31m-[0m[0m https_port               = 443 [90m-> null[0m[0m
+              [31m-[0m[0m origin_keepalive_timeout = 5 [90m-> null[0m[0m
+              [31m-[0m[0m origin_protocol_policy   = "https-only" [90m-> null[0m[0m
+              [31m-[0m[0m origin_read_timeout      = 30 [90m-> null[0m[0m
+              [31m-[0m[0m origin_ssl_protocols     = [
+                  [31m-[0m[0m "TLSv1.2",
+                ] [90m-> null[0m[0m
+            }
+        }
+      [32m+[0m[0m origin {
+          [32m+[0m[0m connection_attempts      = 3
+          [32m+[0m[0m connection_timeout       = 10
+          [32m+[0m[0m domain_name              = "g590x2ydn4.execute-api.us-east-1.amazonaws.com"
+          [32m+[0m[0m origin_id                = "api-origin"
+          [32m+[0m[0m origin_path              = "/dev"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+
+          [32m+[0m[0m custom_origin_config {
+              [32m+[0m[0m http_port                = 80
+              [32m+[0m[0m https_port               = 443
+              [32m+[0m[0m origin_keepalive_timeout = 5
+              [32m+[0m[0m origin_protocol_policy   = "https-only"
+              [32m+[0m[0m origin_read_timeout      = 30
+              [32m+[0m[0m origin_ssl_protocols     = [
+                  [32m+[0m[0m "TLSv1.2",
+                ]
+            }
+        }
+      [32m+[0m[0m origin {
+          [32m+[0m[0m connection_attempts = 3
+          [32m+[0m[0m connection_timeout  = 10
+          [32m+[0m[0m domain_name         = "main.d2ibg69ss24krr.amplifyapp.com"
+          [32m+[0m[0m origin_id           = "amplify-origin"
+            [90m# (1 unchanged attribute hidden)[0m[0m
+
+          [32m+[0m[0m custom_origin_config {
+              [32m+[0m[0m http_port                = 80
+              [32m+[0m[0m https_port               = 443
+              [32m+[0m[0m origin_keepalive_timeout = 5
+              [32m+[0m[0m origin_protocol_policy   = "https-only"
+              [32m+[0m[0m origin_read_timeout      = 30
+              [32m+[0m[0m origin_ssl_protocols     = [
+                  [32m+[0m[0m "TLSv1.2",
+                ]
+            }
+        }
+
+        [90m# (5 unchanged blocks hidden)[0m[0m
+    }
+
+[1m  # module.superdoc.module.layer_deps.aws_lambda_layer_version.this (deposed object 58762a74)[0m will be [1m[31mdestroyed[0m
+  # (left over from a partially-failed replacement of this instance)
+[0m  [31m-[0m[0m resource "aws_lambda_layer_version" "this" {
+      [31m-[0m[0m arn                         = "arn:aws:lambda:us-east-1:288854271409:layer:superdoc-dev-python-deps:3" [90m-> null[0m[0m
+      [31m-[0m[0m code_sha256                 = "bigDKEuLylF6ZJlJ0BkrFJj/JPruDd8rliQN9FPwx+Q=" [90m-> null[0m[0m
+      [31m-[0m[0m compatible_architectures    = [] [90m-> null[0m[0m
+      [31m-[0m[0m compatible_runtimes         = [
+          [31m-[0m[0m "python3.12",
+        ] [90m-> null[0m[0m
+      [31m-[0m[0m created_date                = "2026-04-16T12:44:57.593+0000" [90m-> null[0m[0m
+      [31m-[0m[0m id                          = "arn:aws:lambda:us-east-1:288854271409:layer:superdoc-dev-python-deps:3" [90m-> null[0m[0m
+      [31m-[0m[0m layer_arn                   = "arn:aws:lambda:us-east-1:288854271409:layer:superdoc-dev-python-deps" [90m-> null[0m[0m
+      [31m-[0m[0m layer_name                  = "superdoc-dev-python-deps" [90m-> null[0m[0m
+      [31m-[0m[0m s3_bucket                   = "superdoc-lambda-zips-288854271409" [90m-> null[0m[0m
+      [31m-[0m[0m s3_key                      = "layers/python_deps.zip" [90m-> null[0m[0m
+      [31m-[0m[0m skip_destroy                = false [90m-> null[0m[0m
+      [31m-[0m[0m source_code_hash            = "641ac4f405c7ad6f6286d9deaa244eb9-2" [90m-> null[0m[0m
+      [31m-[0m[0m source_code_size            = 13256649 [90m-> null[0m[0m
+      [31m-[0m[0m version                     = "3" [90m-> null[0m[0m
+        [90m# (4 unchanged attributes hidden)[0m[0m
+    }
+
+[1m  # module.superdoc.module.layer_utils.aws_lambda_layer_version.this (deposed object 7f793934)[0m will be [1m[31mdestroyed[0m
+  # (left over from a partially-failed replacement of this instance)
+[0m  [31m-[0m[0m resource "aws_lambda_layer_version" "this" {
+      [31m-[0m[0m arn                         = "arn:aws:lambda:us-east-1:288854271409:layer:superdoc-dev-superdoc-utils:5" [90m-> null[0m[0m
+      [31m-[0m[0m code_sha256                 = "/uOHbRRhVaAU4U38x2WxiOVzIcT8Y3+Fb/xzLRj4n7k=" [90m-> null[0m[0m
+      [31m-[0m[0m compatible_architectures    = [] [90m-> null[0m[0m
+      [31m-[0m[0m compatible_runtimes         = [
+          [31m-[0m[0m "python3.12",
+        ] [90m-> null[0m[0m
+      [31m-[0m[0m created_date                = "2026-04-16T12:44:58.287+0000" [90m-> null[0m[0m
+      [31m-[0m[0m id                          = "arn:aws:lambda:us-east-1:288854271409:layer:superdoc-dev-superdoc-utils:5" [90m-> null[0m[0m
+      [31m-[0m[0m layer_arn                   = "arn:aws:lambda:us-east-1:288854271409:layer:superdoc-dev-superdoc-utils" [90m-> null[0m[0m
+      [31m-[0m[0m layer_name                  = "superdoc-dev-superdoc-utils" [90m-> null[0m[0m
+      [31m-[0m[0m s3_bucket                   = "superdoc-lambda-zips-288854271409" [90m-> null[0m[0m
+      [31m-[0m[0m s3_key                      = "layers/superdoc_utils.zip" [90m-> null[0m[0m
+      [31m-[0m[0m skip_destroy                = false [90m-> null[0m[0m
+      [31m-[0m[0m source_code_hash            = "b4c5b5ee5b1bf0230411fa5f92a2613f" [90m-> null[0m[0m
+      [31m-[0m[0m source_code_size            = 5988 [90m-> null[0m[0m
+      [31m-[0m[0m version                     = "5" [90m-> null[0m[0m
+        [90m# (4 unchanged attributes hidden)[0m[0m
+    }
+
+[1mPlan:[0m 4 to add, 5 to change, 3 to destroy.
+[0m[90m
+─────────────────────────────────────────────────────────────────────────────[0m
+
+Saved the plan to: round1-retry.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "round1-retry.tfplan"
