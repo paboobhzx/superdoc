@@ -81,3 +81,8 @@ round2-*.tfplan
 dist/
 frontend/dist/
 build.zip
+# --- SuperDoc build/runtime artifacts ---
+*.bak-*
+/tmp/
+# --- Smoke test output ---
+/tmp/superdoc-*

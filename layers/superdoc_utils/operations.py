@@ -5,15 +5,18 @@ from dataclasses import dataclass
 
 # Structured catalog of operations offered by SuperDoc.
 #
-# Why this shape:
-#   - The frontend's operation picker needs to know which operations accept a
-#     given input type (e.g. "I just dropped a PDF - what can I do?"). A flat
-#     dict of op -> lambda_suffix (the old shape) doesn't carry that info.
-#   - Keeping label/category here means adding a new op is one place to edit:
-#     this dict + the handler + Terraform module. No frontend change needed.
-#   - output_type drives download naming on the frontend.
+# The `kind` field drives routing on the frontend:
+#   - "backend_job":      create job, dispatch to worker Lambda, poll status.
+#                         The vast majority of ops.
+#   - "client_editor":    don't process; upload file, redirect to a WYSIWYG
+#                         editor page. Used for doc_edit today. The editor
+#                         loads the file from S3 via the key query param.
+#   - "paid_backend_job": same as backend_job but gated behind Stripe checkout
+#                         before dispatch. Currently no ops use this - the
+#                         Stripe infrastructure ships dormant in script 3a-2.
 OPERATIONS: dict[str, dict] = {
     "pdf_compress": {
+        "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "pdf",
         "category": "optimize",
@@ -21,6 +24,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-compress",
     },
     "pdf_merge": {
+        "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "pdf",
         "category": "edit",
@@ -28,6 +32,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-merge",
     },
     "pdf_split": {
+        "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "pdf",
         "category": "edit",
@@ -35,6 +40,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-split",
     },
     "pdf_to_docx": {
+        "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "docx",
         "category": "convert",
@@ -42,13 +48,23 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-to-docx",
     },
     "pdf_to_txt": {
+        "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "txt",
         "category": "convert",
         "label": "PDF to Text (.txt)",
         "lambda_suffix": "pdf-to-txt",
     },
+    "pdf_to_image": {
+        "kind": "backend_job",
+        "input_types": ["pdf"],
+        "output_type": "zip",
+        "category": "convert",
+        "label": "PDF to Images (PNG per page)",
+        "lambda_suffix": "pdf-to-image",
+    },
     "pdf_rotate": {
+        "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "pdf",
         "category": "edit",
@@ -56,6 +72,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-rotate",
     },
     "pdf_annotate": {
+        "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "pdf",
         "category": "edit",
@@ -63,6 +80,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-annotate",
     },
     "pdf_extract_text": {
+        "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "json",
         "category": "extract",
@@ -70,20 +88,50 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-extract-text",
     },
     "image_convert": {
+        "kind": "backend_job",
         "input_types": ["png", "jpg", "jpeg", "webp", "gif"],
         "output_type": "image",
         "category": "convert",
         "label": "Convert image format",
         "lambda_suffix": "image-convert",
     },
+    "image_to_pdf": {
+        "kind": "backend_job",
+        "input_types": ["png", "jpg", "jpeg", "webp", "gif"],
+        "output_type": "pdf",
+        "category": "convert",
+        "label": "Image to PDF",
+        "lambda_suffix": "image-to-pdf",
+    },
     "doc_edit": {
+        # doc_edit is a WYSIWYG editor hosted on the frontend. The picker
+        # needs to send the user to /docx-editor (or /xlsx-editor) instead
+        # of the processing pipeline.
+        "kind": "client_editor",
         "input_types": ["docx", "xlsx"],
         "output_type": "same",
         "category": "edit",
         "label": "Edit document content",
         "lambda_suffix": "doc-edit",
     },
+    "docx_to_txt": {
+        "kind": "backend_job",
+        "input_types": ["docx"],
+        "output_type": "txt",
+        "category": "convert",
+        "label": "Word to Text (.txt)",
+        "lambda_suffix": "docx-to-txt",
+    },
+    "xlsx_to_csv": {
+        "kind": "backend_job",
+        "input_types": ["xlsx"],
+        "output_type": "csv",
+        "category": "convert",
+        "label": "Excel to CSV (first sheet)",
+        "lambda_suffix": "xlsx-to-csv",
+    },
     "video_process": {
+        "kind": "backend_job",
         "input_types": ["mp4", "mov", "avi", "mkv", "webm"],
         "output_type": "mp4",
         "category": "convert",
@@ -94,30 +142,23 @@ OPERATIONS: dict[str, dict] = {
 
 
 # Kept alongside OPERATIONS so dispatcher code that only needs the suffix
-# lookup doesn't have to reach into the full metadata dict. Consumers stay
-# simple; the map is just a projection of OPERATIONS built once at import.
+# lookup doesn't have to reach into the full metadata dict.
 OPERATION_FUNCTION_SUFFIX: dict[str, str] = {}
 for _op, _meta in OPERATIONS.items():
     OPERATION_FUNCTION_SUFFIX[_op] = _meta["lambda_suffix"]
 
 
 def is_supported(operation: str) -> bool:
-    """Return whether operation is a known operation id.
-
-    Used by create_job to reject unknown operations. Kept as a dedicated
-    function (not inline `op in OPERATIONS`) so callers don't couple to the
-    dict structure - storage can change later without breaking create_job.
-    """
+    """Return whether operation is a known operation id."""
     return operation in OPERATIONS
 
 
 def list_operations(input_type: str | None = None) -> list[dict]:
     """Return the public-facing catalog, optionally filtered by input type.
 
-    This is what the GET /operations endpoint returns. lambda_suffix is
-    stripped from the response: that's an internal implementation detail
-    and exposing Lambda function names would hint at our infrastructure
-    to anyone scanning the API.
+    Strips `lambda_suffix` from the response; that's an internal detail the
+    frontend shouldn't need. `kind` is exposed because the frontend picker
+    uses it to route (editor vs backend vs paid).
     """
     ext = None
     if input_type is not None:
@@ -129,6 +170,7 @@ def list_operations(input_type: str | None = None) -> list[dict]:
             continue
         results.append({
             "operation": op,
+            "kind": meta["kind"],
             "label": meta["label"],
             "category": meta["category"],
             "input_types": meta["input_types"],
@@ -139,8 +181,7 @@ def list_operations(input_type: str | None = None) -> list[dict]:
 
 @dataclass(frozen=True)
 class ValidationResult:
-    """Returned by validate_params. Frozen so callers can't mutate it
-    accidentally after it leaves the validation layer."""
+    """Returned by validate_params. Frozen so callers can't mutate it."""
 
     ok: bool
     error: str = ""
@@ -148,13 +189,7 @@ class ValidationResult:
 
 
 def _limit_str(value: object, *, name: str, max_len: int) -> tuple[bool, str]:
-    """Validate that value is either None or a string up to max_len chars.
-
-    Returns (ok, error_message). Split out of validate_params to keep the
-    per-op branches readable and to allow reuse. The two-tuple return acts
-    as a tiny result type - we avoid raising inside the hot validation path
-    because raising is slower than returning in CPython.
-    """
+    """Validate that value is either None or a string up to max_len chars."""
     if value is None:
         return True, ""
     if not isinstance(value, str):
@@ -178,13 +213,21 @@ def _one_of(value: object, *, name: str, allowed: set[str]) -> tuple[bool, str]:
     return True, ""
 
 
-def validate_params(operation: str, params: dict | None) -> ValidationResult:
-    """Whitelist-validate params for operation.
+def _int_range(value: object, *, name: str, lo: int, hi: int) -> tuple[bool, str]:
+    """Validate that value is either None or an int in [lo, hi]."""
+    if value is None:
+        return True, ""
+    try:
+        coerced = int(value)
+    except (TypeError, ValueError):
+        return False, f"{name} must be an integer"
+    if coerced < lo or coerced > hi:
+        return False, f"{name} must be between {lo} and {hi}"
+    return True, ""
 
-    Unknown keys are silently dropped - this prevents clients from smuggling
-    arbitrary payload into worker Lambdas through fields the workers don't
-    expect. Security-by-default.
-    """
+
+def validate_params(operation: str, params: dict | None) -> ValidationResult:
+    """Whitelist-validate params for operation. Unknown keys are dropped."""
     if not params:
         return ValidationResult(ok=True, params={})
 
@@ -211,8 +254,23 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
         if params.get("target_format") is not None:
             cleaned["target_format"] = params.get("target_format")
 
+    if operation == "pdf_to_image":
+        # DPI between 72 (web) and 300 (print). Default handled in worker.
+        ok_flag, err_msg = _int_range(params.get("dpi"), name="dpi", lo=72, hi=300)
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if params.get("dpi") is not None:
+            cleaned["dpi"] = int(params.get("dpi"))
+
+    if operation == "xlsx_to_csv":
+        # Optional sheet name; defaults to the first sheet.
+        ok_flag, err_msg = _limit_str(params.get("sheet"), name="sheet", max_len=64)
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if params.get("sheet") is not None:
+            cleaned["sheet"] = params.get("sheet")
+
     if operation == "doc_edit":
-        # docx find/replace
         ok_flag, err_msg = _limit_str(params.get("find_text"), name="find_text", max_len=200)
         if not ok_flag:
             return ValidationResult(ok=False, error=err_msg)
@@ -223,8 +281,6 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
             cleaned["find_text"] = params.get("find_text")
         if params.get("replace_text") is not None:
             cleaned["replace_text"] = params.get("replace_text")
-
-        # xlsx set-cell
         ok_flag, err_msg = _limit_str(params.get("sheet"), name="sheet", max_len=64)
         if not ok_flag:
             return ValidationResult(ok=False, error=err_msg)
@@ -241,5 +297,4 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
         if params.get("value") is not None:
             cleaned["value"] = params.get("value")
 
-    # Unknown keys silently dropped per the docstring.
     return ValidationResult(ok=True, params=cleaned)

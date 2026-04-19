@@ -83,6 +83,18 @@ module "api_gateway" {
       invoke_arn    = module.lambda_list_operations.invoke_arn
       function_name = module.lambda_list_operations.function_name
     }
+      stripe_create_checkout = {
+      invoke_arn    = module.lambda_stripe_create_checkout.invoke_arn
+      function_name = module.lambda_stripe_create_checkout.function_name
+    }
+      stripe_webhook = {
+      invoke_arn    = module.lambda_stripe_webhook.invoke_arn
+      function_name = module.lambda_stripe_webhook.function_name
+    }
+      presign_download = {
+      invoke_arn    = module.lambda_presign_download.invoke_arn
+      function_name = module.lambda_presign_download.function_name
+    }
   }
 }
 
@@ -367,6 +379,137 @@ module "lambda_pdf_extract_text" {
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
 }
+# Lambda: presign_download. Read-only, lightweight. No DynamoDB access needed
+# (doesn't look up job records; trusts the caller to have the key).
+module "lambda_presign_download" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "presign-download"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 128
+  timeout               = 5
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/presign_download.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+# Lambda: stripe_webhook. Signature-verifies incoming Stripe events and
+# flips payment status on checkout.session.completed. Needs SSM read and
+# DynamoDB write to payments table.
+module "lambda_stripe_webhook" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "stripe-webhook"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 256
+  timeout               = 10
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/stripe_webhook.zip"
+  environment_variables = merge(local.lambda_common_env, {
+    PAYMENTS_TABLE_NAME = aws_dynamodb_table.payments.name
+  })
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = concat(local.dynamodb_arns, [aws_dynamodb_table.payments.arn])
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+# Lambda: stripe_create_checkout. Creates Checkout Session and persists
+# pending payment record. Needs SSM read for Stripe keys and DynamoDB write
+# for payments table.
+module "lambda_stripe_create_checkout" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "stripe-create-checkout"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 256
+  timeout               = 10
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/stripe_create_checkout.zip"
+  environment_variables = merge(local.lambda_common_env, {
+    PAYMENTS_TABLE_NAME = aws_dynamodb_table.payments.name
+  })
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = concat(local.dynamodb_arns, [aws_dynamodb_table.payments.arn])
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_xlsx_to_csv" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "xlsx-to-csv"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 120
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/xlsx_to_csv.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_docx_to_txt" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "docx-to-txt"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 256
+  timeout               = 60
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/docx_to_txt.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_image_to_pdf" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "image-to-pdf"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 256
+  timeout               = 60
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/image_to_pdf.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_pdf_to_image" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "pdf-to-image"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 1024
+  timeout               = 120
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/pdf_to_image.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
 # Worker Lambda for pdf_to_txt. Matches pdf_extract_text's shape (256MB,
 # 120s timeout) since the underlying pypdf work is identical.
 module "lambda_pdf_to_txt" {
@@ -498,6 +641,10 @@ module "lambda_dispatch_job" {
         module.lambda_pdf_merge.function_arn,
         module.lambda_pdf_split.function_arn,
         module.lambda_pdf_to_docx.function_arn,
+        module.lambda_xlsx_to_csv.function_arn,
+        module.lambda_docx_to_txt.function_arn,
+        module.lambda_image_to_pdf.function_arn,
+        module.lambda_pdf_to_image.function_arn,
         module.lambda_pdf_to_txt.function_arn,
         module.lambda_pdf_rotate.function_arn,
         module.lambda_pdf_annotate.function_arn,
@@ -670,4 +817,65 @@ module "lambda_admin_incidents" {
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
+}
+
+# ── Payments table (added by round 3a-2) ────────────────────────────────────
+# TTL=24h handles abandoned checkouts without manual cleanup.
+# On-demand billing keeps cost at zero when idle (no active payments yet).
+resource "aws_dynamodb_table" "payments" {
+  name         = "${local.name_prefix}-payments"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "payment_id"
+
+  attribute {
+    name = "payment_id"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
+  tags = local.common_tags
+}
+
+# ── Stripe SSM parameters (placeholders, added by round 3a-2) ───────────────
+# Replace values in the AWS Systems Manager console when ready to go live.
+# The "lifecycle.ignore_changes" on value keeps Terraform from trying to
+# reset them to REPLACE_ME on later applies.
+resource "aws_ssm_parameter" "stripe_secret_key" {
+  name        = "/superdoc/stripe/secret_key"
+  description = "Stripe secret key (sk_live_... or sk_test_...)"
+  type        = "SecureString"
+  value       = "REPLACE_ME_STRIPE_SECRET_KEY"
+  tags        = local.common_tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "stripe_webhook_secret" {
+  name        = "/superdoc/stripe/webhook_secret"
+  description = "Stripe webhook signing secret (whsec_...)"
+  type        = "SecureString"
+  value       = "REPLACE_ME_STRIPE_WEBHOOK_SECRET"
+  tags        = local.common_tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "stripe_price_id_conversion" {
+  name        = "/superdoc/stripe/price_id_conversion"
+  description = "Stripe price id for per-conversion charge (price_...)"
+  type        = "String"
+  value       = "REPLACE_ME_STRIPE_PRICE_ID"
+  tags        = local.common_tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
 }
