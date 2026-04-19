@@ -935,11 +935,113 @@ resource "aws_api_gateway_integration_response" "health_200" {
 
 # ── Deployment + Stage ───────────────────────────────────────────────────────
 
+
+# ── /operations ──────────────────────────────────────────────────────────────
+# GET /operations returns the operation catalog; OPTIONS handles CORS preflight.
+# Public endpoint (no auth) because the catalog itself contains no secrets.
+
+resource "aws_api_gateway_resource" "operations" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  parent_id   = aws_api_gateway_rest_api.superdoc.root_resource_id
+  path_part   = "operations"
+}
+
+resource "aws_api_gateway_method" "operations_get" {
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.operations.id
+  http_method   = "GET"
+  authorization = "NONE"
+
+  request_parameters = {
+    "method.request.querystring.input_type" = false
+  }
+}
+
+resource "aws_api_gateway_integration" "operations_get" {
+  rest_api_id             = aws_api_gateway_rest_api.superdoc.id
+  resource_id             = aws_api_gateway_resource.operations.id
+  http_method             = aws_api_gateway_method.operations_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_integrations["list_operations"].invoke_arn
+}
+
+# Least Privilege: permission is scoped to this specific API Gateway. We use
+# local.api_execution_arn (explicitly built from account + region + api id)
+# instead of aws_api_gateway_rest_api.superdoc.execution_arn because the
+# provider has a drift bug in execution_arn — see Round 1 troubleshooting.
+resource "aws_lambda_permission" "list_operations" {
+  statement_id  = "AllowAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_integrations["list_operations"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.api_execution_arn}/*/*"
+}
+
+resource "aws_api_gateway_method_response" "operations_get_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.operations.id
+  http_method = aws_api_gateway_method.operations_get.http_method
+  status_code = "200"
+}
+
+resource "aws_api_gateway_method" "operations_options" {
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.operations.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "operations_options" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.operations.id
+  http_method = aws_api_gateway_method.operations_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "operations_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.operations.id
+  http_method = aws_api_gateway_method.operations_options.http_method
+  status_code = "200"
+
+  response_parameters = local.cors_response_parameters
+}
+
+resource "aws_api_gateway_integration_response" "operations_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.operations.id
+  http_method = aws_api_gateway_method.operations_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+  }
+
+  # depends_on defensively prevents the race we hit in the first deploy
+  # where integration_response ran before its method_response/integration
+  # existed — see Round 1 handoff for details.
+  depends_on = [
+    aws_api_gateway_integration.operations_options,
+    aws_api_gateway_method_response.operations_options_200,
+  ]
+}
+
+
 resource "aws_api_gateway_deployment" "superdoc" {
   rest_api_id = aws_api_gateway_rest_api.superdoc.id
 
   triggers = {
     redeployment = sha1(jsonencode([
+      aws_api_gateway_resource.operations.id,
+      aws_api_gateway_method.operations_get.id,
+      aws_api_gateway_integration.operations_get.id,
       aws_api_gateway_rest_api.superdoc.body,
       aws_api_gateway_resource.health.id,
       aws_api_gateway_method.health_get.id,
@@ -984,6 +1086,8 @@ resource "aws_api_gateway_deployment" "superdoc" {
 
   depends_on = [
     aws_api_gateway_integration.health_mock,
+    aws_api_gateway_integration.operations_get,
+    aws_api_gateway_integration_response.operations_options_200,
     aws_api_gateway_integration_response.health_200,
     aws_api_gateway_method_response.health_200,
     aws_api_gateway_integration.jobs_post,
