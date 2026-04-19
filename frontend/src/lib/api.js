@@ -124,4 +124,25 @@ export const api = {
 
   // Health check
   health: () => request("GET", "/health"),
+
+  // Fetch a short-lived presigned GET URL for an S3 key. Used by editors
+  // to load a file uploaded via the client_editor flow.
+  getPresignedDownload: (key) => {
+    const qs = `?key=${encodeURIComponent(key)}`
+    return request("GET", `/files/download${qs}`)
+  },
+
+  // Create a Stripe Checkout Session for a paid_backend_job. Returns
+  // { payment_id, job_id, checkout_url }. The frontend redirects the user
+  // to checkout_url. Fails with 503 if Stripe isn't configured yet.
+  createCheckout: (payload) => request("POST", "/checkout", payload),
+
+
+  // Fetch the catalog of supported operations.
+  // Used by OperationPicker. The optional input_type filters to
+  // operations that accept that file extension.
+  getOperations: (inputType) => {
+    const qs = inputType ? `?input_type=${encodeURIComponent(inputType)}` : ""
+    return request("GET", `/operations${qs}`)
+  },
 };

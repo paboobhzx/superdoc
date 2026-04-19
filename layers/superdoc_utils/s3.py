@@ -92,3 +92,23 @@ def make_output_key(job_id: str, file_key: str, filename: str) -> str:
     base = output_prefix(job_id, file_key)
     name = filename.lstrip("/")
     return f"{base}{name}"
+
+# ── Presigned GET helper (added in round 3a-3) ──────────────────────────────
+def presign_get_url(key, expires_in=300):
+    """Return a presigned GET URL for an S3 key.
+
+    Used by client-editor flows to let the browser fetch uploaded files
+    without exposing the bucket publicly. Default TTL is 5 minutes - long
+    enough for any reasonable editor open, short enough to limit leakage.
+    """
+    import os
+    import boto3
+    bucket = os.environ.get("MEDIA_BUCKET")
+    if not bucket:
+        raise RuntimeError("MEDIA_BUCKET env not configured")
+    client = boto3.client("s3")
+    return client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket, "Key": key},
+        ExpiresIn=expires_in,
+    )

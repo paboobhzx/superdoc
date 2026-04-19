@@ -1,9 +1,61 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { downloadBlob } from "../lib/download";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
 import { useNavigate } from "react-router-dom";
+
+// Auto-load from ?key=<s3_key> when present. Added in round 3a-3.
+// Falls through harmlessly when no key is in the URL.
+function useKeyFileLoader(onFileLoaded) {
+  const [loadingKey, setLoadingKey] = useState(false)
+  const [keyError, setKeyError] = useState("")
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const key = params.get("key")
+    const name = params.get("name") || "document"
+    if (!key) {
+      return
+    }
+
+    let cancelled = false
+    setLoadingKey(true)
+    setKeyError("")
+
+    api.getPresignedDownload(key)
+      .then((data) => fetch(data.url))
+      .then((resp) => {
+        if (!resp.ok) {
+          throw new Error(`Download failed: HTTP ${resp.status}`)
+        }
+        return resp.blob()
+      })
+      .then((blob) => {
+        if (cancelled) {
+          return
+        }
+        const file = new File([blob], name, { type: blob.type })
+        onFileLoaded(file)
+      })
+      .catch((e) => {
+        if (cancelled) {
+          return
+        }
+        setKeyError(e.message || "Could not load file from link")
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingKey(false)
+        }
+      })
+
+    return () => { cancelled = true }
+  }, [])
+
+  return { loadingKey, keyError }
+}
+
 
 const MAX_BYTES = 100 * 1024 * 1024;
 
@@ -16,6 +68,11 @@ export function XlsxEditor() {
   const navigate = useNavigate();
   const fileRef = useRef(null);
   const [file, setFile] = useState(null);
+  const { loadingKey, keyError } = useKeyFileLoader((loaded) => {
+    setFile(loaded)
+    onPick(loaded).catch(() => {})
+  })
+
   const [workbook, setWorkbook] = useState(null);
   const [sheetName, setSheetName] = useState("");
   const [grid, setGrid] = useState([]);

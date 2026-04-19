@@ -1,6 +1,59 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { api } from "../lib/api"
 import { fabric } from "fabric";
 import { downloadBlob } from "../lib/download";
+
+// Auto-load from ?key=<s3_key> when present. Added in round 3a-3.
+// Falls through harmlessly when no key is in the URL.
+function useKeyFileLoader(onFileLoaded) {
+  const [loadingKey, setLoadingKey] = useState(false)
+  const [keyError, setKeyError] = useState("")
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const key = params.get("key")
+    const name = params.get("name") || "document"
+    if (!key) {
+      return
+    }
+
+    let cancelled = false
+    setLoadingKey(true)
+    setKeyError("")
+
+    api.getPresignedDownload(key)
+      .then((data) => fetch(data.url))
+      .then((resp) => {
+        if (!resp.ok) {
+          throw new Error(`Download failed: HTTP ${resp.status}`)
+        }
+        return resp.blob()
+      })
+      .then((blob) => {
+        if (cancelled) {
+          return
+        }
+        const file = new File([blob], name, { type: blob.type })
+        onFileLoaded(file)
+      })
+      .catch((e) => {
+        if (cancelled) {
+          return
+        }
+        setKeyError(e.message || "Could not load file from link")
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingKey(false)
+        }
+      })
+
+    return () => { cancelled = true }
+  }, [])
+
+  return { loadingKey, keyError }
+}
+
 
 export function ImageEditor() {
   const canvasRef = useRef(null);
@@ -11,6 +64,9 @@ export function ImageEditor() {
   const [draw, setDraw] = useState(false);
   const [exportFmt, setExportFmt] = useState("png");
   const [err, setErr] = useState("");
+  const { loadingKey, keyError } = useKeyFileLoader((loaded) => {
+    loadFile(loaded).catch(() => {})
+  })
 
   const exportMime = useMemo(() => {
     if (exportFmt === "jpg") return "image/jpeg";
