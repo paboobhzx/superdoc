@@ -1,3 +1,11 @@
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+locals {
+  # Construído explicitamente pra evitar drift do provider no execution_arn
+  api_execution_arn = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.superdoc.id}"
+}
+
 resource "aws_api_gateway_rest_api" "superdoc" {
   name        = "${var.name_prefix}-api"
   description = "SuperDoc API"
@@ -103,7 +111,7 @@ resource "aws_lambda_permission" "create_job" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["create_job"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.superdoc.execution_arn}/*/*"
+  source_arn = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "jobs_post_200" {
@@ -184,7 +192,7 @@ resource "aws_lambda_permission" "get_status" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["get_status"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.superdoc.execution_arn}/*/*"
+  source_arn = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "job_id_get_200" {
@@ -264,7 +272,7 @@ resource "aws_lambda_permission" "process_job" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["process_job"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.superdoc.execution_arn}/*/*"
+  source_arn = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "job_process_post_200" {
@@ -356,7 +364,7 @@ resource "aws_lambda_permission" "user_files" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["user_files"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.superdoc.execution_arn}/*/*"
+ source_arn = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "users_me_files_get_200" {
@@ -389,7 +397,7 @@ resource "aws_lambda_permission" "user_create_file" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["user_create_file"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.superdoc.execution_arn}/*/*"
+  source_arn = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "users_me_files_post_200" {
@@ -541,7 +549,7 @@ resource "aws_lambda_permission" "user_complete_file" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["user_complete_file"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.superdoc.execution_arn}/*/*"
+  source_arn = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "users_me_files_job_complete_post_200" {
@@ -686,7 +694,7 @@ resource "aws_lambda_permission" "admin_flags" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["admin_flags"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.superdoc.execution_arn}/*/*"
+  source_arn = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method" "admin_flags_get" {
@@ -790,7 +798,7 @@ resource "aws_lambda_permission" "admin_incidents" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["admin_incidents"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.superdoc.execution_arn}/*/*"
+  source_arn = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method" "admin_incidents_get" {
