@@ -105,13 +105,14 @@ OPERATIONS: dict[str, dict] = {
     },
     "doc_edit": {
         # doc_edit is a WYSIWYG editor hosted on the frontend. The picker
-        # needs to send the user to /docx-editor (or /xlsx-editor) instead
-        # of the processing pipeline.
+        # needs to send the user to /editor/docx (or /editor/xlsx) instead
+        # of the processing pipeline. The DOCX flavor uses TipTap to
+        # preserve formatting; XLSX still uses a simple cell editor.
         "kind": "client_editor",
         "input_types": ["docx", "xlsx"],
         "output_type": "same",
         "category": "edit",
-        "label": "Edit document content",
+        "label": "Edit document",
         "lambda_suffix": "doc-edit",
     },
     "docx_to_txt": {
