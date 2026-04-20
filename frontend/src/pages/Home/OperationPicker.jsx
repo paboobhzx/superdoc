@@ -1,11 +1,19 @@
 // frontend/src/pages/Home/OperationPicker.jsx
-import { useEffect, useState, useRef } from "react"
+//
+// Two-step picker:
+//   Step 1 (intent):  user chooses "Modify" or "Convert" when the input has
+//                     ops in both buckets. Skipped if only one bucket exists.
+//   Step 2 (action):  user picks the specific operation within that bucket.
+//
+// Rationale: a flat list of 9 ops for .pdf looked like a wall of text and
+// mixed two mental models ("I want to edit this" vs "I want a different
+// format"). Separating them shrinks the visible decision to 2 cards first,
+// then 2-6 cards second — easier on anyone not already a power user.
+
+import { useEffect, useState, useRef, useMemo } from "react"
 import { api } from "../../lib/api"
 import { uiFor } from "./picker"
 
-// sessionStorage cache keeps the catalog hot across Home <-> other-page nav.
-// TTL picked at 10 minutes because operations rarely change and this cuts
-// network calls per session to roughly one.
 const CACHE_KEY = "superdoc_operations_cache"
 const CACHE_TTL_MS = 10 * 60 * 1000
 
@@ -46,18 +54,38 @@ function writeCache(inputType, data) {
 }
 
 
-/**
- * OperationPicker - iLovePDF-style vertical list of operations.
- *
- * Props:
- *   file:     the File the user dropped (used to derive input_type)
- *   onPick:   called with the chosen operation id string
- *   onBack:   called when the user clicks "choose another file"
- */
+// Copy for the two top-level intents shown on Step 1.
+const INTENT_META = {
+  modify: {
+    icon: "edit",
+    title: "Modify",
+    description: "Change the file without converting to a different format.",
+  },
+  convert: {
+    icon: "sync_alt",
+    title: "Convert",
+    description: "Produce a different format (PDF to Word, image to PDF, etc).",
+  },
+}
+
+
+// Walks the ops list and returns { modify: [...], convert: [...] }.
+// Ops with unknown intent default to "modify".
+function groupByIntent(ops) {
+  const buckets = { modify: [], convert: [] }
+  for (const op of ops) {
+    const intent = op.intent === "convert" ? "convert" : "modify"
+    buckets[intent].push(op)
+  }
+  return buckets
+}
+
+
 export function OperationPicker({ file, onPick, onBack }) {
   const [operations, setOperations] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [chosenIntent, setChosenIntent] = useState(null)
   const firstButtonRef = useRef(null)
 
   const inputType = file && file.name ? file.name.split(".").pop().toLowerCase() : ""
@@ -65,9 +93,6 @@ export function OperationPicker({ file, onPick, onBack }) {
   useEffect(() => {
     let cancelled = false
 
-    // Cache-first: if we have a fresh catalog for this input type, use it
-    // immediately with no loading state. This is the common case for repeat
-    // visits.
     const cached = readCache(inputType)
     if (cached) {
       setOperations(cached)
@@ -88,27 +113,35 @@ export function OperationPicker({ file, onPick, onBack }) {
       })
       .catch((e) => {
         if (cancelled) return
-        // Fail-soft: if the /operations call fails, we still let the user
-        // proceed with a hardcoded best-guess operation mapped from extension.
-        // This is the Circuit Breaker at the UX level - a transient backend
-        // outage should not block a user from using the app.
         setError(e.message || "Could not load available actions")
       })
       .finally(() => {
-        if (!cancelled) {
-          setLoading(false)
-        }
+        if (!cancelled) setLoading(false)
       })
 
     return () => { cancelled = true }
   }, [inputType])
 
-  // Auto-focus first action for keyboard users as soon as the list renders.
   useEffect(() => {
-    if (operations && operations.length > 0 && firstButtonRef.current) {
-      firstButtonRef.current.focus()
+    if (firstButtonRef.current) firstButtonRef.current.focus()
+  }, [chosenIntent, operations])
+
+  const grouped = useMemo(() => groupByIntent(operations || []), [operations])
+  const availableIntents = useMemo(() => {
+    const list = []
+    if (grouped.modify.length > 0) list.push("modify")
+    if (grouped.convert.length > 0) list.push("convert")
+    return list
+  }, [grouped])
+
+  // Auto-pick the only intent if there's no real choice to make.
+  useEffect(() => {
+    if (operations && availableIntents.length === 1 && chosenIntent === null) {
+      setChosenIntent(availableIntents[0])
     }
-  }, [operations])
+  }, [operations, availableIntents, chosenIntent])
+
+  // ── Loading / error / empty ────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -116,10 +149,7 @@ export function OperationPicker({ file, onPick, onBack }) {
         <PickerHeader file={file} onBack={onBack} />
         <div className="space-y-2 mt-6" aria-live="polite" aria-label="Loading options">
           {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-[76px] rounded-xl bg-surface-container animate-pulse"
-            />
+            <div key={i} className="h-[76px] rounded-xl bg-surface-container animate-pulse" />
           ))}
         </div>
       </div>
@@ -139,7 +169,6 @@ export function OperationPicker({ file, onPick, onBack }) {
   }
 
   const list = operations || []
-
   if (list.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
@@ -159,11 +188,72 @@ export function OperationPicker({ file, onPick, onBack }) {
     )
   }
 
+  // ── Step 1: intent picker ──────────────────────────────────────────────
+
+  if (chosenIntent === null && availableIntents.length > 1) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <PickerHeader file={file} onBack={onBack} />
+        <ul className="space-y-2 mt-6" role="list">
+          {availableIntents.map((intent, idx) => {
+            const meta = INTENT_META[intent]
+            const count = grouped[intent].length
+            return (
+              <li key={intent}>
+                <button
+                  ref={idx === 0 ? firstButtonRef : null}
+                  type="button"
+                  onClick={() => setChosenIntent(intent)}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/10 hover:border-primary/30 hover:shadow-sm transition-all text-left group"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-primary text-[24px]">
+                      {meta.icon}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-on-surface">{meta.title}</h3>
+                    <p className="text-sm text-on-surface-variant mt-0.5">
+                      {meta.description}
+                    </p>
+                    <p className="text-xs text-on-surface-variant/70 mt-1">
+                      {count} option{count === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
+                    chevron_right
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+    )
+  }
+
+  // ── Step 2: action picker (filtered by chosen intent) ──────────────────
+
+  const effectiveIntent = chosenIntent || availableIntents[0]
+  const actions = grouped[effectiveIntent] || []
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <PickerHeader file={file} onBack={onBack} />
-      <ul className="space-y-2 mt-6" role="list">
-        {list.map((op, idx) => {
+
+      {availableIntents.length > 1 ? (
+        <button
+          type="button"
+          onClick={() => setChosenIntent(null)}
+          className="mt-4 flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary font-medium no-underline hover:underline"
+        >
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+          Back
+        </button>
+      ) : null}
+
+      <ul className="space-y-2 mt-4" role="list">
+        {actions.map((op, idx) => {
           const ui = uiFor(op.operation)
           return (
             <li key={op.operation}>
