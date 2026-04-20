@@ -1,7 +1,6 @@
 // frontend/src/pages/Home/Home.jsx
 import { useState, useCallback, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { TOOLS } from "../../config/tools"
 import { api } from "../../lib/api"
 import { useAuth } from "../../context/AuthContext"
 import { OperationPicker } from "./OperationPicker"
@@ -236,35 +235,6 @@ export function Home() {
           </ul>
         </div>
       )}
-
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold font-headline text-on-surface mb-2">Everything you need</h2>
-        <p className="text-on-surface-variant mb-6">No bloat, no subscriptions. Just tools that work.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {TOOLS.map((tool) => (
-            <Link key={tool.title} to="/tools"
-              className="group relative flex items-start gap-4 p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant/10 hover:border-primary/20 hover:shadow-sm transition-all cursor-pointer no-underline text-inherit">
-              <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-primary text-[22px]">{tool.icon}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-on-surface">{tool.title}</h3>
-                  {tool.badge && (
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-tertiary-container text-on-tertiary-container">
-                      {tool.badge}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-on-surface-variant mt-0.5">{tool.desc}</p>
-              </div>
-              <span className="material-symbols-outlined text-on-surface-variant text-[18px] group-hover:text-primary transition-colors mt-1">
-                arrow_forward
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
 
       <p className="text-center text-xs text-on-surface-variant pb-8">
         <span className="material-symbols-outlined text-[14px] align-middle mr-1">lock</span>

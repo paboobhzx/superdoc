@@ -7,7 +7,6 @@ import { Register } from "./pages/auth/Register"
 import { ConfirmEmail } from "./pages/auth/ConfirmEmail"
 import { Settings } from "./pages/Settings"
 import { Dashboard } from "./pages/Dashboard"
-import { Tools } from "./pages/Tools"
 import { ImageEditor } from "./pages/ImageEditor"
 import { PdfEditor } from "./pages/PdfEditor"
 import { DocxEditor } from "./pages/DocxEditor"
@@ -24,7 +23,6 @@ function AppRoutes() {
   const routes = (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/tools" element={<Tools />} />
       <Route path="/editor/image" element={<ImageEditor />} />
       <Route path="/editor/pdf" element={<PdfEditor />} />
       <Route path="/editor/docx" element={<DocxEditor />} />

@@ -243,42 +243,6 @@ describe("AppShell", () => {
   });
 });
 
-// ── tools config ───────────────────────────────────────────────────────────
-
-describe("tools config", () => {
-  it("exports 6 tools", async () => {
-    const { TOOLS } = await import("../config/tools");
-    expect(TOOLS).toHaveLength(6);
-  });
-
-  it("each tool has icon, title, desc", async () => {
-    const { TOOLS } = await import("../config/tools");
-    for (const tool of TOOLS) {
-      expect(tool).toHaveProperty("icon");
-      expect(tool).toHaveProperty("title");
-      expect(tool).toHaveProperty("desc");
-      expect(tool.icon).toBeTruthy();
-      expect(tool.title).toBeTruthy();
-      expect(tool.desc).toBeTruthy();
-    }
-  });
-
-  it("Video tool has badge", async () => {
-    const { TOOLS } = await import("../config/tools");
-    const video = TOOLS.find((t) => t.title === "Video");
-    expect(video).toBeDefined();
-    expect(video.badge).toBe("$1 / video");
-  });
-
-  it("icon names are Material Symbol format (snake_case)", async () => {
-    const { TOOLS } = await import("../config/tools");
-    for (const tool of TOOLS) {
-      // Material Symbols use snake_case names (lowercase, underscores, no spaces)
-      expect(tool.icon).toMatch(/^[a-z][a-z0-9_]*$/);
-    }
-  });
-});
-
 // ── api module ─────────────────────────────────────────────────────────────
 
 describe("api module", () => {

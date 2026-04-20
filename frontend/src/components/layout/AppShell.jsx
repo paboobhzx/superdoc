@@ -3,14 +3,12 @@ import { useTheme } from '../../context/ThemeContext'
 
 const NAV_ITEMS = [
   { to: '/',           icon: 'home',              label: 'Home'       },
-  { to: '/tools',      icon: 'construction',      label: 'Tools'      },
   { to: '/dashboard',  icon: 'folder_open',       label: 'Files'      },
   { to: '/settings',   icon: 'settings',          label: 'Settings'   },
 ]
 
 const BOTTOM_NAV = [
   { to: '/',           icon: 'home',         label: 'Home'     },
-  { to: '/tools',      icon: 'construction', label: 'Tools'    },
   { to: '/dashboard',  icon: 'folder_open',  label: 'Files'    },
   { to: '/settings',   icon: 'settings',     label: 'Settings' },
 ]

@@ -98,7 +98,6 @@ test.describe("Navigation", () => {
     // Sidebar is visible on desktop viewport
     const routes = [
       { label: "Home", path: "/" },
-      { label: "Tools", path: "/tools" },
       { label: "Files", path: "/dashboard" },
       { label: "Settings", path: "/settings" },
     ];

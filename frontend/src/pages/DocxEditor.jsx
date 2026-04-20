@@ -244,7 +244,7 @@ export function DocxEditor() {
           className="w-full min-h-[360px] px-4 py-3 rounded-xl bg-surface-container border border-outline-variant/20 text-on-surface text-sm focus:outline-2 focus:outline-primary focus:-outline-offset-1"
         />
         <p className="text-xs text-on-surface-variant mt-3">
-          Tip: for “find & replace” without losing formatting, use the server-side tool in <a className="text-primary font-semibold no-underline hover:underline" href="/tools">Tools</a>.
+          Tip: formatting will not be preserved — exported DOCX is text-only.
         </p>
       </div>
     </div>
