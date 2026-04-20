@@ -59,3 +59,9 @@ variable "stripe_webhook_secret_ssm_path" {
   type        = string
   default     = "/superdoc/stripe/webhook_secret"
 }
+
+variable "rate_limit_enabled" {
+  description = "Toggle the anonymous rate-limit + active-jobs cap on create_job Lambda. Default false during early launch; set true once auth + payments are live."
+  type        = bool
+  default     = false
+}

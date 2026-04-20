@@ -176,6 +176,7 @@ module "layer_deps" {
 
 locals {
   lambda_common_env = {
+    RATE_LIMIT_ENABLED = tostring(var.rate_limit_enabled)
     JOBS_TABLE        = module.dynamodb.table_name
     API_KEYS_TABLE    = module.dynamodb.api_keys_name
     INCIDENTS_TABLE   = module.dynamodb.incidents_name

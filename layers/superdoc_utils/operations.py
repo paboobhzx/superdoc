@@ -16,6 +16,7 @@ from dataclasses import dataclass
 #                         Stripe infrastructure ships dormant in script 3a-2.
 OPERATIONS: dict[str, dict] = {
     "pdf_compress": {
+        "intent": "modify",
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "pdf",
@@ -24,6 +25,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-compress",
     },
     "pdf_merge": {
+        "intent": "modify",
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "pdf",
@@ -32,6 +34,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-merge",
     },
     "pdf_split": {
+        "intent": "modify",
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "pdf",
@@ -40,6 +43,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-split",
     },
     "pdf_to_docx": {
+        "intent": "convert",
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "docx",
@@ -48,6 +52,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-to-docx",
     },
     "pdf_to_txt": {
+        "intent": "convert",
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "txt",
@@ -56,6 +61,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-to-txt",
     },
     "pdf_to_image": {
+        "intent": "convert",
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "zip",
@@ -64,6 +70,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-to-image",
     },
     "pdf_rotate": {
+        "intent": "modify",
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "pdf",
@@ -72,6 +79,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-rotate",
     },
     "pdf_annotate": {
+        "intent": "modify",
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "pdf",
@@ -80,6 +88,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-annotate",
     },
     "pdf_extract_text": {
+        "intent": "convert",
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "json",
@@ -88,6 +97,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "pdf-extract-text",
     },
     "image_convert": {
+        "intent": "convert",
         "kind": "backend_job",
         "input_types": ["png", "jpg", "jpeg", "webp", "gif"],
         "output_type": "image",
@@ -96,6 +106,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "image-convert",
     },
     "image_to_pdf": {
+        "intent": "convert",
         "kind": "backend_job",
         "input_types": ["png", "jpg", "jpeg", "webp", "gif"],
         "output_type": "pdf",
@@ -104,6 +115,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "image-to-pdf",
     },
     "doc_edit": {
+        "intent": "modify",
         # doc_edit is a WYSIWYG editor hosted on the frontend. The picker
         # needs to send the user to /editor/docx (or /editor/xlsx) instead
         # of the processing pipeline. The DOCX flavor uses TipTap to
@@ -116,6 +128,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "doc-edit",
     },
     "docx_to_txt": {
+        "intent": "convert",
         "kind": "backend_job",
         "input_types": ["docx"],
         "output_type": "txt",
@@ -124,6 +137,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "docx-to-txt",
     },
     "xlsx_to_csv": {
+        "intent": "convert",
         "kind": "backend_job",
         "input_types": ["xlsx"],
         "output_type": "csv",
@@ -132,6 +146,7 @@ OPERATIONS: dict[str, dict] = {
         "lambda_suffix": "xlsx-to-csv",
     },
     "video_process": {
+        "intent": "modify",
         "kind": "backend_job",
         "input_types": ["mp4", "mov", "avi", "mkv", "webm"],
         "output_type": "mp4",
@@ -172,6 +187,11 @@ def list_operations(input_type: str | None = None) -> list[dict]:
         results.append({
             "operation": op,
             "kind": meta["kind"],
+            # intent drives the 2-step picker on the frontend: "modify" ops
+            # keep the file's format, "convert" ops produce a different one.
+            # Defaults to "modify" so pre-existing ops without an explicit
+            # intent don't accidentally show up under Convert.
+            "intent": meta.get("intent", "modify"),
             "label": meta["label"],
             "category": meta["category"],
             "input_types": meta["input_types"],
