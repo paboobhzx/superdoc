@@ -1,5 +1,6 @@
 import json
 import os
+from decimal import Decimal
 
 import boto3
 import dynamo
@@ -11,6 +12,18 @@ log = get_logger(__name__)
 
 _sqs = boto3.client("sqs")
 SQS_QUEUE_URL = os.environ.get("SQS_QUEUE_URL", "")
+
+
+def _json_safe(value):
+    if isinstance(value, Decimal):
+        if value % 1 == 0:
+            return int(value)
+        return float(value)
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    return value
 
 
 def handler(event, context):
@@ -30,7 +43,7 @@ def handler(event, context):
             return response.error(f"Job is not in PENDING state (current: {job.get('status')})", 409)
 
         file_key = job.get("file_key") or f"uploads/{job_id}/{job.get('file_name', 'file')}"
-        params = job.get("params") or {}
+        params = _json_safe(job.get("params") or {})
 
         dynamo.update_job(job_id, status="QUEUED")
 
