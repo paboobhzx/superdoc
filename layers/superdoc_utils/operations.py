@@ -1,52 +1,82 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
 
 
-# Structured catalog of operations offered by SuperDoc.
+IMAGE_TYPES = ["png", "jpg", "jpeg", "webp", "gif"]
+IMAGE_TARGETS = ["png", "jpg", "jpeg", "webp", "gif"]
+
+
+# Canonical public capability catalog for the first SuperDoc flow:
+# upload -> choose Edit or Convert -> open a client editor or run a backend job.
 #
-# The `kind` field drives routing on the frontend:
-#   - "backend_job":      create job, dispatch to worker Lambda, poll status.
-#                         The vast majority of ops.
-#   - "client_editor":    don't process; upload file, redirect to a WYSIWYG
-#                         editor page. Used for doc_edit today. The editor
-#                         loads the file from S3 via the key query param.
-#   - "paid_backend_job": same as backend_job but gated behind Stripe checkout
-#                         before dispatch. Currently no ops use this - the
-#                         Stripe infrastructure ships dormant in script 3a-2.
+# Operations intentionally not exposed here:
+# - PDF merge/split/rotate/compress/annotate backend edits
+# - DOCX/XLSX/PPT -> PDF
+# - OCR, PPT/PPTX, video processing, paid jobs
+# - multi-file flows
+#
+# Those handlers/infrastructure can exist in the repo, but the public catalog
+# should only advertise routes the current UI can execute correctly.
 OPERATIONS: dict[str, dict] = {
-    "pdf_compress": {
-        "intent": "modify",
-        "kind": "backend_job",
+    "pdf_edit": {
+        "intent": "edit",
+        "kind": "client_editor",
         "input_types": ["pdf"],
         "output_type": "pdf",
-        "category": "optimize",
-        "label": "Compress PDF",
-        "lambda_suffix": "pdf-compress",
-    },
-    "pdf_merge": {
-        "intent": "modify",
-        "kind": "backend_job",
-        "input_types": ["pdf"],
-        "output_type": "pdf",
+        "targets": ["pdf"],
+        "editor_route": "/editor/pdf",
+        "requires_multiple": False,
+        "params_schema": {},
         "category": "edit",
-        "label": "Merge PDFs",
-        "lambda_suffix": "pdf-merge",
+        "label": "Edit PDF",
     },
-    "pdf_split": {
-        "intent": "modify",
-        "kind": "backend_job",
-        "input_types": ["pdf"],
-        "output_type": "pdf",
+    "doc_edit": {
+        "intent": "edit",
+        "kind": "client_editor",
+        "input_types": ["docx"],
+        "output_type": "docx",
+        "targets": ["docx"],
+        "editor_route": "/editor/docx",
+        "requires_multiple": False,
+        "params_schema": {},
         "category": "edit",
-        "label": "Split PDF",
-        "lambda_suffix": "pdf-split",
+        "label": "Edit Word document",
+    },
+    "xlsx_edit": {
+        "intent": "edit",
+        "kind": "client_editor",
+        "input_types": ["xlsx"],
+        "output_type": "xlsx",
+        "targets": ["xlsx"],
+        "editor_route": "/editor/xlsx",
+        "requires_multiple": False,
+        "params_schema": {},
+        "category": "edit",
+        "label": "Edit spreadsheet",
+    },
+    "image_edit": {
+        "intent": "edit",
+        "kind": "client_editor",
+        "input_types": IMAGE_TYPES,
+        "output_type": "same",
+        "targets": IMAGE_TYPES,
+        "editor_route": "/editor/image",
+        "requires_multiple": False,
+        "params_schema": {},
+        "category": "edit",
+        "label": "Edit image",
     },
     "pdf_to_docx": {
         "intent": "convert",
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "docx",
+        "targets": ["docx"],
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {},
         "category": "convert",
         "label": "PDF to Word (.docx)",
         "lambda_suffix": "pdf-to-docx",
@@ -56,6 +86,10 @@ OPERATIONS: dict[str, dict] = {
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "txt",
+        "targets": ["txt"],
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {},
         "category": "convert",
         "label": "PDF to Text (.txt)",
         "lambda_suffix": "pdf-to-txt",
@@ -65,73 +99,62 @@ OPERATIONS: dict[str, dict] = {
         "kind": "backend_job",
         "input_types": ["pdf"],
         "output_type": "zip",
+        "targets": ["png"],
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {
+            "dpi": {
+                "type": "integer",
+                "default": 150,
+                "minimum": 72,
+                "maximum": 300,
+            }
+        },
         "category": "convert",
         "label": "PDF to Images (PNG per page)",
         "lambda_suffix": "pdf-to-image",
     },
-    "pdf_rotate": {
-        "intent": "modify",
-        "kind": "backend_job",
-        "input_types": ["pdf"],
-        "output_type": "pdf",
-        "category": "edit",
-        "label": "Rotate PDF pages",
-        "lambda_suffix": "pdf-rotate",
-    },
-    "pdf_annotate": {
-        "intent": "modify",
-        "kind": "backend_job",
-        "input_types": ["pdf"],
-        "output_type": "pdf",
-        "category": "edit",
-        "label": "Add watermark to PDF",
-        "lambda_suffix": "pdf-annotate",
-    },
-    "pdf_extract_text": {
-        "intent": "convert",
-        "kind": "backend_job",
-        "input_types": ["pdf"],
-        "output_type": "json",
-        "category": "extract",
-        "label": "Extract structured text (JSON)",
-        "lambda_suffix": "pdf-extract-text",
-    },
-    "image_convert": {
-        "intent": "convert",
-        "kind": "backend_job",
-        "input_types": ["png", "jpg", "jpeg", "webp", "gif"],
-        "output_type": "image",
-        "category": "convert",
-        "label": "Convert image format",
-        "lambda_suffix": "image-convert",
-    },
     "image_to_pdf": {
         "intent": "convert",
         "kind": "backend_job",
-        "input_types": ["png", "jpg", "jpeg", "webp", "gif"],
+        "input_types": IMAGE_TYPES,
         "output_type": "pdf",
+        "targets": ["pdf"],
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {},
         "category": "convert",
         "label": "Image to PDF",
         "lambda_suffix": "image-to-pdf",
     },
-    "doc_edit": {
-        "intent": "modify",
-        # doc_edit is a WYSIWYG editor hosted on the frontend. The picker
-        # needs to send the user to /editor/docx (or /editor/xlsx) instead
-        # of the processing pipeline. The DOCX flavor uses TipTap to
-        # preserve formatting; XLSX still uses a simple cell editor.
-        "kind": "client_editor",
-        "input_types": ["docx", "xlsx"],
-        "output_type": "same",
-        "category": "edit",
-        "label": "Edit document",
-        "lambda_suffix": "doc-edit",
+    "image_convert": {
+        "intent": "convert",
+        "kind": "backend_job",
+        "input_types": IMAGE_TYPES,
+        "output_type": "image",
+        "targets": IMAGE_TARGETS,
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {
+            "target_format": {
+                "type": "string",
+                "required": True,
+                "enum": IMAGE_TARGETS,
+            }
+        },
+        "category": "convert",
+        "label": "Convert image format",
+        "lambda_suffix": "image-convert",
     },
     "docx_to_txt": {
         "intent": "convert",
         "kind": "backend_job",
         "input_types": ["docx"],
         "output_type": "txt",
+        "targets": ["txt"],
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {},
         "category": "convert",
         "label": "Word to Text (.txt)",
         "lambda_suffix": "docx-to-txt",
@@ -141,41 +164,37 @@ OPERATIONS: dict[str, dict] = {
         "kind": "backend_job",
         "input_types": ["xlsx"],
         "output_type": "csv",
+        "targets": ["csv"],
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {
+            "sheet": {
+                "type": "string",
+                "required": False,
+                "maxLength": 64,
+                "default": "",
+            }
+        },
         "category": "convert",
         "label": "Excel to CSV (first sheet)",
         "lambda_suffix": "xlsx-to-csv",
     },
-    "video_process": {
-        "intent": "modify",
-        "kind": "backend_job",
-        "input_types": ["mp4", "mov", "avi", "mkv", "webm"],
-        "output_type": "mp4",
-        "category": "convert",
-        "label": "Process video",
-        "lambda_suffix": "video-process",
-    },
 }
 
 
-# Kept alongside OPERATIONS so dispatcher code that only needs the suffix
-# lookup doesn't have to reach into the full metadata dict.
 OPERATION_FUNCTION_SUFFIX: dict[str, str] = {}
 for _op, _meta in OPERATIONS.items():
-    OPERATION_FUNCTION_SUFFIX[_op] = _meta["lambda_suffix"]
+    if _meta["kind"] in ("backend_job", "paid_backend_job"):
+        OPERATION_FUNCTION_SUFFIX[_op] = _meta["lambda_suffix"]
 
 
 def is_supported(operation: str) -> bool:
-    """Return whether operation is a known operation id."""
+    """Return whether operation is a known public operation id."""
     return operation in OPERATIONS
 
 
 def list_operations(input_type: str | None = None) -> list[dict]:
-    """Return the public-facing catalog, optionally filtered by input type.
-
-    Strips `lambda_suffix` from the response; that's an internal detail the
-    frontend shouldn't need. `kind` is exposed because the frontend picker
-    uses it to route (editor vs backend vs paid).
-    """
+    """Return the public-facing catalog, optionally filtered by input type."""
     ext = None
     if input_type is not None:
         ext = input_type.lower().lstrip(".")
@@ -186,16 +205,16 @@ def list_operations(input_type: str | None = None) -> list[dict]:
             continue
         results.append({
             "operation": op,
+            "intent": meta["intent"],
             "kind": meta["kind"],
-            # intent drives the 2-step picker on the frontend: "modify" ops
-            # keep the file's format, "convert" ops produce a different one.
-            # Defaults to "modify" so pre-existing ops without an explicit
-            # intent don't accidentally show up under Convert.
-            "intent": meta.get("intent", "modify"),
             "label": meta["label"],
             "category": meta["category"],
-            "input_types": meta["input_types"],
+            "input_types": list(meta["input_types"]),
             "output_type": meta["output_type"],
+            "targets": list(meta["targets"]),
+            "editor_route": meta.get("editor_route"),
+            "requires_multiple": bool(meta.get("requires_multiple", False)),
+            "params_schema": deepcopy(meta.get("params_schema", {})),
         })
     return results
 
@@ -210,7 +229,6 @@ class ValidationResult:
 
 
 def _limit_str(value: object, *, name: str, max_len: int) -> tuple[bool, str]:
-    """Validate that value is either None or a string up to max_len chars."""
     if value is None:
         return True, ""
     if not isinstance(value, str):
@@ -220,9 +238,10 @@ def _limit_str(value: object, *, name: str, max_len: int) -> tuple[bool, str]:
     return True, ""
 
 
-def _one_of(value: object, *, name: str, allowed: set[str]) -> tuple[bool, str]:
-    """Validate that value is either None or one of allowed (case-insensitive)."""
-    if value is None:
+def _one_of(value: object, *, name: str, allowed: set[str], required: bool = False) -> tuple[bool, str]:
+    if value is None or value == "":
+        if required:
+            return False, f"{name} is required"
         return True, ""
     if not isinstance(value, str):
         return False, f"{name} must be a string"
@@ -235,7 +254,6 @@ def _one_of(value: object, *, name: str, allowed: set[str]) -> tuple[bool, str]:
 
 
 def _int_range(value: object, *, name: str, lo: int, hi: int) -> tuple[bool, str]:
-    """Validate that value is either None or an int in [lo, hi]."""
     if value is None:
         return True, ""
     try:
@@ -249,73 +267,37 @@ def _int_range(value: object, *, name: str, lo: int, hi: int) -> tuple[bool, str
 
 def validate_params(operation: str, params: dict | None) -> ValidationResult:
     """Whitelist-validate params for operation. Unknown keys are dropped."""
-    if not params:
-        return ValidationResult(ok=True, params={})
+    if params is None:
+        params = {}
 
     if not isinstance(params, dict):
         return ValidationResult(ok=False, error="params must be an object")
 
     cleaned: dict = {}
 
-    if operation == "pdf_annotate":
-        ok_flag, err_msg = _limit_str(params.get("watermark_text"), name="watermark_text", max_len=120)
-        if not ok_flag:
-            return ValidationResult(ok=False, error=err_msg)
-        if params.get("watermark_text") is not None:
-            cleaned["watermark_text"] = params.get("watermark_text")
-
     if operation == "image_convert":
         ok_flag, err_msg = _one_of(
             params.get("target_format"),
             name="target_format",
-            allowed={"png", "jpg", "jpeg", "webp", "gif"},
+            allowed=set(IMAGE_TARGETS),
+            required=True,
         )
         if not ok_flag:
             return ValidationResult(ok=False, error=err_msg)
-        if params.get("target_format") is not None:
-            cleaned["target_format"] = params.get("target_format")
+        cleaned["target_format"] = params.get("target_format").lower()
 
     if operation == "pdf_to_image":
-        # DPI between 72 (web) and 300 (print). Default handled in worker.
-        ok_flag, err_msg = _int_range(params.get("dpi"), name="dpi", lo=72, hi=300)
+        raw_dpi = params.get("dpi", 150)
+        ok_flag, err_msg = _int_range(raw_dpi, name="dpi", lo=72, hi=300)
         if not ok_flag:
             return ValidationResult(ok=False, error=err_msg)
-        if params.get("dpi") is not None:
-            cleaned["dpi"] = int(params.get("dpi"))
+        cleaned["dpi"] = int(raw_dpi)
 
     if operation == "xlsx_to_csv":
-        # Optional sheet name; defaults to the first sheet.
         ok_flag, err_msg = _limit_str(params.get("sheet"), name="sheet", max_len=64)
         if not ok_flag:
             return ValidationResult(ok=False, error=err_msg)
-        if params.get("sheet") is not None:
+        if params.get("sheet"):
             cleaned["sheet"] = params.get("sheet")
-
-    if operation == "doc_edit":
-        ok_flag, err_msg = _limit_str(params.get("find_text"), name="find_text", max_len=200)
-        if not ok_flag:
-            return ValidationResult(ok=False, error=err_msg)
-        ok_flag, err_msg = _limit_str(params.get("replace_text"), name="replace_text", max_len=200)
-        if not ok_flag:
-            return ValidationResult(ok=False, error=err_msg)
-        if params.get("find_text") is not None:
-            cleaned["find_text"] = params.get("find_text")
-        if params.get("replace_text") is not None:
-            cleaned["replace_text"] = params.get("replace_text")
-        ok_flag, err_msg = _limit_str(params.get("sheet"), name="sheet", max_len=64)
-        if not ok_flag:
-            return ValidationResult(ok=False, error=err_msg)
-        ok_flag, err_msg = _limit_str(params.get("cell"), name="cell", max_len=10)
-        if not ok_flag:
-            return ValidationResult(ok=False, error=err_msg)
-        ok_flag, err_msg = _limit_str(params.get("value"), name="value", max_len=200)
-        if not ok_flag:
-            return ValidationResult(ok=False, error=err_msg)
-        if params.get("sheet") is not None:
-            cleaned["sheet"] = params.get("sheet")
-        if params.get("cell") is not None:
-            cleaned["cell"] = params.get("cell")
-        if params.get("value") is not None:
-            cleaned["value"] = params.get("value")
 
     return ValidationResult(ok=True, params=cleaned)

@@ -20,11 +20,11 @@ describe("OperationPicker", () => {
     sessionStorage.clear()
   })
 
-  it("renders operations returned by the API", async () => {
+  it("renders edit/convert choices returned by the API", async () => {
     api.getOperations.mockResolvedValue({
       operations: [
-        { operation: "pdf_to_docx", label: "PDF to Word (.docx)", category: "convert" },
-        { operation: "pdf_to_txt", label: "PDF to Text (.txt)", category: "convert" },
+        { operation: "pdf_edit", kind: "client_editor", intent: "edit", label: "Edit PDF", category: "edit" },
+        { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word (.docx)", category: "convert" },
       ],
       count: 2,
     })
@@ -33,16 +33,21 @@ describe("OperationPicker", () => {
     render(<OperationPicker file={file} onPick={() => {}} onBack={() => {}} />)
 
     await waitFor(() => {
-      expect(screen.getByText("PDF to Word (.docx)")).toBeInTheDocument()
-      expect(screen.getByText("PDF to Text (.txt)")).toBeInTheDocument()
+      expect(screen.getByText("Edit")).toBeInTheDocument()
+      expect(screen.getByText("Convert")).toBeInTheDocument()
     })
   })
 
-  it("calls onPick with the operation id when a card is clicked", async () => {
+  it("calls onPick with operation metadata when a card is clicked", async () => {
+    const op = {
+      operation: "pdf_to_docx",
+      kind: "backend_job",
+      intent: "convert",
+      label: "PDF to Word (.docx)",
+      category: "convert",
+    }
     api.getOperations.mockResolvedValue({
-      operations: [
-        { operation: "pdf_to_docx", label: "PDF to Word (.docx)", category: "convert" },
-      ],
+      operations: [op],
       count: 1,
     })
 
@@ -53,7 +58,56 @@ describe("OperationPicker", () => {
     const button = await screen.findByText("PDF to Word (.docx)")
     fireEvent.click(button.closest("button"))
 
-    expect(onPick).toHaveBeenCalledWith("pdf_to_docx")
+    expect(onPick).toHaveBeenCalledWith(op)
+  })
+
+  it("expands image_convert targets and passes target_format params", async () => {
+    api.getOperations.mockResolvedValue({
+      operations: [
+        {
+          operation: "image_convert",
+          kind: "backend_job",
+          intent: "convert",
+          label: "Convert image format",
+          category: "convert",
+          targets: ["png", "jpg", "webp"],
+        },
+      ],
+      count: 1,
+    })
+
+    const file = new File(["x"], "photo.png", { type: "image/png" })
+    const onPick = vi.fn()
+    render(<OperationPicker file={file} onPick={onPick} onBack={() => {}} />)
+
+    const button = await screen.findByText("Image to JPEG")
+    fireEvent.click(button.closest("button"))
+
+    expect(onPick).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "image_convert",
+      target: "jpg",
+      params: { target_format: "jpg" },
+    }))
+    expect(screen.queryByText("Image to PNG")).not.toBeInTheDocument()
+  })
+
+  it("uses cached operations for the same input type", async () => {
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "docx_to_txt", kind: "backend_job", intent: "convert", label: "Word to Text (.txt)", category: "convert" },
+      ],
+      count: 1,
+    })
+
+    const file = new File(["x"], "doc.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })
+    const { unmount } = render(<OperationPicker file={file} onPick={() => {}} onBack={() => {}} />)
+    await screen.findByText("Word to Text (.txt)")
+    unmount()
+
+    render(<OperationPicker file={file} onPick={() => {}} onBack={() => {}} />)
+    await screen.findByText("Word to Text (.txt)")
+
+    expect(api.getOperations).toHaveBeenCalledTimes(1)
   })
 
   it("shows an error banner if the API call fails", async () => {

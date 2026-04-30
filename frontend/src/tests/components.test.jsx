@@ -27,7 +27,7 @@ describe("ThemeContext", () => {
 // ── Home page ──────────────────────────────────────────────────────────────
 
 describe("Home page", () => {
-  it("renders hero and tools grid", async () => {
+  it("renders hero and upload-first flow", async () => {
     const { Home } = await import("../pages/Home/Home");
     render(
       <BrowserRouter>
@@ -37,10 +37,8 @@ describe("Home page", () => {
       </BrowserRouter>
     );
     expect(screen.getByText(/Transform Any File/)).toBeTruthy();
-    expect(screen.getByText("PDF Tools")).toBeTruthy();
-    expect(screen.getByText("Documents")).toBeTruthy();
-    expect(screen.getByText("Images")).toBeTruthy();
-    expect(screen.getByText("Video")).toBeTruthy();
+    expect(screen.getByText("Drop any file here")).toBeTruthy();
+    expect(screen.getByText(/Upload a PDF, Word doc, spreadsheet, or image/)).toBeTruthy();
   });
 
   it("shows drop zone with format pills", async () => {
@@ -53,21 +51,9 @@ describe("Home page", () => {
       </BrowserRouter>
     );
     expect(screen.getByText("Drop any file here")).toBeTruthy();
-    ["PDF", "DOCX", "MP4", "PNG"].forEach((fmt) => {
+    ["PDF", "DOCX", "XLSX", "PNG"].forEach((fmt) => {
       expect(screen.getByText(fmt)).toBeTruthy();
     });
-  });
-
-  it("shows $1/video badge", async () => {
-    const { Home } = await import("../pages/Home/Home");
-    render(
-      <BrowserRouter>
-        <ThemeProvider>
-          <Home />
-        </ThemeProvider>
-      </BrowserRouter>
-    );
-    expect(screen.getByText("$1 / video")).toBeTruthy();
   });
 });
 
@@ -237,7 +223,6 @@ describe("AppShell", () => {
     );
     // Each label appears twice (sidebar + bottom nav)
     expect(screen.getAllByText("Home").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Tools").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Files").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
   });

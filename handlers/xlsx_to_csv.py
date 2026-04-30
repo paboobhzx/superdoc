@@ -58,6 +58,8 @@ def handler(event, context):
     file_key = body["file_key"]
     params = body.get("params") or {}
     sheet_name = params.get("sheet")
+    if sheet_name is None:
+        sheet_name = body.get("sheet")
 
     try:
         dynamo.update_job(job_id, status="PROCESSING")

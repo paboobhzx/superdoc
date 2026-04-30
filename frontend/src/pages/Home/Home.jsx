@@ -1,29 +1,12 @@
 // frontend/src/pages/Home/Home.jsx
 import { useState, useCallback, useRef } from "react"
-import { useNavigate, Link } from "react-router-dom"
-import { api } from "../../lib/api"
+import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
 import { OperationPicker } from "./OperationPicker"
 import { dispatchPick } from "./pickerRouting"
 
-const SUPPORTED_FORMATS = ["PDF", "DOCX", "XLSX", "JPG", "PNG", "MP4", "WEBP", "GIF"]
-const ACCEPT = "application/pdf,.docx,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.mp4,.webm"
-const MAX_ITERATION_BYTES = 100 * 1024 * 1024
-
-
-// Fallback used only when the picker is skipped (batch upload of >1 file).
-// Single-file uploads always go through the picker now.
-function fallbackOperation(file) {
-  const ext = (file.name || "").split(".").pop().toLowerCase()
-  const map = {
-    pdf: "pdf_to_docx",
-    jpg: "image_convert", jpeg: "image_convert", png: "image_convert",
-    gif: "image_convert", webp: "image_convert",
-    mp4: "video_process", webm: "video_process",
-    xlsx: "doc_edit", xls: "doc_edit", docx: "doc_edit",
-  }
-  return map[ext] || "pdf_to_docx"
-}
+const SUPPORTED_FORMATS = ["PDF", "DOCX", "XLSX", "JPG", "PNG", "WEBP", "GIF"]
+const ACCEPT = "application/pdf,.docx,.xlsx,.jpg,.jpeg,.png,.webp,.gif"
 
 
 export function Home() {
@@ -35,7 +18,6 @@ export function Home() {
   const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState(null)
   const [dragging, setDragging] = useState(false)
-  const [created, setCreated] = useState([])
   const inputRef = useRef(null)
 
   const resetToDrop = useCallback(() => {
@@ -44,69 +26,19 @@ export function Home() {
     setErr(null)
   }, [])
 
-  // Batch-upload path - unchanged from Round 2. Used when user drops
-  // multiple files; each goes through backend_job with fallback operation.
-  const batchUpload = useCallback(async (files) => {
-    setErr(null)
-    setCreated([])
-    const list = Array.from(files || []).filter(Boolean)
-    if (list.length === 0) {
-      return
-    }
-    const maxFiles = auth?.isAuthenticated ? 10 : 4
-    if (list.length > maxFiles) {
-      setErr(`Too many files. Max ${maxFiles} at a time.`)
-      return
-    }
-    const totalBytes = list.reduce((sum, f) => sum + (f?.size || 0), 0)
-    if (totalBytes > MAX_ITERATION_BYTES) {
-      setErr("Batch too large. Max 100MB per upload batch.")
-      return
-    }
-
-    setUploading(true)
-    try {
-      const session_id = sessionStorage.getItem("superdoc_session") || crypto.randomUUID()
-      sessionStorage.setItem("superdoc_session", session_id)
-
-      const createdJobs = []
-      for (const file of list) {
-        const operation = fallbackOperation(file)
-        const payload = { operation, file_size_bytes: file.size, file_name: file.name }
-        let data
-        if (auth?.isAuthenticated) {
-          data = await api.createUserJob(payload)
-        } else {
-          data = await api.createJob({ ...payload, session_id })
-        }
-        await api.uploadToS3(data.upload || data.upload_url, file)
-        await api.triggerProcess(data.job_id)
-        createdJobs.push({ job_id: data.job_id, file_name: file.name })
-      }
-
-      setCreated(createdJobs)
-      if (createdJobs.length === 1) {
-        navigate(`/processing/${createdJobs[0].job_id}`)
-      }
-    } catch (e) {
-      setErr(e.message || "Upload failed - please try again")
-    } finally {
-      setUploading(false)
-    }
-  }, [navigate, auth?.isAuthenticated])
-
   const handleFiles = useCallback((files) => {
     const list = Array.from(files || []).filter(Boolean)
     if (list.length === 0) {
       return
     }
     if (list.length > 1) {
-      batchUpload(list)
+      setErr("Multiple-file workflows are not available yet. Upload one file at a time.")
       return
     }
+    setErr(null)
     setPendingFile(list[0])
     setPhase("pick")
-  }, [batchUpload])
+  }, [])
 
   // Called by OperationPicker when the user selects an operation. Routes
   // via dispatchPick which knows about backend_job / client_editor /
@@ -166,7 +98,7 @@ export function Home() {
           <span className="text-primary">Transform Any File.</span>
         </h1>
         <p className="text-on-surface-variant max-w-xl mx-auto mb-8">
-          Upload a PDF, Word doc, image or video and choose what to do.
+          Upload a PDF, Word doc, spreadsheet, or image and choose what to do.
           Serverless, honest, and fast - no forced signups, no hidden fees.
         </p>
       </section>
@@ -186,7 +118,7 @@ export function Home() {
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && !uploading && inputRef.current?.click()}
       >
-        <input ref={inputRef} type="file" accept={ACCEPT} multiple className="hidden"
+        <input ref={inputRef} type="file" accept={ACCEPT} className="hidden"
           onChange={(e) => { handleFiles(e.target.files); e.target.value = "" }} />
         <div className="flex flex-col items-center py-12 gap-3">
           <span className="material-symbols-outlined text-[40px] text-on-surface-variant">
@@ -210,29 +142,6 @@ export function Home() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-error-container/20 border border-error/20 text-on-error-container mb-8">
           <span className="material-symbols-outlined text-error text-[20px]">warning</span>
           <span className="text-sm font-medium">{err}</span>
-        </div>
-      )}
-
-      {created.length > 1 && (
-        <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant/10 p-5 mb-10">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <span className="font-bold text-on-surface">Batch started</span>
-            {auth?.isAuthenticated ? (
-              <a href="/dashboard" className="text-sm text-primary font-semibold no-underline hover:underline">
-                View all in Files
-              </a>
-            ) : null}
-          </div>
-          <ul className="space-y-2">
-            {created.map((j) => (
-              <li key={j.job_id} className="flex items-center justify-between gap-3">
-                <span className="text-sm text-on-surface truncate">{j.file_name}</span>
-                <a href={`/processing/${j.job_id}`} className="text-sm text-primary font-semibold no-underline hover:underline">
-                  Open
-                </a>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
 

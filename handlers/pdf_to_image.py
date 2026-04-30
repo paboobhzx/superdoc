@@ -63,6 +63,8 @@ def handler(event, context):
 
     raw_dpi = params.get("dpi")
     if raw_dpi is None:
+        raw_dpi = body.get("dpi")
+    if raw_dpi is None:
         dpi = _DEFAULT_DPI
     else:
         dpi = int(raw_dpi)

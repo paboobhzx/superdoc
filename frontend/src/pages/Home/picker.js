@@ -42,12 +42,20 @@ export const OPERATION_UI = {
     icon: "image",
     description: "Render each page as a PNG image. Returned as a single ZIP.",
   },
+  pdf_edit: {
+    icon: "edit_document",
+    description: "Open the PDF editor to add text, drawings, and simple annotations.",
+  },
 
   // ── DOCX / XLSX ops ────────────────────────────────────────────────────
   doc_edit: {
     // Rewritten in Round 4-3: this is now a WYSIWYG editor, not find-and-replace.
     icon: "edit_document",
     description: "Open in the WYSIWYG editor — edit headings, bold, lists, links, then export back to .docx.",
+  },
+  xlsx_edit: {
+    icon: "edit_square",
+    description: "Open the spreadsheet editor to inspect cells, update values, and export.",
   },
   docx_to_txt: {
     icon: "text_fields",
@@ -66,6 +74,10 @@ export const OPERATION_UI = {
   image_to_pdf: {
     icon: "picture_as_pdf",
     description: "Wrap the image into a single-page PDF document.",
+  },
+  image_edit: {
+    icon: "crop",
+    description: "Open the image editor for quick visual edits and export.",
   },
 
   // ── Video ops ──────────────────────────────────────────────────────────

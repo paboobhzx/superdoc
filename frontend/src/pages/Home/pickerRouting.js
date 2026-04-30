@@ -45,11 +45,14 @@ function extensionOf(file) {
  * Creates a job, uploads file via presigned POST, triggers processing,
  * returns the /processing/:id path.
  */
-export async function handleBackendJob({ file, operation, auth, sessionId }) {
+export async function handleBackendJob({ file, operation, params, auth, sessionId }) {
   const payload = {
     operation,
     file_size_bytes: file.size,
     file_name: file.name,
+  }
+  if (params && Object.keys(params).length > 0) {
+    payload.params = params
   }
   let data
   if (auth && auth.isAuthenticated) {
@@ -68,9 +71,9 @@ export async function handleBackendJob({ file, operation, auth, sessionId }) {
  * correct editor page with ?key=<s3_key> so it can auto-load. Uses the
  * authenticated "store" flow if logged in, anonymous uploads otherwise.
  */
-export async function handleClientEditor({ file, operation, auth, sessionId }) {
+export async function handleClientEditor({ file, operation, editorRoute, auth, sessionId }) {
   const ext = extensionOf(file)
-  const route = EDITOR_ROUTES_BY_EXTENSION[ext]
+  const route = editorRoute || EDITOR_ROUTES_BY_EXTENSION[ext]
   if (!route) {
     throw new Error(`No editor for .${ext} files`)
   }
@@ -141,10 +144,18 @@ export async function handlePaidBackendJob({ file, operation, auth, sessionId })
 export async function dispatchPick(opMeta, context) {
   const kind = opMeta && opMeta.kind ? opMeta.kind : "backend_job"
   if (kind === "client_editor") {
-    return handleClientEditor({ ...context, operation: opMeta.operation })
+    return handleClientEditor({
+      ...context,
+      operation: opMeta.operation,
+      editorRoute: opMeta.editor_route,
+    })
   }
   if (kind === "paid_backend_job") {
     return handlePaidBackendJob({ ...context, operation: opMeta.operation })
   }
-  return handleBackendJob({ ...context, operation: opMeta.operation })
+  return handleBackendJob({
+    ...context,
+    operation: opMeta.operation,
+    params: opMeta.params,
+  })
 }

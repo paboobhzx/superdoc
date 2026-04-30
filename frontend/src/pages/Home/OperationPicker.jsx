@@ -1,7 +1,7 @@
 // frontend/src/pages/Home/OperationPicker.jsx
 //
 // Two-step picker:
-//   Step 1 (intent):  user chooses "Modify" or "Convert" when the input has
+//   Step 1 (intent):  user chooses "Edit" or "Convert" when the input has
 //                     ops in both buckets. Skipped if only one bucket exists.
 //   Step 2 (action):  user picks the specific operation within that bucket.
 //
@@ -56,9 +56,9 @@ function writeCache(inputType, data) {
 
 // Copy for the two top-level intents shown on Step 1.
 const INTENT_META = {
-  modify: {
+  edit: {
     icon: "edit",
-    title: "Modify",
+    title: "Edit",
     description: "Change the file without converting to a different format.",
   },
   convert: {
@@ -69,15 +69,60 @@ const INTENT_META = {
 }
 
 
-// Walks the ops list and returns { modify: [...], convert: [...] }.
-// Ops with unknown intent default to "modify".
+// Walks the ops list and returns { edit: [...], convert: [...] }.
+// Ops with unknown intent default to "edit".
 function groupByIntent(ops) {
-  const buckets = { modify: [], convert: [] }
+  const buckets = { edit: [], convert: [] }
   for (const op of ops) {
-    const intent = op.intent === "convert" ? "convert" : "modify"
+    const intent = op.intent === "convert" ? "convert" : "edit"
     buckets[intent].push(op)
   }
   return buckets
+}
+
+
+function formatTarget(target) {
+  if (target === "jpg" || target === "jpeg") return "JPEG"
+  if (target === "png") return "PNG"
+  if (target === "webp") return "WebP"
+  if (target === "gif") return "GIF"
+  if (target === "pdf") return "PDF"
+  if (target === "docx") return "Word (.docx)"
+  if (target === "txt") return "Text (.txt)"
+  if (target === "csv") return "CSV"
+  return String(target || "").toUpperCase()
+}
+
+
+function sameImageType(inputType, target) {
+  const input = inputType === "jpeg" ? "jpg" : inputType
+  const output = target === "jpeg" ? "jpg" : target
+  return input === output
+}
+
+
+function buildChoices(actions, inputType) {
+  const choices = []
+  for (const op of actions) {
+    if (op.operation === "image_convert") {
+      const targets = Array.isArray(op.targets) ? op.targets : []
+      for (const target of targets) {
+        if (sameImageType(inputType, target)) continue
+        choices.push({
+          key: `${op.operation}:${target}`,
+          op: {
+            ...op,
+            target,
+            label: `Image to ${formatTarget(target)}`,
+            params: { target_format: target },
+          },
+        })
+      }
+      continue
+    }
+    choices.push({ key: op.operation, op })
+  }
+  return choices
 }
 
 
@@ -129,7 +174,7 @@ export function OperationPicker({ file, onPick, onBack }) {
   const grouped = useMemo(() => groupByIntent(operations || []), [operations])
   const availableIntents = useMemo(() => {
     const list = []
-    if (grouped.modify.length > 0) list.push("modify")
+    if (grouped.edit.length > 0) list.push("edit")
     if (grouped.convert.length > 0) list.push("convert")
     return list
   }, [grouped])
@@ -236,6 +281,7 @@ export function OperationPicker({ file, onPick, onBack }) {
 
   const effectiveIntent = chosenIntent || availableIntents[0]
   const actions = grouped[effectiveIntent] || []
+  const choices = buildChoices(actions, inputType)
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -253,10 +299,11 @@ export function OperationPicker({ file, onPick, onBack }) {
       ) : null}
 
       <ul className="space-y-2 mt-4" role="list">
-        {actions.map((op, idx) => {
+        {choices.map((choice, idx) => {
+          const op = choice.op
           const ui = uiFor(op.operation)
           return (
-            <li key={op.operation}>
+            <li key={choice.key}>
               <button
                 ref={idx === 0 ? firstButtonRef : null}
                 type="button"
