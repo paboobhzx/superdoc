@@ -1,4 +1,7 @@
+data "aws_caller_identity" "current" {}
+
 resource "aws_budgets_budget" "superdoc" {
+  account_id   = data.aws_caller_identity.current.account_id
   name         = "${var.name_prefix}-monthly"
   budget_type  = "COST"
   limit_amount = "5"

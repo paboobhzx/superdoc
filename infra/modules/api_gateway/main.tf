@@ -111,7 +111,7 @@ resource "aws_lambda_permission" "create_job" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["create_job"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn = "${local.api_execution_arn}/*/*"
+  source_arn    = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "jobs_post_200" {
@@ -160,6 +160,11 @@ resource "aws_api_gateway_integration_response" "jobs_options_200" {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
   }
+
+  depends_on = [
+    aws_api_gateway_integration.jobs_options,
+    aws_api_gateway_method_response.jobs_options_200,
+  ]
 }
 
 # ── /jobs/{jobId} ────────────────────────────────────────────────────────────
@@ -192,7 +197,7 @@ resource "aws_lambda_permission" "get_status" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["get_status"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn = "${local.api_execution_arn}/*/*"
+  source_arn    = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "job_id_get_200" {
@@ -241,6 +246,11 @@ resource "aws_api_gateway_integration_response" "job_id_options_200" {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
   }
+
+  depends_on = [
+    aws_api_gateway_integration.job_id_options,
+    aws_api_gateway_method_response.job_id_options_200,
+  ]
 }
 
 # ── /jobs/{jobId}/process ─────────────────────────────────────────────────────
@@ -272,7 +282,7 @@ resource "aws_lambda_permission" "process_job" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["process_job"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn = "${local.api_execution_arn}/*/*"
+  source_arn    = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "job_process_post_200" {
@@ -320,6 +330,11 @@ resource "aws_api_gateway_integration_response" "job_process_options_200" {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
   }
+
+  depends_on = [
+    aws_api_gateway_integration.job_process_options,
+    aws_api_gateway_method_response.job_process_options_200,
+  ]
 }
 
 # ── /users/me/files ───────────────────────────────────────────────────────────
@@ -364,7 +379,7 @@ resource "aws_lambda_permission" "user_files" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["user_files"].function_name
   principal     = "apigateway.amazonaws.com"
- source_arn = "${local.api_execution_arn}/*/*"
+  source_arn    = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "users_me_files_get_200" {
@@ -397,7 +412,7 @@ resource "aws_lambda_permission" "user_create_file" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["user_create_file"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn = "${local.api_execution_arn}/*/*"
+  source_arn    = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "users_me_files_post_200" {
@@ -445,6 +460,11 @@ resource "aws_api_gateway_integration_response" "users_me_files_options_200" {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
   }
+
+  depends_on = [
+    aws_api_gateway_integration.users_me_files_options,
+    aws_api_gateway_method_response.users_me_files_options_200,
+  ]
 }
 
 # ── /users/me/files/{jobId} ──────────────────────────────────────────────────
@@ -517,6 +537,11 @@ resource "aws_api_gateway_integration_response" "users_me_files_job_options_200"
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS,DELETE'"
   }
+
+  depends_on = [
+    aws_api_gateway_integration.users_me_files_job_options,
+    aws_api_gateway_method_response.users_me_files_job_options_200,
+  ]
 }
 
 # ── /users/me/files/{jobId}/complete ─────────────────────────────────────────
@@ -549,7 +574,7 @@ resource "aws_lambda_permission" "user_complete_file" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["user_complete_file"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn = "${local.api_execution_arn}/*/*"
+  source_arn    = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method_response" "users_me_files_job_complete_post_200" {
@@ -597,6 +622,11 @@ resource "aws_api_gateway_integration_response" "users_me_files_job_complete_opt
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
   }
+
+  depends_on = [
+    aws_api_gateway_integration.users_me_files_job_complete_options,
+    aws_api_gateway_method_response.users_me_files_job_complete_options_200,
+  ]
 }
 
 # ── /users/me/jobs ───────────────────────────────────────────────────────────
@@ -671,6 +701,11 @@ resource "aws_api_gateway_integration_response" "users_me_jobs_options_200" {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
   }
+
+  depends_on = [
+    aws_api_gateway_integration.users_me_jobs_options,
+    aws_api_gateway_method_response.users_me_jobs_options_200,
+  ]
 }
 
 # ── /admin ────────────────────────────────────────────────────────────────────
@@ -694,7 +729,7 @@ resource "aws_lambda_permission" "admin_flags" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["admin_flags"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn = "${local.api_execution_arn}/*/*"
+  source_arn    = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method" "admin_flags_get" {
@@ -783,6 +818,11 @@ resource "aws_api_gateway_integration_response" "admin_flags_options_200" {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
   }
+
+  depends_on = [
+    aws_api_gateway_integration.admin_flags_options,
+    aws_api_gateway_method_response.admin_flags_options_200,
+  ]
 }
 
 # ── /admin/incidents ──────────────────────────────────────────────────────────
@@ -798,7 +838,7 @@ resource "aws_lambda_permission" "admin_incidents" {
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_integrations["admin_incidents"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn = "${local.api_execution_arn}/*/*"
+  source_arn    = "${local.api_execution_arn}/*/*"
 }
 
 resource "aws_api_gateway_method" "admin_incidents_get" {
@@ -887,6 +927,11 @@ resource "aws_api_gateway_integration_response" "admin_incidents_options_200" {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
   }
+
+  depends_on = [
+    aws_api_gateway_integration.admin_incidents_options,
+    aws_api_gateway_method_response.admin_incidents_options_200,
+  ]
 }
 
 # ── /health mock endpoint ────────────────────────────────────────────────────
