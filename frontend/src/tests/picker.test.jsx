@@ -110,6 +110,56 @@ describe("OperationPicker", () => {
     expect(api.getOperations).toHaveBeenCalledTimes(1)
   })
 
+  it("shows the conversion choices for DOCX files", async () => {
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "docx_to_txt", kind: "backend_job", intent: "convert", label: "Word to Text (.txt)", category: "convert", targets: ["txt"] },
+        { operation: "docx_to_pdf", kind: "backend_job", intent: "convert", label: "Word to PDF", category: "convert", targets: ["pdf"] },
+      ],
+      count: 2,
+    })
+
+    const file = new File(["x"], "doc.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })
+    render(<OperationPicker file={file} onPick={() => {}} onBack={() => {}} />)
+
+    expect(await screen.findByText("Word to Text (.txt)")).toBeInTheDocument()
+    expect(screen.getByText("Word to PDF")).toBeInTheDocument()
+  })
+
+  it("shows the conversion choices for XLSX files", async () => {
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "xlsx_to_csv", kind: "backend_job", intent: "convert", label: "Excel to CSV (first sheet)", category: "convert", targets: ["csv"] },
+        { operation: "xlsx_to_pdf", kind: "backend_job", intent: "convert", label: "Excel to PDF", category: "convert", targets: ["pdf"] },
+      ],
+      count: 2,
+    })
+
+    const file = new File(["x"], "book.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+    render(<OperationPicker file={file} onPick={() => {}} onBack={() => {}} />)
+
+    expect(await screen.findByText("Excel to CSV (first sheet)")).toBeInTheDocument()
+    expect(screen.getByText("Excel to PDF")).toBeInTheDocument()
+  })
+
+  it("shows the conversion choices for PDF files", async () => {
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word (.docx)", category: "convert", targets: ["docx"] },
+        { operation: "pdf_to_txt", kind: "backend_job", intent: "convert", label: "PDF to Text (.txt)", category: "convert", targets: ["txt"] },
+        { operation: "pdf_to_image", kind: "backend_job", intent: "convert", label: "PDF to PNG images (.zip)", category: "convert", targets: ["png"] },
+      ],
+      count: 3,
+    })
+
+    const file = new File(["x"], "doc.pdf", { type: "application/pdf" })
+    render(<OperationPicker file={file} onPick={() => {}} onBack={() => {}} />)
+
+    expect(await screen.findByText("PDF to Word (.docx)")).toBeInTheDocument()
+    expect(screen.getByText("PDF to Text (.txt)")).toBeInTheDocument()
+    expect(screen.getByText("PDF to PNG images (.zip)")).toBeInTheDocument()
+  })
+
   it("shows an error banner if the API call fails", async () => {
     api.getOperations.mockRejectedValue(new Error("backend down"))
 

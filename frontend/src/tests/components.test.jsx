@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { renderHook } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 
 // ── ThemeContext ────────────────────────────────────────────────────────────
@@ -89,6 +89,37 @@ describe("useJob", () => {
     const { useJob } = await import("../hooks/useJob");
     const { result } = renderHook(() => useJob("bad-id"));
     await waitFor(() => expect(result.current.error).toBe("Network error"));
+  });
+});
+
+// ── Processing page ────────────────────────────────────────────────────────
+
+describe("Processing page", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("renders DONE without actual_seconds as Completed", async () => {
+    api.getStatus.mockResolvedValue({
+      job_id: "abc",
+      status: "DONE",
+      operation: "docx_to_pdf",
+      file_size_bytes: 1024,
+      download_url: "https://download.example.com/out.pdf",
+    });
+    const { Processing } = await import("../pages/Processing/Processing");
+
+    render(
+      <MemoryRouter initialEntries={["/processing/abc"]}>
+        <ThemeProvider>
+          <Routes>
+            <Route path="/processing/:jobId" element={<Processing />} />
+          </Routes>
+        </ThemeProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByText("Completed")).toBeTruthy());
+    expect(screen.queryByText(/undefineds/)).toBeNull();
+    expect(screen.getByRole("link", { name: "Download file" })).toBeTruthy();
   });
 });
 
@@ -208,7 +239,7 @@ describe("AppShell", () => {
     expect(dots).toHaveLength(5);
   });
 
-  it("renders navigation links", async () => {
+  it("does not render dormant navigation links", async () => {
     const { default: AppShell } = await import(
       "../components/layout/AppShell"
     );
@@ -221,10 +252,8 @@ describe("AppShell", () => {
         </ThemeProvider>
       </BrowserRouter>
     );
-    // Each label appears twice (sidebar + bottom nav)
-    expect(screen.getAllByText("Home").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Files").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Files")).toBeNull();
+    expect(screen.queryByText("Settings")).toBeNull();
   });
 });
 

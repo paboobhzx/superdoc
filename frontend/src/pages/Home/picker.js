@@ -40,7 +40,7 @@ export const OPERATION_UI = {
   },
   pdf_to_image: {
     icon: "image",
-    description: "Render each page as a PNG image. Returned as a single ZIP.",
+    description: "Render each page as a PNG image and download them in one ZIP file.",
   },
   pdf_edit: {
     icon: "edit_document",
@@ -61,9 +61,17 @@ export const OPERATION_UI = {
     icon: "text_fields",
     description: "Extract plain text from the Word document. Formatting is dropped.",
   },
+  docx_to_pdf: {
+    icon: "picture_as_pdf",
+    description: "Create a clean readable PDF from paragraphs and tables.",
+  },
   xlsx_to_csv: {
     icon: "table_chart",
     description: "Export the first sheet of the spreadsheet as a CSV file.",
+  },
+  xlsx_to_pdf: {
+    icon: "picture_as_pdf",
+    description: "Create a readable PDF table from the first sheet.",
   },
 
   // ── Image ops ──────────────────────────────────────────────────────────

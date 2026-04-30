@@ -13,7 +13,7 @@ IMAGE_TARGETS = ["png", "jpg", "jpeg", "webp", "gif"]
 #
 # Operations intentionally not exposed here:
 # - PDF merge/split/rotate/compress/annotate backend edits
-# - DOCX/XLSX/PPT -> PDF
+# - PPT/PPTX -> PDF
 # - OCR, PPT/PPTX, video processing, paid jobs
 # - multi-file flows
 #
@@ -111,7 +111,7 @@ OPERATIONS: dict[str, dict] = {
             }
         },
         "category": "convert",
-        "label": "PDF to Images (PNG per page)",
+        "label": "PDF to PNG images (.zip)",
         "lambda_suffix": "pdf-to-image",
     },
     "image_to_pdf": {
@@ -159,6 +159,19 @@ OPERATIONS: dict[str, dict] = {
         "label": "Word to Text (.txt)",
         "lambda_suffix": "docx-to-txt",
     },
+    "docx_to_pdf": {
+        "intent": "convert",
+        "kind": "backend_job",
+        "input_types": ["docx"],
+        "output_type": "pdf",
+        "targets": ["pdf"],
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {},
+        "category": "convert",
+        "label": "Word to PDF",
+        "lambda_suffix": "docx-to-pdf",
+    },
     "xlsx_to_csv": {
         "intent": "convert",
         "kind": "backend_job",
@@ -178,6 +191,26 @@ OPERATIONS: dict[str, dict] = {
         "category": "convert",
         "label": "Excel to CSV (first sheet)",
         "lambda_suffix": "xlsx-to-csv",
+    },
+    "xlsx_to_pdf": {
+        "intent": "convert",
+        "kind": "backend_job",
+        "input_types": ["xlsx"],
+        "output_type": "pdf",
+        "targets": ["pdf"],
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {
+            "sheet": {
+                "type": "string",
+                "required": False,
+                "maxLength": 64,
+                "default": "",
+            }
+        },
+        "category": "convert",
+        "label": "Excel to PDF",
+        "lambda_suffix": "xlsx-to-pdf",
     },
 }
 
@@ -293,7 +326,7 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
             return ValidationResult(ok=False, error=err_msg)
         cleaned["dpi"] = int(raw_dpi)
 
-    if operation == "xlsx_to_csv":
+    if operation in ("xlsx_to_csv", "xlsx_to_pdf"):
         ok_flag, err_msg = _limit_str(params.get("sheet"), name="sheet", max_len=64)
         if not ok_flag:
             return ValidationResult(ok=False, error=err_msg)

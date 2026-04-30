@@ -460,6 +460,23 @@ module "lambda_xlsx_to_csv" {
   layer_arns            = local.lambda_layer_arns
 }
 
+module "lambda_xlsx_to_pdf" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "xlsx-to-pdf"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 120
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/xlsx_to_pdf.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
 module "lambda_docx_to_txt" {
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
@@ -470,6 +487,23 @@ module "lambda_docx_to_txt" {
   timeout               = 60
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/docx_to_txt.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_docx_to_pdf" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "docx-to-pdf"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 120
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/docx_to_pdf.zip"
   environment_variables = local.lambda_common_env
   common_tags           = local.common_tags
   dynamodb_table_arns   = local.dynamodb_arns
@@ -643,7 +677,9 @@ module "lambda_dispatch_job" {
         module.lambda_pdf_split.function_arn,
         module.lambda_pdf_to_docx.function_arn,
         module.lambda_xlsx_to_csv.function_arn,
+        module.lambda_xlsx_to_pdf.function_arn,
         module.lambda_docx_to_txt.function_arn,
+        module.lambda_docx_to_pdf.function_arn,
         module.lambda_image_to_pdf.function_arn,
         module.lambda_pdf_to_image.function_arn,
         module.lambda_pdf_to_txt.function_arn,

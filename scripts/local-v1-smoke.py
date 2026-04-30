@@ -182,7 +182,9 @@ class Stage1LocalSmoke(unittest.TestCase):
                 "image_to_pdf",
                 "image_convert",
                 "docx_to_txt",
+                "docx_to_pdf",
                 "xlsx_to_csv",
+                "xlsx_to_pdf",
             },
         )
         hidden = {
@@ -193,8 +195,6 @@ class Stage1LocalSmoke(unittest.TestCase):
             "pdf_rotate",
             "pdf_annotate",
             "pdf_extract_text",
-            "docx_to_pdf",
-            "xlsx_to_pdf",
             "ppt_to_pdf",
         }
         self.assertTrue(ids.isdisjoint(hidden))
@@ -285,7 +285,9 @@ class Stage1LocalSmoke(unittest.TestCase):
             ("image_to_pdf", lambda mod: setattr(mod, "_image_to_pdf", lambda _data: b"pdf"), "output.pdf", {}),
             ("image_convert", lambda mod: setattr(mod, "_process", lambda _data, _body: (b"webp", _body["target_format"])), "converted.webp", {"target_format": "webp"}),
             ("docx_to_txt", lambda mod: setattr(mod, "_extract_docx_text", lambda _data: b"text"), "output.txt", {}),
+            ("docx_to_pdf", lambda mod: setattr(mod, "_docx_to_pdf", lambda _data: b"pdf"), "output.pdf", {}),
             ("xlsx_to_csv", lambda mod: setattr(mod, "_xlsx_to_csv", lambda _data, sheet_name: f"csv-{sheet_name}".encode()), "output.csv", {"sheet": "Sheet1"}),
+            ("xlsx_to_pdf", lambda mod: setattr(mod, "_xlsx_to_pdf", lambda _data, sheet_name: f"pdf-{sheet_name}".encode()), "output.pdf", {"sheet": "Sheet1"}),
         ]
 
         for module_name, patch_core, expected_name, extra in workers:

@@ -249,9 +249,9 @@ export function OperationPicker({ file, onPick, onBack }) {
                   ref={idx === 0 ? firstButtonRef : null}
                   type="button"
                   onClick={() => setChosenIntent(intent)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/10 hover:border-primary/30 hover:shadow-sm transition-all text-left group"
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/40 hover:border-primary/50 hover:shadow-sm active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-all text-left group"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
                     <span className="material-symbols-outlined text-primary text-[24px]">
                       {meta.icon}
                     </span>
@@ -261,7 +261,7 @@ export function OperationPicker({ file, onPick, onBack }) {
                     <p className="text-sm text-on-surface-variant mt-0.5">
                       {meta.description}
                     </p>
-                    <p className="text-xs text-on-surface-variant/70 mt-1">
+                    <p className="text-xs text-on-surface-variant mt-1">
                       {count} option{count === 1 ? "" : "s"}
                     </p>
                   </div>
@@ -308,9 +308,9 @@ export function OperationPicker({ file, onPick, onBack }) {
                 ref={idx === 0 ? firstButtonRef : null}
                 type="button"
                 onClick={() => onPick(op)}
-                className="w-full flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/10 hover:border-primary/30 hover:shadow-sm transition-all text-left group"
+                className="w-full flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant/40 hover:border-primary/50 hover:shadow-sm active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-all text-left group"
               >
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-primary text-[24px]">
                     {ui.icon}
                   </span>

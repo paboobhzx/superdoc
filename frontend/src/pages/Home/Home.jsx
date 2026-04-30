@@ -89,7 +89,7 @@ export function Home() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 md:py-14">
       <section className="text-center mb-12">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-primary text-xs font-semibold mb-6">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-semibold mb-6">
           <span className="material-symbols-outlined text-[16px]">verified</span>
           Free forever · No account needed · No dark patterns
         </div>
@@ -130,7 +130,7 @@ export function Home() {
           <p className="text-sm text-on-surface-variant">or click to browse</p>
           <div className="flex flex-wrap justify-center gap-2 mt-2">
             {SUPPORTED_FORMATS.map((fmt) => (
-              <span key={fmt} className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-surface-container text-on-surface-variant border border-outline-variant/10">
+              <span key={fmt} className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-surface-container text-on-surface-variant border border-outline-variant/40">
                 {fmt}
               </span>
             ))}
