@@ -1,67 +1,132 @@
-// frontend/src/pages/Home/Home.jsx
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
-import { OperationPicker } from "./OperationPicker"
+import { api } from "../../lib/api"
 import { dispatchPick } from "./pickerRouting"
+import { buildTargetGridChoices, findClientEditorOperation, TARGET_GRID } from "./targetGrid"
 
-const SUPPORTED_FORMATS = ["PDF", "DOCX", "XLSX", "JPG", "PNG", "WEBP", "GIF"]
-const ACCEPT = "application/pdf,.docx,.xlsx,.jpg,.jpeg,.png,.webp,.gif"
+const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "XLSX", "TXT"]
+const ACCEPT = "application/pdf,.docx,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.md,.markdown,.html,.htm,.txt"
 
+const FORMAT_CARDS = [
+  { from: "PDF", to: "DOCX", label: "PDF to Word", desc: "Editable Word document from a PDF." },
+  { from: "DOCX", to: "PDF", label: "Word to PDF", desc: "A clean, shareable PDF from Word files." },
+  { from: "MD", to: "DOCX", label: "Markdown to Word", desc: "Formatted .docx from Markdown source." },
+  { from: "HTML", to: "DOCX", label: "HTML to Word", desc: "Word documents from HTML snippets." },
+  { from: "IMG", to: "PDF", label: "Images to PDF", desc: "Wrap images into document-ready PDFs." },
+  { from: "PDF", to: "PNG", label: "PDF to Image", desc: "Render pages as high-resolution images." },
+]
+
+const HOW_STEPS = [
+  { icon: "upload_file", n: "01", title: "Drop your file", body: "Drag a file onto the converter or browse from your device." },
+  { icon: "view_module", n: "02", title: "Choose format", body: "SuperDoc detects the input and enables the formats the backend supports." },
+  { icon: "download", n: "03", title: "Download result", body: "Processing runs as a real job, then unlocks your download when it is ready." },
+]
+
+const TRUST_ITEMS = [
+  { icon: "lock", title: "Private by default", body: "Anonymous files are short-lived. Saved files require your account." },
+  { icon: "bolt", title: "Fast jobs", body: "Upload, processing, and download progress stay visible." },
+  { icon: "public", title: "Browser based", body: "Use it on desktop or mobile without installing an app." },
+  { icon: "restart_alt", title: "Honest targets", body: "Unsupported formats stay visible but disabled until the backend supports them." },
+]
+
+const FAQ_ITEMS = [
+  { q: "Is SuperDoc really free?", a: "Yes. Core conversion works without an account. Accounts are only needed for saved files." },
+  { q: "What happens to unsupported formats?", a: "They remain visible as coming soon targets. SuperDoc never sends unsupported conversion jobs to the API." },
+  { q: "Can I edit files too?", a: "Yes. When the catalog exposes a browser editor for the selected file, the Edit action appears next to the converter." },
+  { q: "Do routes and saved files still work?", a: "Yes. Uploads, job polling, editor routing, authentication, and dashboard files use the existing backend flow." },
+]
+
+function extensionOf(file) {
+  const name = file?.name || ""
+  const dot = name.lastIndexOf(".")
+  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : ""
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return "-"
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
 
 export function Home() {
   const navigate = useNavigate()
   const auth = useAuth()
 
-  const [phase, setPhase] = useState("drop")
   const [pendingFile, setPendingFile] = useState(null)
+  const [operations, setOperations] = useState([])
+  const [loadingOps, setLoadingOps] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState(null)
   const [dragging, setDragging] = useState(false)
+  const [openFaq, setOpenFaq] = useState(null)
   const inputRef = useRef(null)
 
+  const inputType = extensionOf(pendingFile)
+
   const resetToDrop = useCallback(() => {
-    setPhase("drop")
     setPendingFile(null)
+    setOperations([])
     setErr(null)
   }, [])
 
   const handleFiles = useCallback((files) => {
     const list = Array.from(files || []).filter(Boolean)
-    if (list.length === 0) {
-      return
-    }
+    if (list.length === 0) return
     if (list.length > 1) {
       setErr("Multiple-file workflows are not available yet. Upload one file at a time.")
       return
     }
     setErr(null)
     setPendingFile(list[0])
-    setPhase("pick")
   }, [])
 
-  // Called by OperationPicker when the user selects an operation. Routes
-  // via dispatchPick which knows about backend_job / client_editor /
-  // paid_backend_job kinds.
+  useEffect(() => {
+    if (!pendingFile) return
+    let cancelled = false
+    setLoadingOps(true)
+    setErr(null)
+
+    api.getOperations(inputType)
+      .then((data) => {
+        if (cancelled) return
+        setOperations(data?.operations || [])
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setOperations([])
+        setErr(e.message || "Could not load available actions")
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingOps(false)
+      })
+
+    return () => { cancelled = true }
+  }, [pendingFile, inputType])
+
+  const gridChoices = useMemo(
+    () => buildTargetGridChoices(inputType, operations),
+    [inputType, operations],
+  )
+  const editOperation = useMemo(() => findClientEditorOperation(operations), [operations])
+
   const handlePick = useCallback(async (opMeta) => {
-    if (!pendingFile) {
-      resetToDrop()
-      return
-    }
+    if (!pendingFile || !opMeta || uploading) return
     setErr(null)
     setUploading(true)
     try {
-      const session_id = sessionStorage.getItem("superdoc_session") || crypto.randomUUID()
-      sessionStorage.setItem("superdoc_session", session_id)
+      const sessionId = sessionStorage.getItem("superdoc_session") || crypto.randomUUID()
+      sessionStorage.setItem("superdoc_session", sessionId)
 
       const target = await dispatchPick(opMeta, {
         file: pendingFile,
         auth,
-        sessionId: session_id,
+        sessionId,
       })
 
-      setPhase("drop")
       setPendingFile(null)
+      setOperations([])
 
       if (target.type === "external") {
         window.location.href = target.url
@@ -70,85 +135,247 @@ export function Home() {
       navigate(target.path)
     } catch (e) {
       setErr(e.message || "Action failed - please try again")
-      // Stay on the picker so the user can try a different operation.
     } finally {
       setUploading(false)
     }
-  }, [pendingFile, auth, navigate, resetToDrop])
-
-  if (phase === "pick" && pendingFile) {
-    return (
-      <OperationPicker
-        file={pendingFile}
-        onPick={handlePick}
-        onBack={resetToDrop}
-      />
-    )
-  }
+  }, [pendingFile, auth, navigate, uploading])
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 md:py-14">
-      <section className="text-center mb-12">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-semibold mb-6">
-          <span className="material-symbols-outlined text-[16px]">verified</span>
-          Free forever · No account needed · No dark patterns
+    <div className="min-h-[calc(100vh-60px)]">
+      <section className="mx-auto w-full max-w-5xl px-4 pb-12 pt-12 md:pb-16 md:pt-20">
+        <div className="mb-12 flex animate-[fade-up_0.6s_ease_both] flex-col items-center gap-5 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/50 bg-primary/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-primary">
+            <span className="material-symbols-outlined text-[14px]">bolt</span>
+            Free · No signup required
+          </div>
+          <h1 className="max-w-3xl font-headline text-[clamp(2.4rem,7vw,4.6rem)] font-extrabold leading-[1.02] text-on-surface">
+            Convert any file,<br />
+            <span className="text-primary">instantly.</span>
+          </h1>
+          <p className="max-w-xl text-[17px] font-light leading-7 text-on-surface-variant">
+            PDF, DOCX, Markdown, HTML, images, and spreadsheets. Drop it in and pick the exact output SuperDoc can create today.
+          </p>
         </div>
-        <h1 className="text-4xl md:text-5xl font-extrabold font-headline text-on-surface leading-tight mb-4">
-          Convert, Edit &<br />
-          <span className="text-primary">Transform Any File.</span>
-        </h1>
-        <p className="text-on-surface-variant max-w-xl mx-auto mb-8">
-          Upload a PDF, Word doc, spreadsheet, or image and choose what to do.
-          Serverless, honest, and fast - no forced signups, no hidden fees.
-        </p>
+
+        <div className="overflow-hidden rounded-[var(--radius-xl)] border border-outline-variant bg-surface-container-lowest shadow-[var(--shadow-glow)] animate-[fade-up_0.7s_0.1s_ease_both]">
+          {!pendingFile ? (
+            <div
+              className={`m-0 flex cursor-pointer flex-col items-center gap-4 rounded-[var(--radius-xl)] border-2 border-dashed px-5 py-12 text-center transition-all md:px-10 md:py-14 ${
+                dragging ? "border-primary bg-primary/10" : "border-transparent hover:bg-surface-container-low"
+              } ${uploading ? "pointer-events-none opacity-50" : ""}`}
+              aria-label="File upload drop zone"
+              onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false) }}
+              onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files) }}
+              onClick={() => !uploading && inputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && !uploading && inputRef.current?.click()}
+            >
+              <input
+                ref={inputRef}
+                type="file"
+                accept={ACCEPT}
+                className="hidden"
+                onChange={(e) => { handleFiles(e.target.files); e.target.value = "" }}
+              />
+              <div className={`flex h-[72px] w-[72px] items-center justify-center rounded-[var(--radius-lg)] border transition-all ${
+                dragging
+                  ? "animate-[float-soft_1.2s_ease-in-out_infinite] border-primary/50 bg-primary/20 text-primary"
+                  : "border-outline-variant bg-surface-container-low text-outline"
+              }`}>
+                <span className="material-symbols-outlined text-[30px]">
+                  {dragging ? "file_download" : "upload_file"}
+                </span>
+              </div>
+              <div>
+                <h2 className="mb-1 font-headline text-lg font-semibold text-on-surface">
+                  {dragging ? "Drop it" : "Drop your file here"}
+                </h2>
+                <p className="text-sm text-on-surface-variant">
+                  or <span className="text-primary underline underline-offset-4">browse to upload</span>
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-center gap-2">
+                {SUPPORTED_FORMATS.map((fmt) => (
+                  <span key={fmt} className="rounded-full border border-outline-variant bg-surface-container-low px-2.5 py-1 text-[11px] font-bold tracking-[0.08em] text-outline">
+                    {fmt}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-5 md:p-10">
+              <div className="mb-7 flex items-center gap-3 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-low p-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] border border-primary/50 bg-primary/10 text-primary">
+                  <span className="material-symbols-outlined text-[22px]">description</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-on-surface">{pendingFile.name}</p>
+                  <p className="mt-0.5 text-xs text-on-surface-variant">{inputType.toUpperCase()} · {formatFileSize(pendingFile.size)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetToDrop}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border border-outline-variant text-outline transition-colors hover:border-error hover:text-error"
+                  aria-label="Clear selected file"
+                >
+                  <span className="material-symbols-outlined text-[17px]">close</span>
+                </button>
+              </div>
+
+              <div className="mb-7">
+                <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-outline">Convert to</div>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                  {(loadingOps ? TARGET_GRID.map((item) => ({ ...item, enabled: false, disabledReason: "Loading" })) : gridChoices).map((choice) => (
+                    <button
+                      key={choice.target}
+                      type="button"
+                      disabled={!choice.enabled || uploading || loadingOps}
+                      onClick={() => handlePick(choice.opMeta)}
+                      className={`min-h-[74px] rounded-[var(--radius-md)] border p-3 text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                        choice.enabled
+                          ? "border-outline-variant bg-surface-container-low text-on-surface hover:border-primary/70 hover:bg-primary/10"
+                          : "cursor-not-allowed border-outline-variant bg-surface-container-low text-outline opacity-70"
+                      }`}
+                    >
+                      <span className="block font-headline text-sm font-bold">{choice.label}</span>
+                      <span className="mt-0.5 block text-[11px] text-on-surface-variant">
+                        {choice.enabled ? choice.description : choice.disabledReason}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  disabled={!editOperation || uploading || loadingOps}
+                  onClick={() => handlePick(editOperation)}
+                  className="sd-button-secondary min-h-12 px-5 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                  {editOperation ? "Edit" : "Edit unavailable"}
+                </button>
+                <div className="flex-1 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container px-4 py-3 text-xs text-on-surface-variant">
+                  {uploading ? "Uploading and starting the job..." : loadingOps ? "Checking available operations..." : "Pick an enabled target to start a real conversion job."}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {err && (
+          <div className="mt-6 flex items-center gap-3 rounded-[var(--radius-md)] border border-error/20 bg-error-container px-4 py-3 text-on-error-container">
+            <span className="material-symbols-outlined text-error text-[20px]">warning</span>
+            <span className="text-sm font-medium">{err}</span>
+          </div>
+        )}
       </section>
 
-      <div
-        className={`relative rounded-2xl border-2 border-dashed transition-all cursor-pointer mb-12 ${
-          dragging
-            ? 'border-primary bg-primary/5 scale-[1.01]'
-            : 'border-outline-variant/30 bg-surface-container-lowest hover:border-primary/40'
-        } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-        aria-label="File upload drop zone"
-        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false) }}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files) }}
-        onClick={() => !uploading && inputRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && !uploading && inputRef.current?.click()}
-      >
-        <input ref={inputRef} type="file" accept={ACCEPT} className="hidden"
-          onChange={(e) => { handleFiles(e.target.files); e.target.value = "" }} />
-        <div className="flex flex-col items-center py-12 gap-3">
-          <span className="material-symbols-outlined text-[40px] text-on-surface-variant">
-            {dragging ? 'file_download' : 'upload_file'}
-          </span>
-          <p className="text-lg font-semibold text-on-surface">
-            {uploading ? 'Uploading...' : dragging ? 'Release to upload' : 'Drop any file here'}
+      <section id="formats" className="mx-auto w-full max-w-5xl px-4 py-14">
+        <div className="mb-8">
+          <div className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">Supported conversions</div>
+          <h2 className="font-headline text-3xl font-bold leading-tight text-on-surface md:text-4xl">Every format you need</h2>
+          <p className="mt-3 max-w-xl text-sm leading-7 text-on-surface-variant">
+            Everyday office docs, developer formats, and images use the same direct conversion surface.
           </p>
-          <p className="text-sm text-on-surface-variant">or click to browse</p>
-          <div className="flex flex-wrap justify-center gap-2 mt-2">
-            {SUPPORTED_FORMATS.map((fmt) => (
-              <span key={fmt} className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-surface-container text-on-surface-variant border border-outline-variant/40">
-                {fmt}
-              </span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {FORMAT_CARDS.map((card) => (
+            <div key={card.label} className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-5 transition-all hover:border-primary/50 hover:bg-primary/5">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="rounded-[6px] bg-primary/10 px-2.5 py-1 font-headline text-xs font-extrabold text-primary">{card.from}</span>
+                <span className="material-symbols-outlined text-[16px] text-outline">arrow_forward</span>
+                <span className="rounded-[6px] bg-primary/10 px-2.5 py-1 font-headline text-xs font-extrabold text-primary">{card.to}</span>
+              </div>
+              <h3 className="font-headline font-semibold text-on-surface">{card.label}</h3>
+              <p className="mt-1 text-sm leading-6 text-on-surface-variant">{card.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="how" className="mx-auto w-full max-w-5xl px-4 py-14">
+        <div className="rounded-[var(--radius-xl)] border border-outline-variant bg-surface-container-lowest p-6 md:p-10">
+          <div className="mb-8">
+            <div className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">Process</div>
+            <h2 className="font-headline text-3xl font-bold leading-tight text-on-surface">Three steps, done.</h2>
+          </div>
+          <div className="grid gap-7 md:grid-cols-3">
+            {HOW_STEPS.map((step) => (
+              <div key={step.n}>
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-primary/50 bg-primary/10 text-primary">
+                    <span className="material-symbols-outlined text-[19px]">{step.icon}</span>
+                  </span>
+                  <span className="font-headline text-sm font-extrabold tracking-[0.08em] text-outline">{step.n}</span>
+                </div>
+                <h3 className="font-headline text-lg font-semibold text-on-surface">{step.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-on-surface-variant">{step.body}</p>
+              </div>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {err && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-error-container/20 border border-error/20 text-on-error-container mb-8">
-          <span className="material-symbols-outlined text-error text-[20px]">warning</span>
-          <span className="text-sm font-medium">{err}</span>
+      <section className="mx-auto w-full max-w-5xl px-4 py-8">
+        <div className="grid gap-3 md:grid-cols-4">
+          {TRUST_ITEMS.map((item) => (
+            <div key={item.title} className="flex gap-3 rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border border-primary/50 bg-primary/10 text-primary">
+                <span className="material-symbols-outlined text-[17px]">{item.icon}</span>
+              </span>
+              <div>
+                <h3 className="text-sm font-semibold text-on-surface">{item.title}</h3>
+                <p className="mt-1 text-xs leading-5 text-on-surface-variant">{item.body}</p>
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+      </section>
 
-      <p className="text-center text-xs text-on-surface-variant pb-8">
-        <span className="material-symbols-outlined text-[14px] align-middle mr-1">lock</span>
-        Anonymous files delete after 12 hours. Registered users keep up to 10 files for 7 days.
-      </p>
+      <section id="faq" className="mx-auto w-full max-w-5xl px-4 py-14">
+        <div className="mb-7">
+          <div className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">FAQ</div>
+          <h2 className="font-headline text-3xl font-bold leading-tight text-on-surface">Common questions</h2>
+        </div>
+        <div className="space-y-2">
+          {FAQ_ITEMS.map((item, index) => (
+            <div key={item.q} className={`overflow-hidden rounded-[var(--radius-md)] border bg-surface-container-lowest transition-colors ${openFaq === index ? "border-primary/50" : "border-outline-variant"}`}>
+              <button
+                type="button"
+                onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+              >
+                <span className="font-headline text-sm font-semibold text-on-surface">{item.q}</span>
+                <span className={`material-symbols-outlined text-[19px] text-outline transition-transform ${openFaq === index ? "rotate-180" : ""}`}>expand_more</span>
+              </button>
+              {openFaq === index && (
+                <p className="px-5 pb-5 text-sm leading-7 text-on-surface-variant animate-[fade-in_0.2s_ease]">{item.a}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <footer className="border-t border-outline-variant px-4 py-7">
+        <div className="mx-auto flex max-w-5xl flex-col justify-between gap-4 text-sm text-outline sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2">
+            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[5px] bg-primary">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" fill="#0c0c0e" /></svg>
+            </span>
+            <span className="font-headline font-bold text-on-surface">SuperDoc</span>
+            <span>© 2026</span>
+          </div>
+          <div className="flex gap-5">
+            <a className="text-outline no-underline hover:text-on-surface" href="#formats">Formats</a>
+            <a className="text-outline no-underline hover:text-on-surface" href="#how">Process</a>
+            <a className="text-outline no-underline hover:text-on-surface" href="#faq">FAQ</a>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom"
 import { OperationPicker } from "../pages/Home/OperationPicker"
+import { buildTargetGridChoices, findClientEditorOperation } from "../pages/Home/targetGrid"
 
 vi.mock("../lib/api", () => ({
   api: {
@@ -180,5 +181,81 @@ describe("OperationPicker", () => {
     await waitFor(() => {
       expect(screen.getByText(/no actions available/i)).toBeInTheDocument()
     })
+  })
+})
+
+describe("target grid choices", () => {
+  it("expands required target_format operations into static grid entries", () => {
+    const choices = buildTargetGridChoices("md", [
+      {
+        operation: "markdown_convert",
+        kind: "backend_job",
+        intent: "convert",
+        label: "Convert Markdown",
+        targets: ["pdf", "docx", "png"],
+        params_schema: {
+          target_format: { required: true, enum: ["pdf", "docx", "png"] },
+        },
+      },
+    ])
+
+    expect(choices.find((choice) => choice.target === "pdf")).toMatchObject({
+      enabled: true,
+      opMeta: expect.objectContaining({
+        operation: "markdown_convert",
+        params: { target_format: "pdf" },
+      }),
+    })
+    expect(choices.find((choice) => choice.target === "docx")?.enabled).toBe(true)
+    expect(choices.find((choice) => choice.target === "xlsx")).toMatchObject({
+      enabled: false,
+      disabledReason: "Coming soon",
+    })
+  })
+
+  it("keeps unsupported targets disabled and visible", () => {
+    const choices = buildTargetGridChoices("pdf", [
+      { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word", targets: ["docx"] },
+    ])
+
+    expect(choices.map((choice) => choice.target)).toEqual(["pdf", "docx", "png", "jpg", "md", "html", "xlsx", "txt"])
+    expect(choices.find((choice) => choice.target === "docx")?.enabled).toBe(true)
+    expect(choices.find((choice) => choice.target === "html")).toMatchObject({
+      enabled: false,
+      disabledReason: "Coming soon",
+    })
+  })
+
+  it("skips same-format image conversion targets", () => {
+    const choices = buildTargetGridChoices("png", [
+      { operation: "image_convert", kind: "backend_job", intent: "convert", label: "Convert image", targets: ["png", "jpg"] },
+    ])
+
+    expect(choices.find((choice) => choice.target === "png")?.enabled).toBe(false)
+    expect(choices.find((choice) => choice.target === "jpg")?.opMeta).toMatchObject({
+      operation: "image_convert",
+      params: { target_format: "jpg" },
+    })
+  })
+
+  it("prefers the first operation returned for duplicate targets", () => {
+    const choices = buildTargetGridChoices("pdf", [
+      { operation: "first_pdf_to_txt", kind: "backend_job", intent: "convert", label: "First", targets: ["txt"] },
+      { operation: "second_pdf_to_txt", kind: "backend_job", intent: "convert", label: "Second", targets: ["txt"] },
+    ])
+
+    expect(choices.find((choice) => choice.target === "txt")?.opMeta.operation).toBe("first_pdf_to_txt")
+  })
+
+  it("finds the client editor operation separately from conversion targets", () => {
+    const edit = { operation: "doc_edit", kind: "client_editor", intent: "edit", label: "Edit" }
+    const choices = buildTargetGridChoices("docx", [
+      edit,
+      { operation: "docx_to_pdf", kind: "backend_job", intent: "convert", label: "Word to PDF", targets: ["pdf"] },
+    ])
+
+    expect(findClientEditorOperation([edit])).toBe(edit)
+    expect(choices.find((choice) => choice.target === "pdf")?.enabled).toBe(true)
+    expect(choices.find((choice) => choice.target === "docx")?.enabled).toBe(false)
   })
 })

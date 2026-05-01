@@ -2,11 +2,35 @@
 @import "tailwindcss";
 
 @layer base {
+  html {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    scroll-behavior: smooth;
+  }
+
   body {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    min-height: 100%;
+    font-family: var(--font-body);
     background-color: var(--color-background);
     color: var(--color-on-surface);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: var(--noise);
+    opacity: 1;
+    z-index: -1;
+  }
+
+  ::selection {
+    background: var(--amber);
+    color: #0c0c0e;
   }
 
   .material-symbols-outlined {
@@ -17,10 +41,17 @@
   }
 
   ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: var(--color-surface-container-low); }
+  ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-outline-variant);
+    background: var(--border);
     border-radius: 3px;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
   }
 }
 
@@ -29,5 +60,70 @@
   .float-label-group input:not(:placeholder-shown) ~ label {
     transform: translateY(-1.5rem) scale(0.85);
     color: var(--color-primary);
+  }
+
+  .sd-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow);
+  }
+
+  .sd-panel-soft {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  .sd-button-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--amber);
+    background: var(--amber);
+    color: #0c0c0e;
+    font-family: var(--font-display);
+    font-weight: 700;
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  }
+
+  .sd-button-primary:hover:not(:disabled) {
+    background: var(--amber-bright);
+    box-shadow: 0 6px 20px var(--amber-glow-strong);
+    transform: translateY(-1px);
+  }
+
+  .sd-button-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-weight: 600;
+    transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+  }
+
+  .sd-button-secondary:hover:not(:disabled) {
+    border-color: var(--border-active);
+    color: var(--text-primary);
+    background: var(--bg-card-hover);
+  }
+
+  .sd-input {
+    width: 100%;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text-primary);
+  }
+
+  .sd-input:focus {
+    outline: 2px solid var(--amber);
+    outline-offset: -1px;
   }
 }

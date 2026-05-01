@@ -65,12 +65,12 @@ export function ConfirmEmail() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-[400px] bg-surface-container-lowest rounded-[14px] shadow-lg border border-outline-variant/10 p-8 text-center">
-        <span className="material-symbols-outlined text-primary text-[48px] animate-bounce mb-4 inline-block"
+      <div className="w-full max-w-[400px] sd-panel p-8 text-center">
+        <span className="material-symbols-outlined text-primary text-[48px] mb-4 inline-block"
           style={{ fontVariationSettings: "'FILL' 1" }}>
           mail
         </span>
-        <h1 className="text-2xl font-bold text-on-surface mb-2">Check your email</h1>
+        <h1 className="text-2xl font-bold font-headline text-on-surface mb-2">Check your email</h1>
         <p className="text-sm text-on-surface-variant mb-8">
           We sent a code to <strong className="text-on-surface">{email || 'your email'}</strong>
         </p>
@@ -86,7 +86,7 @@ export function ConfirmEmail() {
               value={digit}
               onChange={(e) => handleChange(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
-              className="w-12 h-14 text-center text-xl font-mono font-bold rounded-xl bg-surface-container border border-outline-variant/20 text-on-surface focus:outline-2 focus:outline-primary focus:-outline-offset-1"
+              className="sd-input w-12 h-14 text-center text-xl font-mono font-bold"
             />
           ))}
         </div>
@@ -94,7 +94,7 @@ export function ConfirmEmail() {
         <button
           onClick={onConfirm}
           disabled={loading}
-          className="w-full px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity mb-3 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="sd-button-primary w-full px-5 py-3 text-sm mb-3 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {loading ? 'Confirming…' : 'Confirm'}
         </button>
@@ -102,7 +102,7 @@ export function ConfirmEmail() {
         <button
           onClick={onResend}
           disabled={loading || countdown > 0}
-          className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-outline-variant/20 text-on-surface-variant font-semibold text-sm hover:bg-surface-container transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          className="sd-button-secondary w-full px-5 py-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-[16px]">refresh</span>
           {countdown > 0 ? `Resend code (${countdown}s)` : 'Resend code'}

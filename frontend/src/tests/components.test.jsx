@@ -9,18 +9,18 @@ import { ThemeProvider, useTheme } from "../context/ThemeContext";
 describe("ThemeContext", () => {
   afterEach(() => localStorage.clear());
 
-  it("defaults to azure theme", () => {
+  it("defaults to dark theme", () => {
     const { result } = renderHook(() => useTheme(), {
       wrapper: ({ children }) => <ThemeProvider>{children}</ThemeProvider>,
     });
-    expect(result.current.theme).toBe("azure");
+    expect(result.current.theme).toBe("dark");
   });
 
-  it("provides 5 themes", () => {
+  it("provides dark and light themes", () => {
     const { result } = renderHook(() => useTheme(), {
       wrapper: ({ children }) => <ThemeProvider>{children}</ThemeProvider>,
     });
-    expect(result.current.themes).toHaveLength(5);
+    expect(result.current.themes.map((theme) => theme.id)).toEqual(["dark", "light"]);
   });
 });
 
@@ -36,9 +36,9 @@ describe("Home page", () => {
         </ThemeProvider>
       </BrowserRouter>
     );
-    expect(screen.getByText(/Transform Any File/)).toBeTruthy();
-    expect(screen.getByText("Drop any file here")).toBeTruthy();
-    expect(screen.getByText(/Upload a PDF, Word doc, spreadsheet, or image/)).toBeTruthy();
+    expect(screen.getByText(/Convert any file/)).toBeTruthy();
+    expect(screen.getByText("Drop your file here")).toBeTruthy();
+    expect(screen.getByText(/PDF, DOCX, Markdown, HTML/)).toBeTruthy();
   });
 
   it("shows drop zone with format pills", async () => {
@@ -50,9 +50,9 @@ describe("Home page", () => {
         </ThemeProvider>
       </BrowserRouter>
     );
-    expect(screen.getByText("Drop any file here")).toBeTruthy();
+    expect(screen.getByText("Drop your file here")).toBeTruthy();
     ["PDF", "DOCX", "XLSX", "PNG"].forEach((fmt) => {
-      expect(screen.getByText(fmt)).toBeTruthy();
+      expect(screen.getAllByText(fmt).length).toBeGreaterThan(0);
     });
   });
 });
@@ -181,11 +181,11 @@ describe("Settings page", () => {
     expect(screen.getByText("Profile")).toBeTruthy();
     expect(screen.getByText("Security")).toBeTruthy();
     expect(screen.getByText("Notifications")).toBeTruthy();
-    expect(screen.getByText("Theme")).toBeTruthy();
+    expect(screen.getByText("Appearance")).toBeTruthy();
     expect(screen.getByText("Danger Zone")).toBeTruthy();
   });
 
-  it("shows 5 theme swatches", async () => {
+  it("shows the dark/light appearance toggle", async () => {
     const { Settings } = await import("../pages/Settings");
     render(
       <BrowserRouter>
@@ -194,11 +194,7 @@ describe("Settings page", () => {
         </ThemeProvider>
       </BrowserRouter>
     );
-    expect(screen.getByText("Azure")).toBeTruthy();
-    expect(screen.getByText("Dark")).toBeTruthy();
-    expect(screen.getByText("Orange")).toBeTruthy();
-    expect(screen.getByText("Galaxy")).toBeTruthy();
-    expect(screen.getByText("Brasil")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Switch to light/i })).toBeTruthy();
   });
 });
 
@@ -221,7 +217,7 @@ describe("AppShell", () => {
     expect(screen.getByText("SuperDoc")).toBeTruthy();
   });
 
-  it("renders theme switcher with 5 dots", async () => {
+  it("renders dark/light theme toggle", async () => {
     const { default: AppShell } = await import(
       "../components/layout/AppShell"
     );
@@ -234,12 +230,10 @@ describe("AppShell", () => {
         </ThemeProvider>
       </BrowserRouter>
     );
-    // Each theme dot is a button with a title attribute
-    const dots = document.querySelectorAll("header button[title]");
-    expect(dots).toHaveLength(5);
+    expect(screen.getByRole("button", { name: /Switch to light mode/i })).toBeTruthy();
   });
 
-  it("does not render dormant navigation links", async () => {
+  it("renders design navigation links", async () => {
     const { default: AppShell } = await import(
       "../components/layout/AppShell"
     );
@@ -252,7 +246,10 @@ describe("AppShell", () => {
         </ThemeProvider>
       </BrowserRouter>
     );
-    expect(screen.queryByText("Files")).toBeNull();
+    expect(screen.getByText("Formats")).toBeTruthy();
+    expect(screen.getByText("How it works")).toBeTruthy();
+    expect(screen.getByText("FAQ")).toBeTruthy();
+    expect(screen.getByText("Files")).toBeTruthy();
     expect(screen.queryByText("Settings")).toBeNull();
   });
 });

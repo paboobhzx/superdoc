@@ -38,23 +38,22 @@ export function Register() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="fixed w-[500px] h-[500px] rounded-full bg-primary/10 blur-3xl -top-40 -right-40" />
-      <div className="fixed w-[400px] h-[400px] rounded-full bg-secondary-container/20 blur-3xl -bottom-32 -left-32" />
-
-      <div className="relative w-full max-w-[400px] bg-surface-container-lowest rounded-[14px] shadow-lg border border-outline-variant/10 p-8">
+      <div className="relative w-full max-w-[400px] sd-panel p-8">
         <div className="flex items-center gap-2 mb-2">
-          <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-          <span className="text-xl font-extrabold text-primary font-headline">SuperDoc</span>
+          <span className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-[8px] bg-primary">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" fill="#0c0c0e" /><path d="M10 2v3h3" stroke="#0c0c0e" strokeWidth="1.2" /><path d="M6 8l2 2 4-4" stroke="#f5f0e8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </span>
+          <span className="text-xl font-extrabold text-on-surface font-headline">SuperDoc</span>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-container/30 text-on-secondary-container text-[10px] font-semibold mb-6">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/40 bg-primary/10 text-primary text-[10px] font-semibold mb-6">
           Free forever · No credit card · No spam
         </div>
 
         <div className="space-y-4">
           <div className="relative">
             <input type="email" placeholder=" " value={email} onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-surface-container border border-outline-variant/20 text-on-surface text-sm focus:outline-2 focus:outline-primary focus:-outline-offset-1 peer" />
+              className="sd-input px-4 py-3 text-sm peer" />
             <label className="absolute left-4 top-3 text-sm text-on-surface-variant transition-all pointer-events-none origin-left peer-focus:translate-y-[-1.5rem] peer-focus:scale-[0.85] peer-focus:text-primary peer-[:not(:placeholder-shown)]:translate-y-[-1.5rem] peer-[:not(:placeholder-shown)]:scale-[0.85]">
               Email
             </label>
@@ -63,7 +62,7 @@ export function Register() {
           <div>
             <div className="relative">
               <input type={showPw ? 'text' : 'password'} placeholder=" " value={password} onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 pr-12 rounded-xl bg-surface-container border border-outline-variant/20 text-on-surface text-sm focus:outline-2 focus:outline-primary focus:-outline-offset-1 peer" />
+                className="sd-input px-4 py-3 pr-12 text-sm peer" />
               <label className="absolute left-4 top-3 text-sm text-on-surface-variant transition-all pointer-events-none origin-left peer-focus:translate-y-[-1.5rem] peer-focus:scale-[0.85] peer-focus:text-primary peer-[:not(:placeholder-shown)]:translate-y-[-1.5rem] peer-[:not(:placeholder-shown)]:scale-[0.85]">
                 Password
               </label>
@@ -82,7 +81,7 @@ export function Register() {
 
           <div className="relative">
             <input type="password" placeholder=" " value={confirm} onChange={(e) => setConfirm(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-surface-container border border-outline-variant/20 text-on-surface text-sm focus:outline-2 focus:outline-primary focus:-outline-offset-1 peer" />
+              className="sd-input px-4 py-3 text-sm peer" />
             <label className="absolute left-4 top-3 text-sm text-on-surface-variant transition-all pointer-events-none origin-left peer-focus:translate-y-[-1.5rem] peer-focus:scale-[0.85] peer-focus:text-primary peer-[:not(:placeholder-shown)]:translate-y-[-1.5rem] peer-[:not(:placeholder-shown)]:scale-[0.85]">
               Confirm password
             </label>
@@ -91,7 +90,7 @@ export function Register() {
           <button
             onClick={onSubmit}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+            className="sd-button-primary w-full px-5 py-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating…' : 'Create account'}
           </button>

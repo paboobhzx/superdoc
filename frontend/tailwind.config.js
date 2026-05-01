@@ -39,9 +39,9 @@ export default {
         'inverse-primary':           'var(--color-inverse-primary)',
       },
       fontFamily: {
-        headline: ['"Plus Jakarta Sans"', 'sans-serif'],
-        body:     ['"Plus Jakarta Sans"', 'sans-serif'],
-        label:    ['"Plus Jakarta Sans"', 'sans-serif'],
+        headline: ['"Syne"', 'sans-serif'],
+        body:     ['"DM Sans"', 'sans-serif'],
+        label:    ['"DM Sans"', 'sans-serif'],
         mono:     ['"JetBrains Mono"', 'monospace'],
       },
     },
