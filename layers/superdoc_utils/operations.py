@@ -6,6 +6,7 @@ from copy import deepcopy
 
 IMAGE_TYPES = ["png", "jpg", "jpeg", "webp", "gif"]
 IMAGE_TARGETS = ["png", "jpg", "jpeg", "webp", "gif"]
+MARKDOWN_TARGETS = ["pdf", "docx", "png", "jpg", "jpeg", "tiff"]
 
 
 # Canonical public capability catalog for the first SuperDoc flow:
@@ -145,6 +146,25 @@ OPERATIONS: dict[str, dict] = {
         "category": "convert",
         "label": "Convert image format",
         "lambda_suffix": "image-convert",
+    },
+    "markdown_convert": {
+        "intent": "convert",
+        "kind": "backend_job",
+        "input_types": ["md", "txt"],
+        "output_type": "document",
+        "targets": MARKDOWN_TARGETS,
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {
+            "target_format": {
+                "type": "string",
+                "required": True,
+                "enum": MARKDOWN_TARGETS,
+            }
+        },
+        "category": "convert",
+        "label": "Convert Markdown",
+        "lambda_suffix": "markdown-convert",
     },
     "docx_to_txt": {
         "intent": "convert",
@@ -308,11 +328,12 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
 
     cleaned: dict = {}
 
-    if operation == "image_convert":
+    if operation in ("image_convert", "markdown_convert"):
+        allowed = IMAGE_TARGETS if operation == "image_convert" else MARKDOWN_TARGETS
         ok_flag, err_msg = _one_of(
             params.get("target_format"),
             name="target_format",
-            allowed=set(IMAGE_TARGETS),
+            allowed=set(allowed),
             required=True,
         )
         if not ok_flag:

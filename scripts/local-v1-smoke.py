@@ -185,6 +185,7 @@ class Stage1LocalSmoke(unittest.TestCase):
                 "docx_to_pdf",
                 "xlsx_to_csv",
                 "xlsx_to_pdf",
+                "markdown_convert",
             },
         )
         hidden = {
@@ -202,6 +203,10 @@ class Stage1LocalSmoke(unittest.TestCase):
             for key in ("intent", "kind", "targets", "editor_route", "requires_multiple", "params_schema"):
                 self.assertIn(key, item)
             self.assertFalse(item["requires_multiple"])
+        md_ops = {item["operation"] for item in operations.list_operations("md")}
+        txt_ops = {item["operation"] for item in operations.list_operations("txt")}
+        self.assertIn("markdown_convert", md_ops)
+        self.assertIn("markdown_convert", txt_ops)
 
     def test_create_job_validates_and_persists_clean_params(self):
         create_job = importlib.import_module("create_job")
@@ -237,6 +242,19 @@ class Stage1LocalSmoke(unittest.TestCase):
         }, None)
         self.assertEqual(ok["statusCode"], 200)
         self.assertEqual(fake_dynamo.created[-1]["params"], {"dpi": 150})
+
+        markdown_ok = create_job.handler({
+            "httpMethod": "POST",
+            "body": json.dumps({
+                "operation": "markdown_convert",
+                "file_size_bytes": 10,
+                "file_name": "notes.md",
+                "session_id": "local",
+                "params": {"target_format": "PDF"},
+            }),
+        }, None)
+        self.assertEqual(markdown_ok["statusCode"], 200)
+        self.assertEqual(fake_dynamo.created[-1]["params"], {"target_format": "pdf"})
 
     def test_process_job_flattens_params_for_workers(self):
         process_job = importlib.import_module("process_job")
@@ -279,7 +297,7 @@ class Stage1LocalSmoke(unittest.TestCase):
 
     def test_public_worker_contracts_mark_done(self):
         workers = [
-            ("pdf_to_docx", lambda mod: setattr(mod, "_process", lambda _data, _body: b"docx"), "converted.docx", {}),
+            ("pdf_to_docx", lambda mod: setattr(mod, "_process", lambda _data, _body: b"docx"), "file.docx", {}),
             ("pdf_to_txt", lambda mod: setattr(mod, "_extract_plain_text", lambda _data: b"text"), "output.txt", {}),
             ("pdf_to_image", lambda mod: setattr(mod, "_render_pdf_to_zip", lambda _data, dpi: f"zip-{dpi}".encode()), "pages.zip", {"dpi": 175}),
             ("image_to_pdf", lambda mod: setattr(mod, "_image_to_pdf", lambda _data: b"pdf"), "output.pdf", {}),
@@ -288,6 +306,7 @@ class Stage1LocalSmoke(unittest.TestCase):
             ("docx_to_pdf", lambda mod: setattr(mod, "_docx_to_pdf", lambda _data: b"pdf"), "output.pdf", {}),
             ("xlsx_to_csv", lambda mod: setattr(mod, "_xlsx_to_csv", lambda _data, sheet_name: f"csv-{sheet_name}".encode()), "output.csv", {"sheet": "Sheet1"}),
             ("xlsx_to_pdf", lambda mod: setattr(mod, "_xlsx_to_pdf", lambda _data, sheet_name: f"pdf-{sheet_name}".encode()), "output.pdf", {"sheet": "Sheet1"}),
+            ("markdown_convert", lambda mod: setattr(mod, "convert_markdown", lambda _data, target: f"md-{target}".encode()), "file.pdf", {"target_format": "pdf", "file_name": "file.md"}),
         ]
 
         for module_name, patch_core, expected_name, extra in workers:

@@ -15,6 +15,7 @@ _SECONDS_PER_MB: dict[str, float] = {
     "image_to_pdf": 1.0,
     "doc_edit": 2.0,
     "image_convert": 1.0,
+    "markdown_convert": 1.5,
     "video_process": 30.0,
 }
 
@@ -35,6 +36,7 @@ _MINIMUM_SECONDS: dict[str, int] = {
     "image_to_pdf": 2,
     "doc_edit": 3,
     "image_convert": 2,
+    "markdown_convert": 3,
     "video_process": 30,
 }
 

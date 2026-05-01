@@ -1,33 +1,37 @@
-import io
 import json
+import os
+import tempfile
 
 import dynamo
 import s3
-from docx import Document
 from logger import get_logger
-from pypdf import PdfReader
 
 log = get_logger(__name__)
 
 
 def _process(data: bytes, body: dict) -> bytes:
-    reader = PdfReader(io.BytesIO(data))
-    doc = Document()
-    doc.add_heading("Converted Document", 0)
+    from pdf2docx import Converter
 
-    for i, page in enumerate(reader.pages):
-        text = page.extract_text() or ""
-        if i > 0:
-            doc.add_page_break()
-        doc.add_paragraph(f"— Page {i + 1} —")
-        if text.strip():
-            doc.add_paragraph(text)
-        else:
-            doc.add_paragraph("[No extractable text on this page]")
+    with tempfile.TemporaryDirectory(prefix="pdf-to-docx-") as workdir:
+        input_path = os.path.join(workdir, "input.pdf")
+        output_path = os.path.join(workdir, "output.docx")
+        with open(input_path, "wb") as fh:
+            fh.write(data)
 
-    out = io.BytesIO()
-    doc.save(out)
-    return out.getvalue()
+        converter = Converter(input_path)
+        try:
+            converter.convert(output_path)
+        finally:
+            converter.close()
+
+        with open(output_path, "rb") as fh:
+            return fh.read()
+
+
+def _output_filename(body: dict, file_key: str) -> str:
+    original = body.get("file_name") or os.path.basename(file_key) or "converted.pdf"
+    stem, _ext = os.path.splitext(os.path.basename(original))
+    return f"{stem or 'converted'}.docx"
 
 
 def handler(event, context):
@@ -38,7 +42,7 @@ def handler(event, context):
         dynamo.update_job(job_id, status="PROCESSING")
         data = s3.get_bytes(file_key)
         result = _process(data, body)
-        out_key = s3.make_output_key(job_id, file_key, "converted.docx")
+        out_key = s3.make_output_key(job_id, file_key, _output_filename(body, file_key))
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)
         log.info("pdf_to_docx done", extra={"job_id": job_id})

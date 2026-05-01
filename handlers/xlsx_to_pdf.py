@@ -1,10 +1,8 @@
-# handlers/xlsx_to_pdf.py - Renders one .xlsx sheet to a readable PDF table.
-#
-# Default is the first sheet. Optional `sheet` param selects a visible sheet by
-# name. This favors clean workbook content over pixel-perfect Excel rendering.
-
-import io
 import json as _json
+import os
+import shutil
+import subprocess
+import tempfile
 
 import dynamo
 import s3
@@ -12,80 +10,96 @@ from logger import get_logger
 
 log = get_logger(__name__)
 
-
-def _clean_cell(value) -> str:
-    if value is None:
-        return ""
-    return str(value)
+_LIBREOFFICE_BIN = os.environ.get("LIBREOFFICE_BIN", "libreoffice")
 
 
-def _xlsx_to_pdf(xlsx_bytes: bytes, sheet_name: str | None) -> bytes:
+def _xlsx_to_pdf(xlsx_bytes: bytes, sheet_name: str | None = None) -> bytes:
     from openpyxl import load_workbook
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import landscape, letter
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.lib.units import inch
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-    from xml.sax.saxutils import escape
 
-    wb = load_workbook(io.BytesIO(xlsx_bytes), read_only=True, data_only=True)
+    if sheet_name:
+        workbook_path = _select_sheet_workbook(xlsx_bytes, sheet_name)
+        try:
+            with open(workbook_path, "rb") as fh:
+                return _office_to_pdf(fh.read(), "input.xlsx")
+        finally:
+            try:
+                os.unlink(workbook_path)
+            except FileNotFoundError:
+                pass
+    return _office_to_pdf(xlsx_bytes, "input.xlsx")
+
+
+def _select_sheet_workbook(xlsx_bytes: bytes, sheet_name: str) -> str:
+    import io
+
+    wb = load_workbook(io.BytesIO(xlsx_bytes))
+    path = ""
     try:
         if sheet_name:
             if sheet_name not in wb.sheetnames:
                 raise ValueError(f"sheet not found: {sheet_name}")
             ws = wb[sheet_name]
-        else:
-            ws = wb.worksheets[0]
-
-        rows = []
-        for idx, row in enumerate(ws.iter_rows(values_only=True)):
-            if idx >= 200:
-                break
-            values = [_clean_cell(cell) for cell in row]
-            if any(values):
-                rows.append(values)
-
-        output = io.BytesIO()
-        pdf = SimpleDocTemplate(
-            output,
-            pagesize=landscape(letter),
-            leftMargin=0.45 * inch,
-            rightMargin=0.45 * inch,
-            topMargin=0.45 * inch,
-            bottomMargin=0.45 * inch,
-            title=f"Converted spreadsheet - {ws.title}",
-        )
-        styles = getSampleStyleSheet()
-        body = styles["BodyText"]
-        body.fontSize = 7
-        body.leading = 9
-
-        story = [Paragraph(escape(ws.title), styles["Heading2"]), Spacer(1, 0.12 * inch)]
-        if not rows:
-            story.append(Paragraph("No readable sheet content found.", styles["BodyText"]))
-        else:
-            max_cols = min(max(len(row) for row in rows), 12)
-            normalized = []
-            for row in rows:
-                cells = row[:max_cols] + [""] * max(0, max_cols - len(row))
-                normalized.append([Paragraph(escape(cell), body) for cell in cells])
-
-            table = Table(normalized, repeatRows=1)
-            table.setStyle(TableStyle([
-                ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#8d96a3")),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eef2f7")),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 3),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ]))
-            story.append(table)
-
-        pdf.build(story)
-        return output.getvalue()
+        wb.active = wb.index(ws)
+        for worksheet in wb.worksheets:
+            worksheet.sheet_state = "visible" if worksheet.title == sheet_name else "hidden"
+        fd, path = tempfile.mkstemp(prefix="selected-sheet-", suffix=".xlsx")
+        os.close(fd)
+        wb.save(path)
+        return path
     finally:
         wb.close()
+
+
+def _office_to_pdf(source_bytes: bytes, source_name: str) -> bytes:
+    if not shutil.which(_LIBREOFFICE_BIN):
+        raise RuntimeError(f"LibreOffice executable not found: {_LIBREOFFICE_BIN}")
+
+    with tempfile.TemporaryDirectory(prefix="office-to-pdf-") as workdir:
+        outdir = os.path.join(workdir, "out")
+        profile = os.path.join(workdir, "profile")
+        os.makedirs(outdir, exist_ok=True)
+        os.makedirs(profile, exist_ok=True)
+
+        source_path = os.path.join(workdir, source_name)
+        with open(source_path, "wb") as fh:
+            fh.write(source_bytes)
+
+        cmd = [
+            _LIBREOFFICE_BIN,
+            "--headless",
+            "--nologo",
+            "--nodefault",
+            "--nofirststartwizard",
+            "--nolockcheck",
+            f"-env:UserInstallation=file://{profile}",
+            "--convert-to",
+            "pdf",
+            "--outdir",
+            outdir,
+            source_path,
+        ]
+        completed = subprocess.run(
+            cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=int(os.environ.get("LIBREOFFICE_TIMEOUT_SECONDS", "240")),
+        )
+        if completed.returncode != 0:
+            stderr = completed.stderr.decode("utf-8", errors="replace").strip()
+            stdout = completed.stdout.decode("utf-8", errors="replace").strip()
+            detail = stderr or stdout or f"exit code {completed.returncode}"
+            raise RuntimeError(f"LibreOffice PDF export failed: {detail}")
+
+        pdf_path = os.path.join(outdir, f"{os.path.splitext(source_name)[0]}.pdf")
+        if not os.path.exists(pdf_path):
+            raise RuntimeError("LibreOffice PDF export did not produce an output file")
+
+        with open(pdf_path, "rb") as fh:
+            result = fh.read()
+        if not result.startswith(b"%PDF"):
+            raise RuntimeError("LibreOffice PDF export produced an invalid PDF")
+        return result
 
 
 def handler(event, context):

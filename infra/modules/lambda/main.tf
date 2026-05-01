@@ -1,5 +1,6 @@
 # Tracks S3 object etag so Terraform detects code changes automatically
 data "aws_s3_object" "handler_zip" {
+  count  = var.package_type == "Zip" ? 1 : 0
   bucket = var.s3_bucket
   key    = var.s3_key
 }
@@ -104,15 +105,18 @@ resource "aws_iam_role_policy" "extra" {
 resource "aws_lambda_function" "this" {
   function_name                  = "${var.name_prefix}-${var.function_name}"
   role                           = aws_iam_role.lambda.arn
-  handler                        = var.handler
-  runtime                        = var.runtime
+  package_type                   = var.package_type
+  handler                        = var.package_type == "Zip" ? var.handler : null
+  runtime                        = var.package_type == "Zip" ? var.runtime : null
+  image_uri                      = var.package_type == "Image" ? var.image_uri : null
   memory_size                    = var.memory_size
   timeout                        = var.timeout
-  s3_bucket                      = var.s3_bucket
-  s3_key                         = var.s3_key
-  layers                         = length(var.layer_arns) > 0 ? var.layer_arns : null
+  architectures                  = length(var.architectures) > 0 ? var.architectures : null
+  s3_bucket                      = var.package_type == "Zip" ? var.s3_bucket : null
+  s3_key                         = var.package_type == "Zip" ? var.s3_key : null
+  layers                         = var.package_type == "Zip" && length(var.layer_arns) > 0 ? var.layer_arns : null
   reserved_concurrent_executions = var.reserved_concurrent_executions >= 0 ? var.reserved_concurrent_executions : null
-  source_code_hash               = data.aws_s3_object.handler_zip.etag
+  source_code_hash               = var.package_type == "Zip" ? data.aws_s3_object.handler_zip[0].etag : null
   tags                           = var.common_tags
 
   environment {

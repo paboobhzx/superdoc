@@ -65,3 +65,9 @@ variable "rate_limit_enabled" {
   type        = bool
   default     = false
 }
+
+variable "office_converter_image_tag" {
+  description = "Tag for LibreOffice Lambda container images. Images are expected as <repository>:docx_to_pdf-<tag> and <repository>:xlsx_to_pdf-<tag>."
+  type        = string
+  default     = "latest"
+}

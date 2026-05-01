@@ -86,6 +86,7 @@ function formatTarget(target) {
   if (target === "png") return "PNG"
   if (target === "webp") return "WebP"
   if (target === "gif") return "GIF"
+  if (target === "tiff") return "TIFF"
   if (target === "pdf") return "PDF"
   if (target === "docx") return "Word (.docx)"
   if (target === "txt") return "Text (.txt)"
@@ -104,16 +105,22 @@ function sameImageType(inputType, target) {
 function buildChoices(actions, inputType) {
   const choices = []
   for (const op of actions) {
-    if (op.operation === "image_convert") {
+    const targetSchema = op.params_schema && op.params_schema.target_format
+    const expandsTargetFormat = (
+      (targetSchema && targetSchema.required === true) ||
+      op.operation === "image_convert"
+    ) && Array.isArray(op.targets) && op.targets.length > 1
+    if (expandsTargetFormat) {
       const targets = Array.isArray(op.targets) ? op.targets : []
       for (const target of targets) {
-        if (sameImageType(inputType, target)) continue
+        if (op.operation === "image_convert" && sameImageType(inputType, target)) continue
+        const source = op.operation === "markdown_convert" ? "Markdown" : "Image"
         choices.push({
           key: `${op.operation}:${target}`,
           op: {
             ...op,
             target,
-            label: `Image to ${formatTarget(target)}`,
+            label: `${source} to ${formatTarget(target)}`,
             params: { target_format: target },
           },
         })

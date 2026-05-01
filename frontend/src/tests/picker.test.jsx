@@ -92,6 +92,44 @@ describe("OperationPicker", () => {
     expect(screen.queryByText("Image to PNG")).not.toBeInTheDocument()
   })
 
+  it("expands required target_format operations into target cards", async () => {
+    api.getOperations.mockResolvedValue({
+      operations: [
+        {
+          operation: "markdown_convert",
+          kind: "backend_job",
+          intent: "convert",
+          label: "Convert Markdown",
+          category: "convert",
+          targets: ["pdf", "docx", "png", "tiff"],
+          params_schema: {
+            target_format: {
+              type: "string",
+              required: true,
+              enum: ["pdf", "docx", "png", "tiff"],
+            },
+          },
+        },
+      ],
+      count: 1,
+    })
+
+    const file = new File(["# Hello"], "notes.md", { type: "text/markdown" })
+    const onPick = vi.fn()
+    render(<OperationPicker file={file} onPick={onPick} onBack={() => {}} />)
+
+    expect(await screen.findByText("Markdown to PDF")).toBeInTheDocument()
+    expect(screen.getByText("Markdown to Word (.docx)")).toBeInTheDocument()
+    expect(screen.getByText("Markdown to TIFF")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText("Markdown to Word (.docx)").closest("button"))
+    expect(onPick).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "markdown_convert",
+      target: "docx",
+      params: { target_format: "docx" },
+    }))
+  })
+
   it("uses cached operations for the same input type", async () => {
     api.getOperations.mockResolvedValue({
       operations: [

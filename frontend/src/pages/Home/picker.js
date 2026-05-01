@@ -83,6 +83,10 @@ export const OPERATION_UI = {
     icon: "picture_as_pdf",
     description: "Wrap the image into a single-page PDF document.",
   },
+  markdown_convert: {
+    icon: "article",
+    description: "Render Markdown or plain text as PDF, Word, or a full-document image.",
+  },
   image_edit: {
     icon: "crop",
     description: "Open the image editor for quick visual edits and export.",

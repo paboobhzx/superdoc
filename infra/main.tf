@@ -79,19 +79,19 @@ module "api_gateway" {
       invoke_arn    = module.lambda_admin_incidents.invoke_arn
       function_name = module.lambda_admin_incidents.function_name
     }
-      list_operations = {
+    list_operations = {
       invoke_arn    = module.lambda_list_operations.invoke_arn
       function_name = module.lambda_list_operations.function_name
     }
-      stripe_create_checkout = {
+    stripe_create_checkout = {
       invoke_arn    = module.lambda_stripe_create_checkout.invoke_arn
       function_name = module.lambda_stripe_create_checkout.function_name
     }
-      stripe_webhook = {
+    stripe_webhook = {
       invoke_arn    = module.lambda_stripe_webhook.invoke_arn
       function_name = module.lambda_stripe_webhook.function_name
     }
-      presign_download = {
+    presign_download = {
       invoke_arn    = module.lambda_presign_download.invoke_arn
       function_name = module.lambda_presign_download.function_name
     }
@@ -152,6 +152,17 @@ module "sqs" {
   alerts_topic_arn = module.monitoring.alerts_topic_arn
 }
 
+resource "aws_ecr_repository" "office_conversion" {
+  name                 = "${local.name_prefix}-office-conversion"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = local.common_tags
+}
+
 # ── Lambda layers ────────────────────────────────────────────────────────────
 
 module "layer_utils" {
@@ -177,21 +188,26 @@ module "layer_deps" {
 locals {
   lambda_common_env = {
     RATE_LIMIT_ENABLED = tostring(var.rate_limit_enabled)
-    JOBS_TABLE        = module.dynamodb.table_name
-    API_KEYS_TABLE    = module.dynamodb.api_keys_name
-    INCIDENTS_TABLE   = module.dynamodb.incidents_name
-    RATE_LIMITS_TABLE = module.dynamodb.rate_limits_name
-    MEDIA_BUCKET      = module.s3.bucket_name
-    SQS_QUEUE_URL     = module.sqs.queue_url
-    ENVIRONMENT       = var.environment
-    LOG_LEVEL         = var.environment == "prod" ? "WARNING" : "DEBUG"
-    TTL_SECONDS       = "43200"
+    JOBS_TABLE         = module.dynamodb.table_name
+    API_KEYS_TABLE     = module.dynamodb.api_keys_name
+    INCIDENTS_TABLE    = module.dynamodb.incidents_name
+    RATE_LIMITS_TABLE  = module.dynamodb.rate_limits_name
+    MEDIA_BUCKET       = module.s3.bucket_name
+    SQS_QUEUE_URL      = module.sqs.queue_url
+    ENVIRONMENT        = var.environment
+    LOG_LEVEL          = var.environment == "prod" ? "WARNING" : "DEBUG"
+    TTL_SECONDS        = "43200"
   }
 
   lambda_layer_arns = [
     module.layer_utils.layer_arn,
     module.layer_deps.layer_arn,
   ]
+
+  office_converter_images = {
+    docx_to_pdf = "${aws_ecr_repository.office_conversion.repository_url}:docx_to_pdf-${var.office_converter_image_tag}"
+    xlsx_to_pdf = "${aws_ecr_repository.office_conversion.repository_url}:xlsx_to_pdf-${var.office_converter_image_tag}"
+  }
 
   dynamodb_arns = [
     module.dynamodb.table_arn,
@@ -403,44 +419,44 @@ module "lambda_presign_download" {
 # flips payment status on checkout.session.completed. Needs SSM read and
 # DynamoDB write to payments table.
 module "lambda_stripe_webhook" {
-  source                = "./modules/lambda"
-  name_prefix           = local.name_prefix
-  function_name         = "stripe-webhook"
-  handler               = "handler.handler"
-  runtime               = var.lambda_runtime
-  memory_size           = 256
-  timeout               = 10
-  s3_bucket             = var.lambda_handler_s3_bucket
-  s3_key                = "handlers/stripe_webhook.zip"
+  source        = "./modules/lambda"
+  name_prefix   = local.name_prefix
+  function_name = "stripe-webhook"
+  handler       = "handler.handler"
+  runtime       = var.lambda_runtime
+  memory_size   = 256
+  timeout       = 10
+  s3_bucket     = var.lambda_handler_s3_bucket
+  s3_key        = "handlers/stripe_webhook.zip"
   environment_variables = merge(local.lambda_common_env, {
     PAYMENTS_TABLE_NAME = aws_dynamodb_table.payments.name
   })
-  common_tags           = local.common_tags
-  dynamodb_table_arns   = concat(local.dynamodb_arns, [aws_dynamodb_table.payments.arn])
-  media_bucket_arn      = module.s3.bucket_arn
-  layer_arns            = local.lambda_layer_arns
+  common_tags         = local.common_tags
+  dynamodb_table_arns = concat(local.dynamodb_arns, [aws_dynamodb_table.payments.arn])
+  media_bucket_arn    = module.s3.bucket_arn
+  layer_arns          = local.lambda_layer_arns
 }
 
 # Lambda: stripe_create_checkout. Creates Checkout Session and persists
 # pending payment record. Needs SSM read for Stripe keys and DynamoDB write
 # for payments table.
 module "lambda_stripe_create_checkout" {
-  source                = "./modules/lambda"
-  name_prefix           = local.name_prefix
-  function_name         = "stripe-create-checkout"
-  handler               = "handler.handler"
-  runtime               = var.lambda_runtime
-  memory_size           = 256
-  timeout               = 10
-  s3_bucket             = var.lambda_handler_s3_bucket
-  s3_key                = "handlers/stripe_create_checkout.zip"
+  source        = "./modules/lambda"
+  name_prefix   = local.name_prefix
+  function_name = "stripe-create-checkout"
+  handler       = "handler.handler"
+  runtime       = var.lambda_runtime
+  memory_size   = 256
+  timeout       = 10
+  s3_bucket     = var.lambda_handler_s3_bucket
+  s3_key        = "handlers/stripe_create_checkout.zip"
   environment_variables = merge(local.lambda_common_env, {
     PAYMENTS_TABLE_NAME = aws_dynamodb_table.payments.name
   })
-  common_tags           = local.common_tags
-  dynamodb_table_arns   = concat(local.dynamodb_arns, [aws_dynamodb_table.payments.arn])
-  media_bucket_arn      = module.s3.bucket_arn
-  layer_arns            = local.lambda_layer_arns
+  common_tags         = local.common_tags
+  dynamodb_table_arns = concat(local.dynamodb_arns, [aws_dynamodb_table.payments.arn])
+  media_bucket_arn    = module.s3.bucket_arn
+  layer_arns          = local.lambda_layer_arns
 }
 
 module "lambda_xlsx_to_csv" {
@@ -464,17 +480,19 @@ module "lambda_xlsx_to_pdf" {
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
   function_name         = "xlsx-to-pdf"
-  handler               = "handler.handler"
-  runtime               = var.lambda_runtime
-  memory_size           = 512
-  timeout               = 120
-  s3_bucket             = var.lambda_handler_s3_bucket
-  s3_key                = "handlers/xlsx_to_pdf.zip"
+  handler               = ""
+  runtime               = ""
+  package_type          = "Image"
+  image_uri             = local.office_converter_images.xlsx_to_pdf
+  architectures         = ["arm64"]
+  memory_size           = 2048
+  timeout               = 300
+  s3_bucket             = ""
+  s3_key                = ""
   environment_variables = local.lambda_common_env
   common_tags           = local.common_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
-  layer_arns            = local.lambda_layer_arns
 }
 
 module "lambda_docx_to_txt" {
@@ -498,17 +516,19 @@ module "lambda_docx_to_pdf" {
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
   function_name         = "docx-to-pdf"
-  handler               = "handler.handler"
-  runtime               = var.lambda_runtime
-  memory_size           = 512
-  timeout               = 120
-  s3_bucket             = var.lambda_handler_s3_bucket
-  s3_key                = "handlers/docx_to_pdf.zip"
+  handler               = ""
+  runtime               = ""
+  package_type          = "Image"
+  image_uri             = local.office_converter_images.docx_to_pdf
+  architectures         = ["arm64"]
+  memory_size           = 2048
+  timeout               = 300
+  s3_bucket             = ""
+  s3_key                = ""
   environment_variables = local.lambda_common_env
   common_tags           = local.common_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
-  layer_arns            = local.lambda_layer_arns
 }
 
 module "lambda_image_to_pdf" {
@@ -557,6 +577,23 @@ module "lambda_pdf_to_txt" {
   timeout               = 120
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/pdf_to_txt.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_markdown_convert" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "markdown-convert"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 120
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/markdown_convert.zip"
   environment_variables = local.lambda_common_env
   common_tags           = local.common_tags
   dynamodb_table_arns   = local.dynamodb_arns
@@ -687,6 +724,7 @@ module "lambda_dispatch_job" {
         module.lambda_pdf_annotate.function_arn,
         module.lambda_pdf_extract_text.function_arn,
         module.lambda_image_convert.function_arn,
+        module.lambda_markdown_convert.function_arn,
         module.lambda_doc_edit.function_arn,
         module.lambda_video_process.function_arn,
       ]

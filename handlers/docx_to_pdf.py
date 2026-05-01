@@ -1,11 +1,8 @@
-# handlers/docx_to_pdf.py - Renders readable .docx content to a clean PDF.
-#
-# This is not a pixel-perfect Word renderer. It extracts paragraphs and tables
-# with python-docx and lays them out with ReportLab so users get a readable PDF
-# from common document content in the lightweight Lambda runtime.
-
-import io
 import json as _json
+import os
+import shutil
+import subprocess
+import tempfile
 
 import dynamo
 import s3
@@ -13,62 +10,63 @@ from logger import get_logger
 
 log = get_logger(__name__)
 
+_LIBREOFFICE_BIN = os.environ.get("LIBREOFFICE_BIN", "libreoffice")
+
 
 def _docx_to_pdf(docx_bytes: bytes) -> bytes:
-    from docx import Document
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.lib.units import inch
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-    from xml.sax.saxutils import escape
+    return _office_to_pdf(docx_bytes, "input.docx")
 
-    docx = Document(io.BytesIO(docx_bytes))
-    output = io.BytesIO()
-    pdf = SimpleDocTemplate(
-        output,
-        pagesize=letter,
-        leftMargin=0.72 * inch,
-        rightMargin=0.72 * inch,
-        topMargin=0.72 * inch,
-        bottomMargin=0.72 * inch,
-        title="Converted Word document",
-    )
-    styles = getSampleStyleSheet()
-    body = styles["BodyText"]
-    body.leading = 14
-    story = []
 
-    for paragraph in docx.paragraphs:
-        text = paragraph.text.strip()
-        if text:
-            story.append(Paragraph(escape(text), body))
-        story.append(Spacer(1, 0.08 * inch))
+def _office_to_pdf(source_bytes: bytes, source_name: str) -> bytes:
+    if not shutil.which(_LIBREOFFICE_BIN):
+        raise RuntimeError(f"LibreOffice executable not found: {_LIBREOFFICE_BIN}")
 
-    for table in docx.tables:
-        rows = []
-        for row in table.rows:
-            rows.append([Paragraph(escape(cell.text.strip()), body) for cell in row.cells])
-        if not rows:
-            continue
-        story.append(Spacer(1, 0.12 * inch))
-        flowable = Table(rows, repeatRows=1)
-        flowable.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#8d96a3")),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eef2f7")),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 5),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ]))
-        story.append(flowable)
+    with tempfile.TemporaryDirectory(prefix="office-to-pdf-") as workdir:
+        outdir = os.path.join(workdir, "out")
+        profile = os.path.join(workdir, "profile")
+        os.makedirs(outdir, exist_ok=True)
+        os.makedirs(profile, exist_ok=True)
 
-    if not story:
-        story.append(Paragraph("No readable document content found.", body))
+        source_path = os.path.join(workdir, source_name)
+        with open(source_path, "wb") as fh:
+            fh.write(source_bytes)
 
-    pdf.build(story)
-    return output.getvalue()
+        cmd = [
+            _LIBREOFFICE_BIN,
+            "--headless",
+            "--nologo",
+            "--nodefault",
+            "--nofirststartwizard",
+            "--nolockcheck",
+            f"-env:UserInstallation=file://{profile}",
+            "--convert-to",
+            "pdf",
+            "--outdir",
+            outdir,
+            source_path,
+        ]
+        completed = subprocess.run(
+            cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=int(os.environ.get("LIBREOFFICE_TIMEOUT_SECONDS", "240")),
+        )
+        if completed.returncode != 0:
+            stderr = completed.stderr.decode("utf-8", errors="replace").strip()
+            stdout = completed.stdout.decode("utf-8", errors="replace").strip()
+            detail = stderr or stdout or f"exit code {completed.returncode}"
+            raise RuntimeError(f"LibreOffice PDF export failed: {detail}")
+
+        pdf_path = os.path.join(outdir, f"{os.path.splitext(source_name)[0]}.pdf")
+        if not os.path.exists(pdf_path):
+            raise RuntimeError("LibreOffice PDF export did not produce an output file")
+
+        with open(pdf_path, "rb") as fh:
+            result = fh.read()
+        if not result.startswith(b"%PDF"):
+            raise RuntimeError("LibreOffice PDF export produced an invalid PDF")
+        return result
 
 
 def handler(event, context):

@@ -80,3 +80,25 @@ variable "sqs_filter_operation" {
   type        = string
   default     = ""
 }
+
+variable "package_type" {
+  description = "Lambda package type: Zip or Image"
+  type        = string
+  default     = "Zip"
+  validation {
+    condition     = contains(["Zip", "Image"], var.package_type)
+    error_message = "package_type must be Zip or Image."
+  }
+}
+
+variable "image_uri" {
+  description = "Container image URI when package_type is Image"
+  type        = string
+  default     = ""
+}
+
+variable "architectures" {
+  description = "Optional Lambda instruction set architectures. Empty uses AWS defaults."
+  type        = list(string)
+  default     = []
+}
