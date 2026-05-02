@@ -10,6 +10,7 @@ import { Dashboard } from "./pages/Dashboard"
 import { ImageEditor } from "./pages/ImageEditor"
 import { PdfEditor } from "./pages/PdfEditor"
 import { DocxEditor } from "./pages/DocxEditor"
+import { MarkdownEditor } from "./pages/MarkdownEditor"
 import { XlsxEditor } from "./pages/XlsxEditor"
 import "./index.css"
 import { AuthProvider } from "./context/AuthContext"
@@ -26,6 +27,7 @@ function AppRoutes() {
       <Route path="/editor/image" element={<ImageEditor />} />
       <Route path="/editor/pdf" element={<PdfEditor />} />
       <Route path="/editor/docx" element={<DocxEditor />} />
+      <Route path="/editor/markdown" element={<MarkdownEditor />} />
       <Route path="/editor/xlsx" element={<XlsxEditor />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/processing/:jobId" element={<Processing />} />

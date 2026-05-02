@@ -71,3 +71,13 @@ variable "office_converter_image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "office_converter_package_type" {
+  description = "Office PDF converter package type. Keep Zip to match the current deployed Lambda functions; set Image only when the ECR images are deployed through Terraform."
+  type        = string
+  default     = "Zip"
+  validation {
+    condition     = contains(["Zip", "Image"], var.office_converter_package_type)
+    error_message = "office_converter_package_type must be Zip or Image."
+  }
+}

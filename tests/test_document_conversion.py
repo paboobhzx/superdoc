@@ -7,6 +7,7 @@ import sys
 import types
 import unittest
 import zipfile
+from pathlib import Path
 
 
 def _install_handler_stubs():
@@ -38,6 +39,33 @@ def _minimal_docx_bytes(text):
         zf.writestr("[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"/>")
         zf.writestr("word/document.xml", f"<w:document>{text}</w:document>")
     return out.getvalue()
+
+
+def _import_operations():
+    layer_path = Path(__file__).resolve().parents[1] / "layers" / "superdoc_utils"
+    if str(layer_path) not in sys.path:
+        sys.path.insert(0, str(layer_path))
+    sys.modules.pop("operations", None)
+    return importlib.import_module("operations")
+
+
+class OperationCatalogTests(unittest.TestCase):
+    def setUp(self):
+        self.operations = _import_operations()
+
+    def test_markdown_catalog_includes_convert_and_editor_for_text_types(self):
+        for input_type in ("md", "markdown", "txt"):
+            ops = {item["operation"]: item for item in self.operations.list_operations(input_type)}
+            self.assertIn("markdown_convert", ops)
+            self.assertIn("md_edit", ops)
+            self.assertEqual(ops["md_edit"]["kind"], "client_editor")
+            self.assertEqual(ops["md_edit"]["intent"], "edit")
+            self.assertEqual(ops["md_edit"]["editor_route"], "/editor/markdown")
+            self.assertEqual(ops["markdown_convert"]["targets"], ["pdf", "docx", "png", "jpg", "jpeg", "tiff"])
+
+    def test_docx_catalog_includes_edit_text_and_pdf(self):
+        ops = {item["operation"] for item in self.operations.list_operations("docx")}
+        self.assertTrue({"doc_edit", "docx_to_txt", "docx_to_pdf"}.issubset(ops))
 
 
 class PdfToDocxTests(unittest.TestCase):

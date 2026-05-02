@@ -20,6 +20,9 @@ const EDITOR_ROUTES_BY_EXTENSION = {
   // the previous /<type>-editor strings were a mismatch that sent users to
   // the wildcard fallback <Home /> instead of the actual editor page.
   docx: "/editor/docx",
+  md: "/editor/markdown",
+  markdown: "/editor/markdown",
+  txt: "/editor/markdown",
   xlsx: "/editor/xlsx",
   pdf: "/editor/pdf",
   png: "/editor/image",
@@ -91,11 +94,11 @@ export async function handleClientEditor({ file, operation, editorRoute, auth, s
     await api.completeUserFile(data.job_id)
     uploadKey = data.output_key
   } else {
-    // Anonymous upload: create a regular job with operation=doc_edit but
+    // Anonymous upload: create a regular job with operation=<client editor> but
     // the dispatcher sees kind=client_editor and doesn\'t enqueue work.
     // The file ends up under uploads/<jobId>/<filename>.
     const data = await api.createJob({
-      operation: "doc_edit",
+      operation,
       file_size_bytes: file.size,
       file_name: file.name,
       session_id: sessionId,

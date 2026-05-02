@@ -19,6 +19,7 @@ echo "Building superdoc_utils layer..."
 UTILS_TMP="$(mktemp -d)"
 mkdir -p "${UTILS_TMP}/python"
 cp "${REPO_ROOT}/layers/superdoc_utils"/*.py "${UTILS_TMP}/python/"
+rm -f "${DIST}/superdoc_utils.zip"
 (cd "${UTILS_TMP}" && zip -r "${DIST}/superdoc_utils.zip" python/ -x "*.pyc" -x "*/__pycache__/*")
 rm -rf "${UTILS_TMP}"
 echo "  built dist/layers/superdoc_utils.zip ($(du -sh "${DIST}/superdoc_utils.zip" | cut -f1))"
@@ -37,6 +38,7 @@ pip3 install \
   --only-binary=:all: \
   --upgrade \
   --quiet
+rm -f "${DIST}/python_deps.zip"
 (cd "${DEPS_TMP}" && zip -r "${DIST}/python_deps.zip" python/ -x "*.pyc" -x "*/__pycache__/*" -x "*.dist-info/*" -x "*.egg-info/*")
 rm -rf "${DEPS_TMP}"
 echo "  built dist/layers/python_deps.zip ($(du -sh "${DIST}/python_deps.zip" | cut -f1))"

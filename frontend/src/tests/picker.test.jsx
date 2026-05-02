@@ -3,13 +3,18 @@
 // the picker renders, handles selection, and falls back gracefully on error.
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import "@testing-library/jest-dom"
 import { OperationPicker } from "../pages/Home/OperationPicker"
 import { buildTargetGridChoices, findClientEditorOperation } from "../pages/Home/targetGrid"
+import { dispatchPick } from "../pages/Home/pickerRouting"
 
 vi.mock("../lib/api", () => ({
   api: {
     getOperations: vi.fn(),
+    createJob: vi.fn(),
+    uploadToS3: vi.fn(),
+    triggerProcess: vi.fn(),
   },
 }))
 
@@ -230,9 +235,9 @@ describe("target grid choices", () => {
         kind: "backend_job",
         intent: "convert",
         label: "Convert Markdown",
-        targets: ["pdf", "docx", "png"],
+        targets: ["pdf", "docx", "png", "jpg"],
         params_schema: {
-          target_format: { required: true, enum: ["pdf", "docx", "png"] },
+          target_format: { required: true, enum: ["pdf", "docx", "png", "jpg"] },
         },
       },
     ])
@@ -245,9 +250,11 @@ describe("target grid choices", () => {
       }),
     })
     expect(choices.find((choice) => choice.target === "docx")?.enabled).toBe(true)
+    expect(choices.find((choice) => choice.target === "png")?.enabled).toBe(true)
+    expect(choices.find((choice) => choice.target === "jpg")?.enabled).toBe(true)
     expect(choices.find((choice) => choice.target === "xlsx")).toMatchObject({
       enabled: false,
-      disabledReason: "Coming soon",
+      disabledReason: "Unavailable for this file",
     })
   })
 
@@ -256,11 +263,57 @@ describe("target grid choices", () => {
       { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word", targets: ["docx"] },
     ])
 
-    expect(choices.map((choice) => choice.target)).toEqual(["pdf", "docx", "png", "jpg", "md", "html", "xlsx", "txt"])
+    expect(choices.map((choice) => choice.target)).toEqual(["pdf", "docx", "png", "jpg", "md", "html", "xlsx", "csv", "txt"])
     expect(choices.find((choice) => choice.target === "docx")?.enabled).toBe(true)
     expect(choices.find((choice) => choice.target === "html")).toMatchObject({
       enabled: false,
-      disabledReason: "Coming soon",
+      disabledReason: "Unavailable for this file",
+    })
+  })
+
+  it("uses output_type and target_format enum when targets are absent", () => {
+    const choices = buildTargetGridChoices("xlsx", [
+      { operation: "xlsx_to_csv", kind: "backend_job", intent: "convert", label: "Excel to CSV", output_type: "csv" },
+      {
+        operation: "markdown_convert",
+        kind: "backend_job",
+        intent: "convert",
+        label: "Markdown convert",
+        params_schema: { target_format: { required: true, enum: ["pdf"] } },
+      },
+    ])
+
+    expect(choices.find((choice) => choice.target === "csv")?.opMeta).toMatchObject({
+      operation: "xlsx_to_csv",
+      target: "csv",
+    })
+    expect(choices.find((choice) => choice.target === "pdf")?.opMeta).toMatchObject({
+      operation: "markdown_convert",
+      params: { target_format: "pdf" },
+    })
+  })
+
+  it("keeps older deployed catalog modify operations out of the conversion grid", () => {
+    const choices = buildTargetGridChoices("pdf", [
+      { operation: "pdf_compress", kind: "backend_job", intent: "modify", label: "Compress PDF", output_type: "pdf" },
+      { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word", output_type: "docx" },
+      { operation: "pdf_to_image", kind: "backend_job", intent: "convert", label: "PDF to Images", output_type: "zip" },
+    ])
+
+    expect(choices.find((choice) => choice.target === "pdf")?.enabled).toBe(false)
+    expect(choices.find((choice) => choice.target === "docx")?.opMeta.operation).toBe("pdf_to_docx")
+    expect(choices.find((choice) => choice.target === "png")?.opMeta.operation).toBe("pdf_to_image")
+  })
+
+  it("expands older deployed image_convert catalogs without target metadata", () => {
+    const choices = buildTargetGridChoices("png", [
+      { operation: "image_convert", kind: "backend_job", intent: "convert", label: "Convert image format", output_type: "image" },
+    ])
+
+    expect(choices.find((choice) => choice.target === "png")?.enabled).toBe(false)
+    expect(choices.find((choice) => choice.target === "jpg")?.opMeta).toMatchObject({
+      operation: "image_convert",
+      params: { target_format: "jpg" },
     })
   })
 
@@ -295,5 +348,91 @@ describe("target grid choices", () => {
     expect(findClientEditorOperation([edit])).toBe(edit)
     expect(choices.find((choice) => choice.target === "pdf")?.enabled).toBe(true)
     expect(choices.find((choice) => choice.target === "docx")?.enabled).toBe(false)
+  })
+})
+
+describe("picker routing", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    api.createJob.mockResolvedValue({
+      upload: { url: "https://upload.example.com", fields: {} },
+      file_key: "uploads/job-1/notes.md",
+    })
+    api.uploadToS3.mockResolvedValue(undefined)
+  })
+
+  it("routes Markdown client edits to the Markdown editor", async () => {
+    const file = new File(["# Hello"], "notes.md", { type: "text/markdown" })
+    const target = await dispatchPick(
+      { operation: "md_edit", kind: "client_editor", editor_route: "/editor/markdown" },
+      { file, auth: { isAuthenticated: false }, sessionId: "session-1" },
+    )
+
+    expect(api.createJob).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "md_edit",
+      file_name: "notes.md",
+    }))
+    expect(target).toEqual({
+      type: "internal",
+      path: "/editor/markdown?key=uploads%2Fjob-1%2Fnotes.md&name=notes.md",
+    })
+  })
+})
+
+describe("Home action feedback", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("shows a visible Starting state after a conversion tap", async () => {
+    api.getOperations.mockResolvedValue({
+      operations: [
+        {
+          operation: "markdown_convert",
+          kind: "backend_job",
+          intent: "convert",
+          label: "Convert Markdown",
+          targets: ["docx"],
+          params_schema: { target_format: { required: true, enum: ["docx"] } },
+        },
+      ],
+      count: 1,
+    })
+    api.createJob.mockReturnValue(new Promise(() => {}))
+
+    const { Home } = await import("../pages/Home/Home")
+    render(
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>,
+    )
+
+    fireEvent.change(screen.getByLabelText("File upload drop zone").querySelector("input"), {
+      target: { files: [new File(["# Hello"], "notes.md", { type: "text/markdown" })] },
+    })
+
+    const button = await screen.findByRole("button", { name: /DOCX Word/i })
+    fireEvent.click(button)
+
+    await waitFor(() => expect(button).toHaveAttribute("aria-busy", "true"))
+    expect(screen.getAllByText("Starting...").length).toBeGreaterThan(0)
+  })
+
+  it("shows retry state instead of disabled targets for known empty catalogs", async () => {
+    api.getOperations.mockResolvedValue({ operations: [], count: 0 })
+
+    const { Home } = await import("../pages/Home/Home")
+    render(
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>,
+    )
+
+    fireEvent.change(screen.getByLabelText("File upload drop zone").querySelector("input"), {
+      target: { files: [new File(["# Hello"], "notes.md", { type: "text/markdown" })] },
+    })
+
+    expect(await screen.findByText(/Actions are temporarily unavailable for .md files/i)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument()
   })
 })

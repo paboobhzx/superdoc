@@ -153,6 +153,8 @@ module "sqs" {
 }
 
 resource "aws_ecr_repository" "office_conversion" {
+  count = var.office_converter_package_type == "Image" ? 1 : 0
+
   name                 = "${local.name_prefix}-office-conversion"
   image_tag_mutability = "MUTABLE"
 
@@ -205,8 +207,8 @@ locals {
   ]
 
   office_converter_images = {
-    docx_to_pdf = "${aws_ecr_repository.office_conversion.repository_url}:docx_to_pdf-${var.office_converter_image_tag}"
-    xlsx_to_pdf = "${aws_ecr_repository.office_conversion.repository_url}:xlsx_to_pdf-${var.office_converter_image_tag}"
+    docx_to_pdf = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:docx_to_pdf-${var.office_converter_image_tag}" : ""
+    xlsx_to_pdf = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:xlsx_to_pdf-${var.office_converter_image_tag}" : ""
   }
 
   dynamodb_arns = [
@@ -480,19 +482,20 @@ module "lambda_xlsx_to_pdf" {
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
   function_name         = "xlsx-to-pdf"
-  handler               = ""
-  runtime               = ""
-  package_type          = "Image"
+  handler               = var.office_converter_package_type == "Image" ? "" : "handler.handler"
+  runtime               = var.office_converter_package_type == "Image" ? "" : var.lambda_runtime
+  package_type          = var.office_converter_package_type
   image_uri             = local.office_converter_images.xlsx_to_pdf
-  architectures         = ["arm64"]
-  memory_size           = 2048
-  timeout               = 300
-  s3_bucket             = ""
-  s3_key                = ""
+  architectures         = var.office_converter_package_type == "Image" ? ["arm64"] : []
+  memory_size           = var.office_converter_package_type == "Image" ? 2048 : 512
+  timeout               = var.office_converter_package_type == "Image" ? 300 : 120
+  s3_bucket             = var.office_converter_package_type == "Image" ? "" : var.lambda_handler_s3_bucket
+  s3_key                = var.office_converter_package_type == "Image" ? "" : "handlers/xlsx_to_pdf.zip"
   environment_variables = local.lambda_common_env
   common_tags           = local.common_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = var.office_converter_package_type == "Image" ? [] : local.lambda_layer_arns
 }
 
 module "lambda_docx_to_txt" {
@@ -516,19 +519,20 @@ module "lambda_docx_to_pdf" {
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
   function_name         = "docx-to-pdf"
-  handler               = ""
-  runtime               = ""
-  package_type          = "Image"
+  handler               = var.office_converter_package_type == "Image" ? "" : "handler.handler"
+  runtime               = var.office_converter_package_type == "Image" ? "" : var.lambda_runtime
+  package_type          = var.office_converter_package_type
   image_uri             = local.office_converter_images.docx_to_pdf
-  architectures         = ["arm64"]
-  memory_size           = 2048
-  timeout               = 300
-  s3_bucket             = ""
-  s3_key                = ""
+  architectures         = var.office_converter_package_type == "Image" ? ["arm64"] : []
+  memory_size           = var.office_converter_package_type == "Image" ? 2048 : 512
+  timeout               = var.office_converter_package_type == "Image" ? 300 : 120
+  s3_bucket             = var.office_converter_package_type == "Image" ? "" : var.lambda_handler_s3_bucket
+  s3_key                = var.office_converter_package_type == "Image" ? "" : "handlers/docx_to_pdf.zip"
   environment_variables = local.lambda_common_env
   common_tags           = local.common_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = var.office_converter_package_type == "Image" ? [] : local.lambda_layer_arns
 }
 
 module "lambda_image_to_pdf" {

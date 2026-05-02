@@ -45,6 +45,18 @@ OPERATIONS: dict[str, dict] = {
         "category": "edit",
         "label": "Edit Word document",
     },
+    "md_edit": {
+        "intent": "edit",
+        "kind": "client_editor",
+        "input_types": ["md", "markdown", "txt"],
+        "output_type": "md",
+        "targets": ["md"],
+        "editor_route": "/editor/markdown",
+        "requires_multiple": False,
+        "params_schema": {},
+        "category": "edit",
+        "label": "Edit Markdown",
+    },
     "xlsx_edit": {
         "intent": "edit",
         "kind": "client_editor",
@@ -150,7 +162,7 @@ OPERATIONS: dict[str, dict] = {
     "markdown_convert": {
         "intent": "convert",
         "kind": "backend_job",
-        "input_types": ["md", "txt"],
+        "input_types": ["md", "markdown", "txt"],
         "output_type": "document",
         "targets": MARKDOWN_TARGETS,
         "editor_route": None,

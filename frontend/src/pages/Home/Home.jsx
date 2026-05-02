@@ -7,6 +7,7 @@ import { buildTargetGridChoices, findClientEditorOperation, TARGET_GRID } from "
 
 const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "XLSX", "TXT"]
 const ACCEPT = "application/pdf,.docx,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.md,.markdown,.html,.htm,.txt"
+const KNOWN_CATALOG_TYPES = new Set(["pdf", "docx", "xlsx", "png", "jpg", "jpeg", "webp", "gif", "md", "markdown", "txt"])
 
 const FORMAT_CARDS = [
   { from: "PDF", to: "DOCX", label: "PDF to Word", desc: "Editable Word document from a PDF." },
@@ -32,7 +33,7 @@ const TRUST_ITEMS = [
 
 const FAQ_ITEMS = [
   { q: "Is SuperDoc really free?", a: "Yes. Core conversion works without an account. Accounts are only needed for saved files." },
-  { q: "What happens to unsupported formats?", a: "They remain visible as coming soon targets. SuperDoc never sends unsupported conversion jobs to the API." },
+  { q: "What happens to unsupported formats?", a: "Unavailable targets remain visible but disabled for the selected file. Enabled actions come from the deployed operation catalog." },
   { q: "Can I edit files too?", a: "Yes. When the catalog exposes a browser editor for the selected file, the Edit action appears next to the converter." },
   { q: "Do routes and saved files still work?", a: "Yes. Uploads, job polling, editor routing, authentication, and dashboard files use the existing backend flow." },
 ]
@@ -58,18 +59,34 @@ export function Home() {
   const [operations, setOperations] = useState([])
   const [loadingOps, setLoadingOps] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [startingAction, setStartingAction] = useState(null)
   const [err, setErr] = useState(null)
   const [dragging, setDragging] = useState(false)
   const [openFaq, setOpenFaq] = useState(null)
   const inputRef = useRef(null)
 
   const inputType = extensionOf(pendingFile)
+  const hasEmptyKnownCatalog = Boolean(pendingFile && !loadingOps && !err && operations.length === 0 && KNOWN_CATALOG_TYPES.has(inputType))
 
   const resetToDrop = useCallback(() => {
     setPendingFile(null)
     setOperations([])
+    setStartingAction(null)
     setErr(null)
   }, [])
+
+  const refreshOperations = useCallback(() => {
+    if (!pendingFile) return
+    setLoadingOps(true)
+    setErr(null)
+    api.getOperations(inputType)
+      .then((data) => setOperations(data?.operations || []))
+      .catch((e) => {
+        setOperations([])
+        setErr(e.message || "Could not load available actions")
+      })
+      .finally(() => setLoadingOps(false))
+  }, [pendingFile, inputType])
 
   const handleFiles = useCallback((files) => {
     const list = Array.from(files || []).filter(Boolean)
@@ -115,6 +132,7 @@ export function Home() {
     if (!pendingFile || !opMeta || uploading) return
     setErr(null)
     setUploading(true)
+    setStartingAction(opMeta.target ? `${opMeta.operation}:${opMeta.target}` : opMeta.operation)
     try {
       const sessionId = sessionStorage.getItem("superdoc_session") || crypto.randomUUID()
       sessionStorage.setItem("superdoc_session", sessionId)
@@ -137,24 +155,39 @@ export function Home() {
       setErr(e.message || "Action failed - please try again")
     } finally {
       setUploading(false)
+      setStartingAction(null)
     }
   }, [pendingFile, auth, navigate, uploading])
 
   return (
     <div className="min-h-[calc(100vh-60px)]">
-      <section className="mx-auto w-full max-w-5xl px-4 pb-12 pt-12 md:pb-16 md:pt-20">
-        <div className="mb-12 flex animate-[fade-up_0.6s_ease_both] flex-col items-center gap-5 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/50 bg-primary/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-primary">
-            <span className="material-symbols-outlined text-[14px]">bolt</span>
-            Free · No signup required
+      <section className="mx-auto w-full max-w-6xl px-4 pb-12 pt-10 md:pb-16 md:pt-16">
+        <div className="mb-10 grid animate-[fade-up_0.6s_ease_both] items-center gap-8 md:grid-cols-[1.05fr_0.95fr]">
+          <div className="flex flex-col items-start gap-5 text-left">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/50 bg-primary/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-primary">
+              <span className="material-symbols-outlined text-[14px]">bolt</span>
+              Free · No signup required
+            </div>
+            <h1 className="max-w-3xl font-headline text-[clamp(2.55rem,7vw,5rem)] font-extrabold leading-[1.02] text-on-surface">
+              SuperDoc<br />
+              <span className="text-primary">file workbench.</span>
+            </h1>
+            <p className="max-w-xl text-[17px] font-light leading-7 text-on-surface-variant">
+              PDF, DOCX, Markdown, HTML, images, and spreadsheets. Drop a file and pick the exact output SuperDoc can create today.
+            </p>
           </div>
-          <h1 className="max-w-3xl font-headline text-[clamp(2.4rem,7vw,4.6rem)] font-extrabold leading-[1.02] text-on-surface">
-            Convert any file,<br />
-            <span className="text-primary">instantly.</span>
-          </h1>
-          <p className="max-w-xl text-[17px] font-light leading-7 text-on-surface-variant">
-            PDF, DOCX, Markdown, HTML, images, and spreadsheets. Drop it in and pick the exact output SuperDoc can create today.
-          </p>
+          <div className="relative min-h-[260px] overflow-hidden rounded-[var(--radius-xl)] border border-outline-variant bg-surface-container-lowest shadow-[var(--shadow-glow)] md:min-h-[360px]">
+            <img
+              src="/document-workbench.svg"
+              alt=""
+              className="h-full min-h-[260px] w-full object-cover md:min-h-[360px]"
+              aria-hidden="true"
+            />
+            <div className="absolute bottom-4 left-4 right-4 hidden items-center justify-between gap-3 rounded-[var(--radius-md)] border border-primary/30 px-4 py-3 shadow-[var(--shadow)] sm:flex" style={{ background: "var(--bg)" }}>
+              <span className="text-xs font-bold uppercase tracking-[0.12em] text-primary">Live catalog</span>
+              <span className="text-xs leading-5 text-on-surface-variant">Enabled targets are API-backed</span>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-[var(--radius-xl)] border border-outline-variant bg-surface-container-lowest shadow-[var(--shadow-glow)] animate-[fade-up_0.7s_0.1s_ease_both]">
@@ -224,42 +257,83 @@ export function Home() {
                 </button>
               </div>
 
+              {hasEmptyKnownCatalog ? (
+                <div className="mb-7 rounded-[var(--radius-md)] border border-error/20 bg-error-container px-4 py-4 text-on-error-container" aria-live="polite">
+                  <div className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-error text-[20px]">sync_problem</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">Actions are temporarily unavailable for .{inputType} files.</p>
+                      <p className="mt-1 text-xs leading-5">This file type is supported, but the operation catalog returned no actions.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={refreshOperations}
+                      className="shrink-0 rounded-[8px] border border-error/30 px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 hover:bg-error/10"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="mb-7">
                 <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-outline">Convert to</div>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                  {(loadingOps ? TARGET_GRID.map((item) => ({ ...item, enabled: false, disabledReason: "Loading" })) : gridChoices).map((choice) => (
+                  {(loadingOps || hasEmptyKnownCatalog ? TARGET_GRID.map((item) => ({ ...item, enabled: false, disabledReason: loadingOps ? "Loading" : "Unavailable" })) : gridChoices).map((choice) => {
+                    const actionKey = choice.opMeta ? (choice.opMeta.target ? `${choice.opMeta.operation}:${choice.opMeta.target}` : choice.opMeta.operation) : choice.target
+                    const isStarting = startingAction === actionKey
+                    return (
                     <button
                       key={choice.target}
                       type="button"
                       disabled={!choice.enabled || uploading || loadingOps}
+                      aria-busy={isStarting ? "true" : undefined}
                       onClick={() => handlePick(choice.opMeta)}
-                      className={`min-h-[74px] rounded-[var(--radius-md)] border p-3 text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                      className={`min-h-[74px] rounded-[var(--radius-md)] border p-3 text-left transition-all active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                        isStarting
+                          ? "border-primary bg-primary/15 text-primary shadow-sm ring-2 ring-primary/20"
+                          : ""
+                      } ${
                         choice.enabled
-                          ? "border-outline-variant bg-surface-container-low text-on-surface hover:border-primary/70 hover:bg-primary/10"
-                          : "cursor-not-allowed border-outline-variant bg-surface-container-low text-outline opacity-70"
+                          ? "border-outline-variant bg-surface-container-low text-on-surface hover:border-primary/70 hover:bg-primary/10 disabled:border-primary/40 disabled:bg-primary/10 disabled:text-primary"
+                          : "cursor-not-allowed border-outline-variant bg-surface-container-low text-outline opacity-55 grayscale"
                       }`}
                     >
-                      <span className="block font-headline text-sm font-bold">{choice.label}</span>
+                      <span className="flex items-center gap-2 font-headline text-sm font-bold">
+                        {isStarting ? <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span> : null}
+                        {choice.label}
+                      </span>
                       <span className="mt-0.5 block text-[11px] text-on-surface-variant">
-                        {choice.enabled ? choice.description : choice.disabledReason}
+                        {isStarting ? "Starting..." : choice.enabled ? choice.description : choice.disabledReason}
                       </span>
                     </button>
-                  ))}
+                  )})}
                 </div>
               </div>
 
               <div className="flex flex-col gap-2 sm:flex-row">
+                {(() => {
+                  const editKey = editOperation?.operation
+                  const isStartingEdit = Boolean(editKey && startingAction === editKey)
+                  return (
                 <button
                   type="button"
-                  disabled={!editOperation || uploading || loadingOps}
+                  disabled={!editOperation || uploading || loadingOps || hasEmptyKnownCatalog}
+                  aria-busy={isStartingEdit ? "true" : undefined}
                   onClick={() => handlePick(editOperation)}
-                  className="sd-button-secondary min-h-12 px-5 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`sd-button-secondary min-h-12 px-5 active:scale-[0.98] disabled:cursor-not-allowed disabled:border-outline-variant disabled:bg-surface-container disabled:text-outline disabled:opacity-60 ${
+                    isStartingEdit ? "border-primary bg-primary/15 text-primary ring-2 ring-primary/20" : ""
+                  }`}
                 >
-                  <span className="material-symbols-outlined text-[18px]">edit</span>
-                  {editOperation ? "Edit" : "Edit unavailable"}
+                  <span className={`material-symbols-outlined text-[18px] ${isStartingEdit ? "animate-spin" : ""}`}>{isStartingEdit ? "progress_activity" : "edit"}</span>
+                  {isStartingEdit ? "Starting..." : editOperation ? "Edit" : "Edit unavailable"}
                 </button>
+                  )
+                })()}
                 <div className="flex-1 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container px-4 py-3 text-xs text-on-surface-variant">
-                  {uploading ? "Uploading and starting the job..." : loadingOps ? "Checking available operations..." : "Pick an enabled target to start a real conversion job."}
+                  <span aria-live="polite">
+                    {uploading ? "Starting..." : loadingOps ? "Checking available operations..." : hasEmptyKnownCatalog ? "Catalog returned no actions. Retry before starting." : "Pick an enabled target to start a real conversion job."}
+                  </span>
                 </div>
               </div>
             </div>

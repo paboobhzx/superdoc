@@ -1,0 +1,24 @@
+<svg width="900" height="720" viewBox="0 0 900 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="720" rx="0" fill="#111113"/>
+  <path d="M162 132C162 110 180 92 202 92H621L738 209V588C738 610 720 628 698 628H202C180 628 162 610 162 588V132Z" fill="#f0ede8"/>
+  <path d="M621 92V181C621 197 634 210 650 210H738L621 92Z" fill="#d8d1c5"/>
+  <rect x="222" y="191" width="236" height="18" rx="9" fill="#0c0c0e" fill-opacity=".82"/>
+  <rect x="222" y="244" width="422" height="12" rx="6" fill="#8a8880" fill-opacity=".42"/>
+  <rect x="222" y="275" width="366" height="12" rx="6" fill="#8a8880" fill-opacity=".35"/>
+  <rect x="222" y="306" width="450" height="12" rx="6" fill="#8a8880" fill-opacity=".32"/>
+  <rect x="222" y="367" width="175" height="132" rx="12" fill="#f59e0b"/>
+  <rect x="430" y="367" width="244" height="16" rx="8" fill="#0c0c0e" fill-opacity=".76"/>
+  <rect x="430" y="409" width="202" height="12" rx="6" fill="#8a8880" fill-opacity=".36"/>
+  <rect x="430" y="439" width="220" height="12" rx="6" fill="#8a8880" fill-opacity=".32"/>
+  <rect x="430" y="469" width="156" height="12" rx="6" fill="#8a8880" fill-opacity=".28"/>
+  <path d="M249 458L294 414L330 449L351 427L377 458H249Z" fill="#0c0c0e" fill-opacity=".8"/>
+  <circle cx="344" cy="404" r="14" fill="#0c0c0e" fill-opacity=".8"/>
+  <rect x="92" y="522" width="286" height="68" rx="14" fill="#1a1a1e" stroke="#f59e0b" stroke-opacity=".45"/>
+  <rect x="120" y="547" width="90" height="18" rx="9" fill="#f59e0b"/>
+  <rect x="230" y="550" width="112" height="12" rx="6" fill="#f0ede8" fill-opacity=".32"/>
+  <rect x="548" y="106" width="210" height="62" rx="14" fill="#1a1a1e" stroke="#f59e0b" stroke-opacity=".4"/>
+  <rect x="574" y="128" width="62" height="18" rx="9" fill="#f59e0b"/>
+  <rect x="653" y="131" width="76" height="12" rx="6" fill="#f0ede8" fill-opacity=".34"/>
+  <path d="M99 154C132 102 193 64 266 50" stroke="#f59e0b" stroke-opacity=".28" stroke-width="2"/>
+  <path d="M802 548C756 627 662 676 550 683" stroke="#f59e0b" stroke-opacity=".22" stroke-width="2"/>
+</svg>

@@ -27,3 +27,31 @@ variable "lambda_handler_s3_bucket" {
   description = "S3 bucket for Lambda zips (from private repo CI)"
   type        = string
 }
+
+# The previous hotfix attempt created these IAM resources through AWS CLI before
+# the deployment was stopped. Import them so the next Terraform apply adopts and
+# reconciles them instead of failing on already-existing names.
+import {
+  to = module.superdoc.module.lambda_markdown_convert.aws_iam_role.lambda
+  id = "superdoc-prod-markdown-convert-role"
+}
+
+import {
+  to = module.superdoc.module.lambda_markdown_convert.aws_iam_role_policy_attachment.basic
+  id = "superdoc-prod-markdown-convert-role/arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+import {
+  to = module.superdoc.module.lambda_markdown_convert.aws_iam_role_policy.dynamodb
+  id = "superdoc-prod-markdown-convert-role:superdoc-prod-markdown-convert-dynamo"
+}
+
+import {
+  to = module.superdoc.module.lambda_markdown_convert.aws_iam_role_policy.s3
+  id = "superdoc-prod-markdown-convert-role:superdoc-prod-markdown-convert-s3"
+}
+
+import {
+  to = module.superdoc.module.lambda_markdown_convert.aws_iam_role_policy.ssm
+  id = "superdoc-prod-markdown-convert-role:superdoc-prod-markdown-convert-ssm"
+}

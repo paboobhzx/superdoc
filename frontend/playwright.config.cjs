@@ -16,7 +16,7 @@ module.exports = defineConfig({
     // Run "mobile" tests on Chromium to avoid requiring WebKit in local dev/CI.
     { name: "mobile", use: { ...devices["iPhone 14"], browserName: "chromium" } },
   ],
-  webServer: process.env.CI ? undefined : {
+  webServer: process.env.CI || process.env.LIVE_E2E === "1" ? undefined : {
     command: "npm run dev -- --host 127.0.0.1 --port 3200 --strictPort",
     port:    3200,
     reuseExistingServer: false,

@@ -52,6 +52,7 @@ resource "aws_api_gateway_gateway_response" "cors_5xx" {
 resource "aws_api_gateway_gateway_response" "throttle" {
   rest_api_id   = aws_api_gateway_rest_api.superdoc.id
   response_type = "THROTTLED"
+  status_code   = "429"
 
   response_parameters = {
     "gatewayresponse.header.Access-Control-Allow-Origin" = "'*'"

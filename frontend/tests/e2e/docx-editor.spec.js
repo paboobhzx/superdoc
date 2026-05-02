@@ -17,9 +17,12 @@ test.describe("DOCX Editor", () => {
       buffer: Buffer.from(buf),
     });
 
-    const textarea = page.locator("textarea");
-    await expect(textarea).toHaveValue(/Hello/);
-    await textarea.fill("Hello\nWorld");
+    const editor = page.locator(".ProseMirror");
+    await expect(editor).toContainText("Hello");
+    await editor.click();
+    await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+    await page.keyboard.type("Hello\nWorld");
+    await expect(editor).toContainText("World");
 
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export DOCX" }).click();
