@@ -36,7 +36,7 @@ describe("Home page", () => {
         </ThemeProvider>
       </BrowserRouter>
     );
-    expect(screen.getByText(/Convert any file/)).toBeTruthy();
+    expect(screen.getByText(/file workbench/)).toBeTruthy();
     expect(screen.getByText("Drop your file here")).toBeTruthy();
     expect(screen.getByText(/PDF, DOCX, Markdown, HTML/)).toBeTruthy();
   });
