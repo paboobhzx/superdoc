@@ -102,6 +102,14 @@ class PdfToDocxTests(unittest.TestCase):
             "quarterly-report.docx",
         )
 
+    def test_pdf_to_docx_falls_back_when_pdf2docx_is_unavailable(self):
+        sys.modules["pdf2docx"] = None
+        self.mod._extract_text_docx = lambda data: b"fallback-docx"
+        try:
+            self.assertEqual(self.mod._process(b"%PDF-1.7 sample", {}), b"fallback-docx")
+        finally:
+            sys.modules.pop("pdf2docx", None)
+
 
 class OfficeToPdfTests(unittest.TestCase):
     def setUp(self):

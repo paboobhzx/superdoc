@@ -9,23 +9,49 @@ from logger import get_logger
 log = get_logger(__name__)
 
 
+def _extract_text_docx(data: bytes) -> bytes:
+    from docx import Document
+    import fitz
+
+    doc = Document()
+    doc.add_heading("Converted PDF", level=1)
+
+    with fitz.open(stream=data, filetype="pdf") as pdf:
+        for page_index, page in enumerate(pdf, start=1):
+            text = page.get_text("text").strip()
+            if page_index > 1:
+                doc.add_page_break()
+            if text:
+                for paragraph in text.splitlines():
+                    if paragraph.strip():
+                        doc.add_paragraph(paragraph.strip())
+
+    with tempfile.NamedTemporaryFile(suffix=".docx") as out:
+        doc.save(out.name)
+        out.seek(0)
+        return out.read()
+
+
 def _process(data: bytes, body: dict) -> bytes:
-    from pdf2docx import Converter
+    try:
+        from pdf2docx import Converter
+    except ImportError:
+        return _extract_text_docx(data)
+    else:
+        with tempfile.TemporaryDirectory(prefix="pdf-to-docx-") as workdir:
+            input_path = os.path.join(workdir, "input.pdf")
+            output_path = os.path.join(workdir, "output.docx")
+            with open(input_path, "wb") as fh:
+                fh.write(data)
 
-    with tempfile.TemporaryDirectory(prefix="pdf-to-docx-") as workdir:
-        input_path = os.path.join(workdir, "input.pdf")
-        output_path = os.path.join(workdir, "output.docx")
-        with open(input_path, "wb") as fh:
-            fh.write(data)
+            converter = Converter(input_path)
+            try:
+                converter.convert(output_path)
+            finally:
+                converter.close()
 
-        converter = Converter(input_path)
-        try:
-            converter.convert(output_path)
-        finally:
-            converter.close()
-
-        with open(output_path, "rb") as fh:
-            return fh.read()
+            with open(output_path, "rb") as fh:
+                return fh.read()
 
 
 def _output_filename(body: dict, file_key: str) -> str:
