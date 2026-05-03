@@ -30,7 +30,7 @@
 
   ::selection {
     background: var(--amber);
-    color: #0c0c0e;
+    color: var(--color-on-primary);
   }
 
   .material-symbols-outlined {

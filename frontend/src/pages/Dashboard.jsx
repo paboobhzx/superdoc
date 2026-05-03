@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../context/I18nContext";
 import { api } from "../lib/api";
 
 function formatBytes(bytes) {
@@ -18,6 +19,7 @@ function formatWhen(iso) {
 
 export function Dashboard() {
   const auth = useAuth();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [err, setErr] = useState("");
@@ -46,7 +48,7 @@ export function Dashboard() {
         setJobs(data.jobs || []);
       } catch (e) {
         if (!active) return;
-        setErr(e.message || "Failed to load files.");
+        setErr(e.message || t("dashboard.loadFailed"));
       } finally {
         if (active) setLoading(false);
       }
@@ -56,12 +58,12 @@ export function Dashboard() {
     return () => {
       active = false;
     };
-  }, [canLoad]);
+  }, [canLoad, t]);
 
   async function onDelete(jobId) {
     setErr("");
     if (!jobId) return;
-    const ok = confirm("Delete this file? This cannot be undone.");
+    const ok = confirm(t("dashboard.confirmDelete"));
     if (!ok) return;
 
     setDeletingId(jobId);
@@ -69,7 +71,7 @@ export function Dashboard() {
       await api.deleteUserFile(jobId);
       setJobs((prev) => prev.filter((j) => j.job_id !== jobId));
     } catch (e) {
-      setErr(e.message || "Delete failed.");
+      setErr(e.message || t("dashboard.deleteFailed"));
     } finally {
       setDeletingId("");
     }
@@ -78,9 +80,9 @@ export function Dashboard() {
   if (!auth?.configured) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-bold font-headline text-on-surface mb-2">Files</h1>
+        <h1 className="text-2xl font-bold font-headline text-on-surface mb-2">{t("dashboard.files")}</h1>
         <p className="text-on-surface-variant">
-          Auth is not configured. Set <code>VITE_COGNITO_USER_POOL_ID</code> and <code>VITE_COGNITO_CLIENT_ID</code>.
+          {t("dashboard.authNotConfigured")} <code>VITE_COGNITO_USER_POOL_ID</code> and <code>VITE_COGNITO_CLIENT_ID</code>.
         </p>
       </div>
     );
@@ -89,25 +91,10 @@ export function Dashboard() {
   if (!auth.isAuthenticated) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-bold font-headline text-on-surface mb-2">Files</h1>
+        <h1 className="text-2xl font-bold font-headline text-on-surface mb-2">{t("dashboard.files")}</h1>
         <p className="text-on-surface-variant mb-6">
-          Sign in to view your saved conversions. Registered users can store up to 10 documents for 7 days.
+          {t("dashboard.authUnavailable")}
         </p>
-        <div className="flex gap-3">
-          <Link
-            to="/auth/login"
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity no-underline"
-          >
-            Sign in
-            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-          </Link>
-          <Link
-            to="/auth/register"
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-outline-variant/20 text-on-surface font-semibold text-sm hover:bg-surface-container transition-colors no-underline"
-          >
-            Create account
-          </Link>
-        </div>
       </div>
     );
   }
@@ -116,14 +103,14 @@ export function Dashboard() {
     <div className="max-w-4xl mx-auto px-4 py-10">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold font-headline text-on-surface">Files</h1>
-          <p className="text-sm text-on-surface-variant">Up to 10 documents · stored for 7 days</p>
+          <h1 className="text-2xl font-bold font-headline text-on-surface">{t("dashboard.files")}</h1>
+          <p className="text-sm text-on-surface-variant">{t("dashboard.retention")}</p>
         </div>
         <button
           onClick={() => auth.signOut()}
           className="px-4 py-2 rounded-xl border border-outline-variant/20 text-on-surface font-semibold text-sm hover:bg-surface-container transition-colors"
         >
-          Sign out
+          {t("dashboard.signOut")}
         </button>
       </div>
 
@@ -136,13 +123,13 @@ export function Dashboard() {
 
       <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant/10 overflow-hidden">
         <div className="px-5 py-4 border-b border-outline-variant/10 flex items-center justify-between">
-          <span className="font-bold text-on-surface">Recent</span>
-          {loading && <span className="text-xs text-on-surface-variant">Loading…</span>}
+          <span className="font-bold text-on-surface">{t("dashboard.recent")}</span>
+          {loading && <span className="text-xs text-on-surface-variant">{t("common.loading")}…</span>}
         </div>
 
         {sorted.length === 0 && !loading ? (
           <div className="p-6 text-on-surface-variant text-sm">
-            No files yet. Upload something from <Link to="/" className="text-primary font-semibold no-underline hover:underline">Home</Link>.
+            {t("dashboard.noFiles")} <Link to="/" className="text-primary font-semibold no-underline hover:underline">{t("common.home")}</Link>.
           </div>
         ) : (
           <ul className="divide-y divide-outline-variant/10">
@@ -169,14 +156,14 @@ export function Dashboard() {
                     to={`/processing/${job.job_id}`}
                     className="px-4 py-2 rounded-xl border border-outline-variant/20 text-on-surface font-semibold text-sm hover:bg-surface-container transition-colors no-underline"
                   >
-                    View
+                    {t("common.view")}
                   </Link>
                   {job.download_url ? (
                     <a
                       href={job.download_url}
                       className="px-4 py-2 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity no-underline"
                     >
-                      Download
+                      {t("common.download")}
                     </a>
                   ) : null}
                   <button
@@ -184,7 +171,7 @@ export function Dashboard() {
                     disabled={deletingId === job.job_id}
                     className="px-4 py-2 rounded-xl border border-outline-variant/20 text-on-surface font-semibold text-sm hover:bg-surface-container transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {deletingId === job.job_id ? "Deleting…" : "Delete"}
+                    {deletingId === job.job_id ? t("common.deleting") : t("common.delete")}
                   </button>
                 </div>
               </li>

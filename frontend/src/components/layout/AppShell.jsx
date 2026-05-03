@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../../context/ThemeContext'
+import { useI18n } from '../../context/I18nContext'
 
 function LogoMark({ small = false }) {
   const size = small ? 22 : 30
@@ -27,14 +28,16 @@ function LogoMark({ small = false }) {
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme()
-  const next = theme === 'dark' ? 'light' : 'dark'
+  const { t } = useI18n()
+  const next = theme === 'dark' ? 'azure' : 'dark'
+  const nextLabel = t(`theme.${next}`)
   return (
     <button
       type="button"
       onClick={() => setTheme(next)}
       className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-outline-variant bg-surface-container-lowest text-on-surface-variant transition-colors hover:border-primary/60 hover:text-primary"
-      aria-label={`Switch to ${next} mode`}
-      title={`Switch to ${next} mode`}
+      aria-label={t('theme.switchTo', { theme: nextLabel })}
+      title={t('theme.switchTo', { theme: nextLabel })}
     >
       <span className="material-symbols-outlined text-[18px]">
         {theme === 'dark' ? 'light_mode' : 'dark_mode'}
@@ -45,6 +48,7 @@ function ThemeToggle() {
 
 export default function AppShell({ children }) {
   const { pathname } = useLocation()
+  const { t } = useI18n()
   const isHome = pathname === '/'
   const sectionHref = (hash) => isHome ? hash : `/${hash}`
 
@@ -52,35 +56,29 @@ export default function AppShell({ children }) {
     <div className="min-h-screen bg-background text-on-surface">
       <header className="sticky top-0 z-50 h-[60px] border-b border-outline-variant bg-background/95 backdrop-blur-xl">
         <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
-          <Link to="/" className="flex items-center gap-2.5 no-underline" aria-label="SuperDoc home">
+          <Link to="/" className="flex items-center gap-2.5 no-underline" aria-label={t('common.appHome')}>
             <LogoMark />
             <span className="font-headline text-[17px] font-bold text-on-surface">
               SuperDoc
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+          <nav className="hidden items-center gap-1 md:flex" aria-label={t('common.primaryNavigation')}>
             <a className="rounded-[8px] px-3 py-1.5 text-sm text-on-surface-variant no-underline transition-colors hover:bg-surface-container-lowest hover:text-on-surface" href={sectionHref('#formats')}>
-              Formats
+              {t('shell.nav.formats')}
             </a>
             <a className="rounded-[8px] px-3 py-1.5 text-sm text-on-surface-variant no-underline transition-colors hover:bg-surface-container-lowest hover:text-on-surface" href={sectionHref('#how')}>
-              How it works
+              {t('shell.nav.how')}
             </a>
             <a className="rounded-[8px] px-3 py-1.5 text-sm text-on-surface-variant no-underline transition-colors hover:bg-surface-container-lowest hover:text-on-surface" href={sectionHref('#faq')}>
-              FAQ
+              {t('shell.nav.faq')}
             </a>
             <Link className="rounded-[8px] px-3 py-1.5 text-sm text-on-surface-variant no-underline transition-colors hover:bg-surface-container-lowest hover:text-on-surface" to="/dashboard">
-              Files
+              {t('shell.nav.files')}
             </Link>
           </nav>
 
           <div className="flex items-center gap-2">
-            <Link
-              to="/auth/login"
-              className="hidden rounded-[8px] px-3 py-1.5 text-sm font-medium text-on-surface-variant no-underline transition-colors hover:bg-surface-container-lowest hover:text-on-surface sm:inline-flex"
-            >
-              Sign in
-            </Link>
             <ThemeToggle />
           </div>
         </div>

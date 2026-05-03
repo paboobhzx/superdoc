@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 const THEMES = [
+  { id: 'azure', color: '#0b70d8', label: 'Azure Blue' },
   { id: 'dark', color: '#0c0c0e', label: 'Dark' },
-  { id: 'light', color: '#f5f3ef', label: 'Light' },
 ]
 
 const ThemeContext = createContext(null)
@@ -11,18 +11,21 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(
     () => {
       const saved = localStorage.getItem('superdoc-theme')
-      return saved === 'light' || saved === 'dark' ? saved : 'dark'
+      if (saved === 'light') return 'azure'
+      return saved === 'azure' || saved === 'dark' ? saved : 'azure'
     }
   )
 
   useEffect(() => {
     const root = document.documentElement
-    root.classList.remove('theme-dark', 'theme-light', 'dark')
+    const nextTheme = theme === 'light' ? 'azure' : theme
+    root.classList.remove('theme-dark', 'theme-light', 'theme-azure', 'dark')
     root.removeAttribute('data-theme')
-    root.classList.add(`theme-${theme}`)
-    root.setAttribute('data-theme', theme)
-    if (theme === 'dark') root.classList.add('dark')
-    localStorage.setItem('superdoc-theme', theme)
+    root.classList.add(`theme-${nextTheme}`)
+    root.setAttribute('data-theme', nextTheme)
+    if (nextTheme === 'dark') root.classList.add('dark')
+    if (nextTheme !== theme) setTheme(nextTheme)
+    localStorage.setItem('superdoc-theme', nextTheme)
   }, [theme])
 
   return (

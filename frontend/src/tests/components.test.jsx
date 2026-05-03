@@ -3,24 +3,59 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { renderHook } from "@testing-library/react";
 import { BrowserRouter, MemoryRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
+import { I18nProvider, useI18n } from "../context/I18nContext";
+
+function Providers({ children }) {
+  return (
+    <I18nProvider>
+      <ThemeProvider>{children}</ThemeProvider>
+    </I18nProvider>
+  );
+}
 
 // ── ThemeContext ────────────────────────────────────────────────────────────
 
 describe("ThemeContext", () => {
   afterEach(() => localStorage.clear());
 
-  it("defaults to dark theme", () => {
+  it("defaults to Azure Blue theme", () => {
     const { result } = renderHook(() => useTheme(), {
-      wrapper: ({ children }) => <ThemeProvider>{children}</ThemeProvider>,
+      wrapper: Providers,
     });
-    expect(result.current.theme).toBe("dark");
+    expect(result.current.theme).toBe("azure");
   });
 
-  it("provides dark and light themes", () => {
+  it("provides Azure Blue and dark themes", () => {
     const { result } = renderHook(() => useTheme(), {
-      wrapper: ({ children }) => <ThemeProvider>{children}</ThemeProvider>,
+      wrapper: Providers,
     });
-    expect(result.current.themes.map((theme) => theme.id)).toEqual(["dark", "light"]);
+    expect(result.current.themes.map((theme) => theme.id)).toEqual(["azure", "dark"]);
+  });
+
+  it("migrates stored light preference to Azure Blue", () => {
+    localStorage.setItem("superdoc-theme", "light");
+    const { result } = renderHook(() => useTheme(), {
+      wrapper: Providers,
+    });
+    expect(result.current.theme).toBe("azure");
+  });
+});
+
+// ── I18nContext ────────────────────────────────────────────────────────────
+
+describe("I18nContext", () => {
+  afterEach(() => localStorage.clear());
+
+  it("falls back to the key when a translation is missing", () => {
+    const { result } = renderHook(() => useI18n(), { wrapper: Providers });
+    expect(result.current.t("missing.key")).toBe("missing.key");
+  });
+
+  it("uses a persisted locale override", () => {
+    localStorage.setItem("superdoc-locale", "pt-BR");
+    const { result } = renderHook(() => useI18n(), { wrapper: Providers });
+    expect(result.current.locale).toBe("pt-BR");
+    expect(result.current.t("settings.title")).toBe("Configuracoes");
   });
 });
 
@@ -31,9 +66,9 @@ describe("Home page", () => {
     const { Home } = await import("../pages/Home/Home");
     render(
       <BrowserRouter>
-        <ThemeProvider>
+        <Providers>
           <Home />
-        </ThemeProvider>
+        </Providers>
       </BrowserRouter>
     );
     expect(screen.getByText(/file workbench/)).toBeTruthy();
@@ -45,15 +80,29 @@ describe("Home page", () => {
     const { Home } = await import("../pages/Home/Home");
     render(
       <BrowserRouter>
-        <ThemeProvider>
+        <Providers>
           <Home />
-        </ThemeProvider>
+        </Providers>
       </BrowserRouter>
     );
     expect(screen.getByText("Drop your file here")).toBeTruthy();
     ["PDF", "DOCX", "XLSX", "PNG"].forEach((fmt) => {
       expect(screen.getAllByText(fmt).length).toBeGreaterThan(0);
     });
+  });
+
+  it("renders the requested footer attribution", async () => {
+    const { Home } = await import("../pages/Home/Home");
+    render(
+      <BrowserRouter>
+        <Providers>
+          <Home />
+        </Providers>
+      </BrowserRouter>
+    );
+    expect(screen.getByText(/Developed by Zorak Software/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "http://pablobhz.cloud" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "LinkedIn" })).toBeTruthy();
   });
 });
 
@@ -109,11 +158,11 @@ describe("Processing page", () => {
 
     render(
       <MemoryRouter initialEntries={["/processing/abc"]}>
-        <ThemeProvider>
+        <Providers>
           <Routes>
             <Route path="/processing/:jobId" element={<Processing />} />
           </Routes>
-        </ThemeProvider>
+        </Providers>
       </MemoryRouter>
     );
 
@@ -130,9 +179,9 @@ describe("Auth pages", () => {
     const { Login } = await import("../pages/auth/Login");
     render(
       <BrowserRouter>
-        <ThemeProvider>
+        <Providers>
           <Login />
-        </ThemeProvider>
+        </Providers>
       </BrowserRouter>
     );
     expect(screen.getByText("Sign in")).toBeTruthy();
@@ -143,9 +192,9 @@ describe("Auth pages", () => {
     const { Register } = await import("../pages/auth/Register");
     render(
       <BrowserRouter>
-        <ThemeProvider>
+        <Providers>
           <Register />
-        </ThemeProvider>
+        </Providers>
       </BrowserRouter>
     );
     expect(screen.getByText("Create account")).toBeTruthy();
@@ -156,9 +205,9 @@ describe("Auth pages", () => {
     const { ConfirmEmail } = await import("../pages/auth/ConfirmEmail");
     render(
       <BrowserRouter>
-        <ThemeProvider>
+        <Providers>
           <ConfirmEmail />
-        </ThemeProvider>
+        </Providers>
       </BrowserRouter>
     );
     expect(screen.getByText("Check your email")).toBeTruthy();
@@ -173,9 +222,9 @@ describe("Settings page", () => {
     const { Settings } = await import("../pages/Settings");
     render(
       <BrowserRouter>
-        <ThemeProvider>
+        <Providers>
           <Settings />
-        </ThemeProvider>
+        </Providers>
       </BrowserRouter>
     );
     expect(screen.getByText("Profile")).toBeTruthy();
@@ -185,16 +234,17 @@ describe("Settings page", () => {
     expect(screen.getByText("Danger Zone")).toBeTruthy();
   });
 
-  it("shows the dark/light appearance toggle", async () => {
+  it("shows theme and language selectors", async () => {
     const { Settings } = await import("../pages/Settings");
     render(
       <BrowserRouter>
-        <ThemeProvider>
+        <Providers>
           <Settings />
-        </ThemeProvider>
+        </Providers>
       </BrowserRouter>
     );
-    expect(screen.getByRole("button", { name: /Switch to light/i })).toBeTruthy();
+    expect(screen.getByDisplayValue("Azure Blue")).toBeTruthy();
+    expect(screen.getByDisplayValue("English (US)")).toBeTruthy();
   });
 });
 
@@ -207,11 +257,11 @@ describe("AppShell", () => {
     );
     render(
       <BrowserRouter>
-        <ThemeProvider>
+        <Providers>
           <AppShell>
             <div>Content</div>
           </AppShell>
-        </ThemeProvider>
+        </Providers>
       </BrowserRouter>
     );
     expect(screen.getByText("SuperDoc")).toBeTruthy();
@@ -223,14 +273,14 @@ describe("AppShell", () => {
     );
     render(
       <BrowserRouter>
-        <ThemeProvider>
+        <Providers>
           <AppShell>
             <div>Content</div>
           </AppShell>
-        </ThemeProvider>
+        </Providers>
       </BrowserRouter>
     );
-    expect(screen.getByRole("button", { name: /Switch to light mode/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Switch to Dark mode/i })).toBeTruthy();
   });
 
   it("renders design navigation links", async () => {
@@ -239,11 +289,11 @@ describe("AppShell", () => {
     );
     render(
       <BrowserRouter>
-        <ThemeProvider>
+        <Providers>
           <AppShell>
             <div>Content</div>
           </AppShell>
-        </ThemeProvider>
+        </Providers>
       </BrowserRouter>
     );
     expect(screen.getByText("Formats")).toBeTruthy();
@@ -251,6 +301,7 @@ describe("AppShell", () => {
     expect(screen.getByText("FAQ")).toBeTruthy();
     expect(screen.getByText("Files")).toBeTruthy();
     expect(screen.queryByText("Settings")).toBeNull();
+    expect(screen.queryByText("Sign in")).toBeNull();
   });
 });
 
