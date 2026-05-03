@@ -13,93 +13,101 @@
 
 </div>
 
-SuperDoc is a serverless file utility for everyday document work: converting, editing, extracting, and packaging common office, PDF, image, spreadsheet, and markdown formats. It is built as a public web app with short-lived storage, event-driven processing, and infrastructure managed in Terraform.
+SuperDoc is a serverless file utility for everyday document work: converting, editing, extracting, and packaging common office, PDF, image, spreadsheet, and markdown formats. It runs as a public web app with short-lived storage, event-driven processing, and infrastructure managed entirely in Terraform.
 
 ## Why It Exists
 
-Most file conversion sites make users trade privacy, time, or trust for simple tasks. SuperDoc aims to keep the workflow direct:
+Most file conversion sites make users trade privacy, time, or trust for simple tasks. SuperDoc keeps the workflow direct:
 
 - Upload a file.
-- Pick a valid operation.
+- Pick an operation (convert or edit).
 - Process it in isolated serverless workers.
 - Download the result.
-- Let temporary files expire automatically.
+- Let temporary files expire automatically (12h for anonymous, 7 days for authenticated).
 
-The project is intentionally pragmatic: it favors simple operations, bounded retention, and transparent infrastructure over account lock-in or ad-heavy conversion funnels.
+No accounts required, no ad funnels, no subscription lock-in.
 
 ## What It Does
 
-SuperDoc currently focuses on document and media utility workflows:
-
-| Area | Examples |
+| Area | Operations |
 | --- | --- |
-| PDF | extract text, convert to images, generate downloads |
-| DOCX | convert to PDF or text, edit document content |
-| XLSX | convert to CSV or PDF, edit spreadsheets |
-| Markdown | convert markdown into downloadable document formats |
-| Images | convert images and prepare transformed outputs |
-| User files | create, list, complete, and download short-lived files |
+| PDF | to DOCX, TXT, Markdown, HTML, Images (ZIP); extract text (JSON); edit in browser |
+| DOCX | to PDF, TXT, Markdown, HTML, Images (ZIP); WYSIWYG editor |
+| XLSX | to CSV, PDF, TXT, Markdown, HTML, DOCX, Images (ZIP); spreadsheet editor |
+| Markdown | to PDF, DOCX, HTML, Images; edit in browser |
+| HTML | to PDF, DOCX, TXT, Images |
+| Images | format conversion (PNG, JPG, WebP, GIF); to PDF; OCR to TXT/MD/DOCX; image editor |
 
-The frontend presents the available actions based on file type and sends jobs through the API. Backend handlers validate operations, track status, store artifacts in S3, and return presigned download URLs.
+The frontend presents available actions based on file type via a dynamic operation catalog. Backend handlers validate, process, store artifacts in S3 with TTL, and return presigned download URLs.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
   user[User] --> cf[CloudFront]
-  cf --> app[React SPA on Amplify]
-  app --> api[API Gateway]
-  api --> create[Lambda: create job]
+  cf --> app[React SPA via Amplify]
+  cf --> api[API Gateway /api]
+  api --> create[create_job]
   create --> db[(DynamoDB)]
-  create --> bucket[(S3 media bucket)]
+  create --> bucket[(S3)]
   create --> queue[SQS]
-  queue --> worker[Lambda workers]
-  worker --> db
-  worker --> bucket
-  app --> status[Lambda: status and downloads]
+  queue --> dispatch[dispatch_job]
+  dispatch --> workers[Worker Lambdas]
+  workers --> db
+  workers --> bucket
+  api --> status[get_status + presign_download]
   status --> db
   status --> bucket
 ```
 
-The runtime is split into focused Lambda handlers rather than a monolith. Shared behavior lives in Lambda layers under `layers/`, while Terraform modules define the AWS resources used by each environment.
-
-### AWS Shape
+### AWS Services Used
 
 | Layer | Service |
 | --- | --- |
-| Web app | React + Vite deployed through AWS Amplify |
-| Edge | CloudFront |
-| API | API Gateway |
-| Compute | AWS Lambda, Python 3.12 |
-| Queueing | SQS standard queue |
-| State | DynamoDB with TTL-oriented job records |
-| Storage | S3 for temporary upload and output objects |
-| Identity | Cognito-backed session support |
-| DNS | Route 53 for `superdoc.pablobhz.cloud` |
-| IaC | Terraform modules and environment roots |
+| Edge / CDN | CloudFront (custom domain + /api origin routing) |
+| Web hosting | Amplify (manual deploy of pre-built dist/) |
+| API | API Gateway REST with Cognito authorizer |
+| Compute | 26 Lambda functions (Python 3.12, Zip packaging) |
+| Queue | SQS standard queue with single dispatcher pattern |
+| State | DynamoDB (jobs, api_keys, incidents, rate_limits, auth_sessions, payments) |
+| Storage | S3 with lifecycle TTL for temporary files |
+| Auth | Cognito user pool + session Lambda |
+| DNS | Route 53 for superdoc.pablobhz.cloud |
+| Certificates | ACM |
+| Monitoring | CloudWatch alarms, SNS alerts, budget alarm at $5 |
+| Secrets | SSM Parameter Store (Stripe keys) |
+| IaC | Terraform with 13 reusable modules |
 
 ## Stack
 
-- **Frontend:** React 18, Vite, React Router, TipTap, Fabric, PDF and Office document helpers.
-- **Backend:** Python Lambda handlers with shared utilities in `layers/superdoc_utils`.
-- **Infrastructure:** Terraform modules for Amplify, API Gateway, Lambda, S3, DynamoDB, SQS, CloudFront, Cognito, ACM, Route 53, SSM, and monitoring.
-- **Testing:** Vitest, Playwright, Pytest, Terraform validation, and targeted smoke scripts.
-- **Delivery:** GitHub Actions and deployment scripts for packaged handlers, layers, frontend assets, and Terraform-managed infrastructure.
+- **Frontend:** React 18, Vite, React Router, TipTap (WYSIWYG), Fabric.js (image editor), i18n (en-US / pt-BR), Azure + Dark themes.
+- **Backend:** Python Lambda handlers with shared utilities in `layers/superdoc_utils` (operations catalog, validation, DynamoDB/S3 helpers, structured logging).
+- **Infrastructure:** Single Terraform root (`infra/`) with modules for each AWS service.
+- **Testing:** Vitest for frontend, Pytest for backend, Playwright for E2E.
 
 ## Repository Layout
 
 ```text
 .
 ├── frontend/              # React + Vite web app
-├── handlers/              # Python Lambda entrypoints
-├── layers/                # Shared Lambda layer code and dependencies
-├── infra/                 # Terraform root, modules, and environments
-│   ├── modules/           # Reusable AWS modules
-│   └── environments/      # dev, stage, and prod entrypoints
-├── office_image/          # Office conversion image requirements
-├── scripts/               # Build, smoke, deploy, and hygiene scripts
+│   ├── src/
+│   │   ├── components/    # Layout, shared UI
+│   │   ├── context/       # Auth, Theme, I18n providers
+│   │   ├── hooks/         # useJob, custom hooks
+│   │   ├── i18n/          # en-US.json, pt-BR.json
+│   │   ├── lib/           # api.js, session.js
+│   │   ├── pages/         # Home, editors, processing, settings
+│   │   └── styles/        # themes.css, index.css
+│   └── dist/              # Pre-built output (deployed to Amplify)
+├── handlers/              # Python Lambda entrypoints (one per operation)
+├── layers/                # Shared Lambda layers (superdoc_utils, python_deps)
+├── infra/                 # Terraform root module
+│   ├── modules/           # acm, amplify, api_gateway, budget, cloudfront,
+│   │                      # cognito, dynamodb, lambda, lambda_layer,
+│   │                      # monitoring, route53, s3, sqs, ssm
+│   └── environments/      # dev, prod, stage entrypoints (S3 backend state)
 ├── tests/                 # Python backend tests
-└── docs/                  # Supporting project documentation
+└── docs/                  # Supporting documentation
 ```
 
 ## Local Development
@@ -109,125 +117,70 @@ The runtime is split into focused Lambda handlers rather than a monolith. Shared
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
-Set `VITE_API_URL` in `frontend/.env.local` to point at the API Gateway stage you want to use.
-
-Useful frontend commands:
+Set `VITE_API_URL` in a local `.env` to point at the deployed API Gateway stage.
 
 ```bash
-cd frontend
-npm run build
-npm run test
-npm run test:e2e
-npm run lint
+npm run build        # Build dist/
+npm run test         # Vitest
+npm run test:e2e     # Playwright
+npm run lint         # ESLint
 ```
 
 ### Backend
 
-Most backend code runs as Lambda handlers, but the shared Python behavior is testable locally:
+Handlers are Lambda entrypoints. Shared code lives in `layers/superdoc_utils/`. Test locally with:
 
 ```bash
-pip install pytest python-hcl2
+pip install pytest
 pytest tests -v
-```
-
-Layer and handler packaging helpers live in `scripts/`:
-
-```bash
-bash scripts/build_layers.sh
-bash scripts/build_handlers.sh
 ```
 
 ### Infrastructure
 
-Bootstrap Terraform state once, then work from an environment directory:
-
 ```bash
-cd infra/bootstrap_backend
-terraform init
-terraform apply -var='bucket_name=superdoc-tfstate-<account_id>'
-```
-
-For normal environment work:
-
-```bash
-cd infra/environments/dev
+cd infra/environments/prod
 terraform init
 terraform plan
 terraform apply
-```
 
-Validation from the root:
-
-```bash
+# Validation from root:
 cd infra
 terraform fmt -recursive
 terraform validate
-pytest tests -v
 ```
 
-## Testing
+The Terraform root module is `infra/`. Environment entrypoints (`infra/environments/dev/`, `prod/`, `stage/`) call the root module with environment-specific variables. State is stored in S3 (`superdoc-tfstate` bucket). Variables are supplied via `.tfvars` files (not committed).
 
-Run the suites closest to the code you changed:
+## Deployment
+
+The frontend is deployed as a **manual static upload** to AWS Amplify:
 
 ```bash
-# Frontend unit tests
 cd frontend
-npm run test
-
-# Browser flows
-cd frontend
-npm run test:e2e
-
-# Backend and infrastructure tests
-pytest tests -v
-pytest infra/tests -v
+npm run build
+aws amplify start-deployment --app-id d1nt18fa4ahgcn --branch-name main \
+  --source-url "$(aws s3 presign s3://...)"
+# Or via the Amplify console: upload dist/ as a manual deploy
 ```
 
-Smoke and deployment-oriented scripts are intentionally explicit:
+Lambda handlers are packaged as ZIP files, uploaded to a private S3 bucket, and referenced by Terraform via `s3_key` variables. After updating handler code:
 
-```bash
-bash scripts/smoke-api.sh
-python scripts/local-v1-smoke.py
-bash scripts/redeploy_frontend.sh
-```
+1. Package the handler ZIP
+2. Upload to the handlers S3 bucket
+3. Run `terraform apply` to update Lambda function code
 
 ## Operational Notes
 
-- Uploads and generated outputs are designed to be temporary.
-- DynamoDB stores job state and expiration metadata.
-- S3 lifecycle and presigned URLs keep file access bounded.
-- Terraform environment roots separate `dev`, `stage`, and `prod`.
-- Customer-managed KMS can be enabled for media S3 and DynamoDB in supported environments.
-- The public app lives at [superdoc.pablobhz.cloud](https://superdoc.pablobhz.cloud).
-
-## Code Hygiene
-
-The repo includes local scripts for comment and generated-reference hygiene:
-
-```bash
-bash scripts/inventory_comments_needed.sh
-bash scripts/strip_generated_refs.sh
-bash scripts/install_git_hooks.sh
-```
-
-Comments should explain why a branch exists, not restate the code.
+- File retention: 12h anonymous, 7 days authenticated (via TTL_SECONDS env vars).
+- DynamoDB TTL handles automatic expiration of job records.
+- S3 lifecycle rules expire objects matching the same retention windows.
+- Budget alarm triggers at $5/month; auto-disable Lambda kills anonymous access at $20.
+- Video processing Lambda exists but is disabled (`reserved_concurrent_executions = 0`).
+- Stripe checkout infrastructure is deployed but dormant (SSM keys are placeholders).
 
 ## Project History
 
-SuperDoc started as a compact serverless document converter and has grown into a broader file workspace: conversion flows, document editors, authenticated user files, operation validation, and environment-specific AWS infrastructure. The current direction is to keep the product useful without making the architecture heavy: a React SPA, narrow Lambda handlers, short-lived files, and Terraform-managed cloud resources.
-
-## Contributing
-
-Contributions should keep the system boring in the best way:
-
-1. Keep user files temporary unless a feature explicitly requires persistence.
-2. Add or update tests for new operations and user-visible flows.
-3. Prefer existing shared utilities in `layers/superdoc_utils`.
-4. Keep Terraform changes modular and environment-aware.
-5. Run the smallest meaningful test set before opening a change.
-
-For larger changes, include the user flow, AWS resources touched, rollback notes, and expected cost impact in the pull request description.
+SuperDoc started as a compact serverless document converter and has grown into a broader file workspace: conversion flows for 30+ format pairs, client-side editors (PDF, DOCX, XLSX, Markdown, Image), authenticated user file management, and a dynamic operation catalog. The architecture remains intentionally lightweight: a React SPA, narrow Lambda handlers, short-lived files, and Terraform-managed infrastructure.

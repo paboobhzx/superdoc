@@ -1,10 +1,12 @@
 # Terraform
 **/.terraform/
+.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
-.terraform.lock.hcl
+**/tfplan*
+**/*.tfplan
 crash.log
 override.tf
 override.tf.json
@@ -27,7 +29,6 @@ dist/
 
 # Node
 node_modules/
-dist/
 .next/
 frontend/test-results/
 frontend/playwright-report/
@@ -36,58 +37,66 @@ frontend/playwright-report/
 .DS_Store
 Thumbs.db
 
-# Local artifacts
-**/tfplan
-**/tfplan*
+# Build artifacts
+build.zip
+frontend/dist/
+
+# Claude / AI tooling
+.claude/
+MEMORY.md
+skills/
+
+# Local automation scripts (worktree leftovers)
+commit_*.py
+delete_*.py
+hotfix_*.py
+tiptap_*.py
+round*.py
+smoke_*.py
+fix-permissions.plan.log
+round*.plan.log
+ut=fix.tfplan
+full_dump.sh
+instructions-general.md
 
 # Reference materials (not project code)
 Aux/
 superdoc-all/
 superdoc-all.tar.gz
 superdoc-round8/
-.claude/
+*.zip
 
-
-# Dumps
+# Dumps and logs
 superdoc_dump_*.txt
-*.tfplan
+project-map-*.html
 
-# Terraform local state (se não estiver já)
-.terraform/
-.terraform.lock.hcl
-*.tfstate
-*.tfstate.backup
+# Design assets (local only)
+design/
+design2/
 
-# Build artifacts
-dist/
-frontend/dist/
-
-# Local dumps and plans
-superdoc_dump_*.txt
-*.tfplan
-round2-*.tfplan
+# Local output directories
+output/
+frontend/output/
 
 # Script backups
-*.bak-round2t123
 *.bak
-
-# Terraform local state
-.terraform/
-.terraform.lock.hcl
-*.tfstate
-*.tfstate.backup
-
-# Build artifacts
-dist/
-frontend/dist/
-build.zip
-# --- SuperDoc build/runtime artifacts ---
 *.bak-*
-/tmp/
-# --- Smoke test output ---
-/tmp/superdoc-*
 
-# Local/generated test artifacts
-/frontend/src/tests/
-/frontend/tests/e2e/
+# Backend tests live in the private repo (handlers/ + layers/ + tests/)
 /tests/
+
+# Playwright CI output (not source)
+frontend/test-results/
+frontend/playwright-report/
+
+# Local shell helpers
+infra/apply.sh
+
+# Pre-commit (local config)
+.pre-commit-config.yaml
+
+# Local scripts (not part of deployed code)
+scripts/
+
+# Local docs drafts
+docs/security-hardening.md

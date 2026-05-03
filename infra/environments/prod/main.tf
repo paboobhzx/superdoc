@@ -23,6 +23,8 @@ module "superdoc" {
   lambda_handler_s3_bucket             = var.lambda_handler_s3_bucket
   enable_media_customer_managed_kms    = var.enable_media_customer_managed_kms
   enable_dynamodb_customer_managed_kms = var.enable_dynamodb_customer_managed_kms
+  office_converter_package_type        = "Image"
+  office_converter_image_tag           = "latest"
 }
 
 variable "lambda_handler_s3_bucket" {
