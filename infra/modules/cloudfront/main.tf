@@ -69,11 +69,12 @@ resource "aws_cloudfront_distribution" "superdoc" {
   }
 
   default_cache_behavior {
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "amplify-origin"
-    viewer_protocol_policy = "redirect-to-https"
-    compress               = true
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "amplify-origin"
+    viewer_protocol_policy     = "redirect-to-https"
+    compress                   = true
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
 
     forwarded_values {
       query_string = false
@@ -86,12 +87,13 @@ resource "aws_cloudfront_distribution" "superdoc" {
   }
 
   ordered_cache_behavior {
-    path_pattern           = "/api/*"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "api-origin"
-    viewer_protocol_policy = "redirect-to-https"
-    compress               = true
+    path_pattern               = "/api/*"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "api-origin"
+    viewer_protocol_policy     = "redirect-to-https"
+    compress                   = true
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
 
     forwarded_values {
       query_string = true
@@ -139,6 +141,47 @@ resource "aws_cloudfront_distribution" "superdoc" {
     acm_certificate_arn      = var.acm_certificate_arn
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
+  }
+}
+
+resource "aws_cloudfront_response_headers_policy" "security" {
+  name    = "${var.name_prefix}-security-headers"
+  comment = "Security headers for SuperDoc"
+
+  security_headers_config {
+    content_type_options {
+      override = true
+    }
+
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = true
+      preload                    = false
+      override                   = true
+    }
+
+    content_security_policy {
+      content_security_policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      override                = true
+    }
+  }
+
+  custom_headers_config {
+    items {
+      header   = "Permissions-Policy"
+      value    = "camera=(), microphone=(), geolocation=(), payment=()"
+      override = true
+    }
   }
 }
 

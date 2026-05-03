@@ -3,6 +3,7 @@ import os
 import uuid
 
 import dynamo
+import auth_session
 import circuit_breaker
 import feature_flags
 import operations
@@ -14,6 +15,8 @@ from logger import get_logger
 log = get_logger(__name__)
 
 _MAX_ITERATION_BYTES = 100 * 1024 * 1024  # 100MB
+# Anonymous uploads default to a one-week TTL; registered uploads override
+# this in the branch below so users can come back later and download files.
 _USER_TTL_SECONDS = int(os.environ.get("USER_TTL_SECONDS", str(7 * 24 * 3600)))
 _USER_MAX_DOCS = int(os.environ.get("USER_MAX_DOCS", "10"))
 _ANON_MAX_ACTIVE_DOCS = int(os.environ.get("ANON_MAX_ACTIVE_DOCS", "4"))
@@ -44,19 +47,14 @@ def handler(event, context):
         if event.get("httpMethod") == "OPTIONS":
             return response.preflight()
 
-        claims = (
-            (event.get("requestContext") or {})
-            .get("authorizer", {})
-            .get("claims", {})
-        )
         body = json.loads(event.get("body") or "{}")
         operation = body.get("operation", "")
         file_name = _validate_file_name(body.get("file_name", "file"))
         file_size_bytes = int(body.get("file_size_bytes", 0))
-        session_id = body.get("session_id", "anon")
+        session_id = (body.get("session_id") or "").strip()
         params = body.get("params") or {}
 
-        user_id = claims.get("sub") or ""
+        user_id = auth_session.current_user_id(event)
         is_registered = bool(user_id)
         if is_registered:
             session_id = user_id
@@ -77,6 +75,11 @@ def handler(event, context):
             return response.error("Video processing is temporarily disabled.", 503)
 
         if not is_registered:
+            try:
+                uuid.UUID(session_id)
+            except (TypeError, ValueError):
+                return response.error("valid session_id is required", 400)
+
             if not feature_flags.get("anonymous_ops_enabled", default=True):
                 return response.error("Anonymous conversions are temporarily disabled.", 503)
 
@@ -106,6 +109,8 @@ def handler(event, context):
             if len(existing) >= _USER_MAX_DOCS:
                 return response.error("Storage limit reached (10 documents). Delete older files or wait for expiry.", 403)
             file_key = f"users/{session_id}/uploads/{job_id}/{file_name}"
+            # Registered users keep uploads for a week so they can revisit a
+            # file later without re-uploading it.
             ttl_seconds = _USER_TTL_SECONDS
         else:
             existing = dynamo.query_by_session(session_id)
@@ -116,6 +121,8 @@ def handler(event, context):
             if _rate_limit_enabled() and len(active) >= _ANON_MAX_ACTIVE_DOCS:
                 return response.error("Too many active jobs. Please wait for current conversions to finish.", 429)
             file_key = f"uploads/{job_id}/{file_name}"
+            # Anonymous uploads use the short default TTL to cap storage use
+            # and keep transient files from lingering after the session ends.
             ttl_seconds = int(os.environ.get("TTL_SECONDS", "43200"))
 
         dynamo.create_job(

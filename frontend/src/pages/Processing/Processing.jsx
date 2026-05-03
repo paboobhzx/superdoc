@@ -27,6 +27,7 @@ export function Processing() {
   const [downloadFeedback, setDownloadFeedback] = useState("")
   const autoDownloadedRef = useRef(false)
   const isDone = job?.status === "DONE"
+  const canShareDownload = isDone && job?.download_url && typeof navigator !== "undefined" && typeof navigator.share === "function"
 
   useEffect(() => {
     if (!job || isDone || job.status === "FAILED") return
@@ -185,11 +186,23 @@ export function Processing() {
                   : t("processing.unlock")}
             </p>
             {isDone && job.download_url ? (
-              <a href={job.download_url} download
-                className="group w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-sm transition-all hover:brightness-105 hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                <span aria-hidden="true" className="material-symbols-outlined text-[18px] transition-transform group-hover:translate-y-0.5">download</span>
-                {t("common.downloadFile")}
-              </a>
+              <>
+                <a href={job.download_url} download
+                  className="group w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-sm transition-all hover:brightness-105 hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                  <span aria-hidden="true" className="material-symbols-outlined text-[18px] transition-transform group-hover:translate-y-0.5">download</span>
+                  {t("common.downloadFile")}
+                </a>
+                {canShareDownload ? (
+                  <button
+                    type="button"
+                    onClick={() => navigator.share({ title: "SuperDoc download", url: job.download_url }).catch(() => {})}
+                    className="mt-3 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-outline-variant/60 text-on-surface font-semibold text-sm transition-all hover:bg-surface-container hover:border-outline active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined text-[17px]">ios_share</span>
+                    Share
+                  </button>
+                ) : null}
+              </>
             ) : (
               <button disabled
                 className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-outline-variant/35 text-on-surface-variant font-semibold text-sm cursor-not-allowed">

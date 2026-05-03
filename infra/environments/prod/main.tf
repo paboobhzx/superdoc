@@ -12,20 +12,34 @@ terraform {
 }
 
 module "superdoc" {
-  source                   = "../../"
-  environment              = "prod"
-  aws_region               = "us-east-1"
-  project_name             = "superdoc"
-  owner                    = "pablo"
-  alert_email              = "pablobhz@gmail.com"
-  domain_name              = "pablobhz.cloud"
-  subdomain                = "superdoc"
-  lambda_handler_s3_bucket = var.lambda_handler_s3_bucket
+  source                               = "../../"
+  environment                          = "prod"
+  aws_region                           = "us-east-1"
+  project_name                         = "superdoc"
+  owner                                = "pablo"
+  alert_email                          = "pablobhz@gmail.com"
+  domain_name                          = "pablobhz.cloud"
+  subdomain                            = "superdoc"
+  lambda_handler_s3_bucket             = var.lambda_handler_s3_bucket
+  enable_media_customer_managed_kms    = var.enable_media_customer_managed_kms
+  enable_dynamodb_customer_managed_kms = var.enable_dynamodb_customer_managed_kms
 }
 
 variable "lambda_handler_s3_bucket" {
   description = "S3 bucket for Lambda zips (from private repo CI)"
   type        = string
+}
+
+variable "enable_media_customer_managed_kms" {
+  description = "Use customer-managed KMS for media S3 encryption."
+  type        = bool
+  default     = false
+}
+
+variable "enable_dynamodb_customer_managed_kms" {
+  description = "Use customer-managed KMS for DynamoDB table encryption."
+  type        = bool
+  default     = false
 }
 
 # The previous hotfix attempt created these IAM resources through AWS CLI before

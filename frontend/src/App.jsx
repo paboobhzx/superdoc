@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom"
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom"
 import AppShell from "./components/layout/AppShell"
 import { Home } from "./pages/Home/Home"
+import { MobileHome, hasDesktopPreference } from "./pages/Home/MobileHome"
 import { Processing } from "./pages/Processing/Processing"
 import { Login } from "./pages/auth/Login"
 import { Register } from "./pages/auth/Register"
@@ -17,13 +18,28 @@ import { AuthProvider } from "./context/AuthContext"
 
 const NO_SHELL_PATHS = ['/auth/login', '/auth/register', '/auth/confirm']
 
+function shouldRouteToMobile() {
+  if (hasDesktopPreference()) return false
+  if (typeof window === "undefined") return false
+  if (typeof window.matchMedia === "function") {
+    return window.matchMedia("(max-width: 767px), (pointer: coarse)").matches
+  }
+  return window.innerWidth > 0 && window.innerWidth < 768
+}
+
+function HomeEntry() {
+  if (shouldRouteToMobile()) return <Navigate to="/m" replace />
+  return <Home />
+}
+
 function AppRoutes() {
   const { pathname } = useLocation()
   const noShell = NO_SHELL_PATHS.some(p => pathname.startsWith(p))
 
   const routes = (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<HomeEntry />} />
+      <Route path="/m" element={<MobileHome />} />
       <Route path="/editor/image" element={<ImageEditor />} />
       <Route path="/editor/pdf" element={<PdfEditor />} />
       <Route path="/editor/docx" element={<DocxEditor />} />

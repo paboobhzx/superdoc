@@ -17,15 +17,18 @@ module "acm" {
 # ── Core services ─────────────────────────────────────────────────────────────
 
 module "s3" {
-  source      = "./modules/s3"
-  name_prefix = local.name_prefix
-  common_tags = local.common_tags
+  source                      = "./modules/s3"
+  name_prefix                 = local.name_prefix
+  common_tags                 = local.common_tags
+  enable_customer_managed_kms = var.enable_media_customer_managed_kms
+  cors_allowed_origins        = var.cors_allowed_origins
 }
 
 module "dynamodb" {
-  source      = "./modules/dynamodb"
-  name_prefix = local.name_prefix
-  common_tags = local.common_tags
+  source                      = "./modules/dynamodb"
+  name_prefix                 = local.name_prefix
+  common_tags                 = local.common_tags
+  enable_customer_managed_kms = var.enable_dynamodb_customer_managed_kms
 }
 
 module "ssm" {
@@ -45,6 +48,7 @@ module "api_gateway" {
   name_prefix           = local.name_prefix
   common_tags           = local.common_tags
   environment           = var.environment
+  cors_allow_origin     = "https://${var.subdomain}.${var.domain_name}"
   cognito_user_pool_arn = module.cognito.user_pool_arn
   lambda_integrations = {
     create_job = {
@@ -58,6 +62,10 @@ module "api_gateway" {
     process_job = {
       invoke_arn    = module.lambda_process_job.invoke_arn
       function_name = module.lambda_process_job.function_name
+    }
+    auth_session = {
+      invoke_arn    = module.lambda_auth_session.invoke_arn
+      function_name = module.lambda_auth_session.function_name
     }
     user_files = {
       invoke_arn    = module.lambda_user_files.invoke_arn
@@ -153,6 +161,8 @@ module "sqs" {
 }
 
 resource "aws_ecr_repository" "office_conversion" {
+  # The container-image path only exists when LibreOffice is packaged as a
+  # Docker image. Zip-mode handlers do not need this repository at all.
   count = var.office_converter_package_type == "Image" ? 1 : 0
 
   name                 = "${local.name_prefix}-office-conversion"
@@ -189,16 +199,21 @@ module "layer_deps" {
 
 locals {
   lambda_common_env = {
-    RATE_LIMIT_ENABLED = tostring(var.rate_limit_enabled)
-    JOBS_TABLE         = module.dynamodb.table_name
-    API_KEYS_TABLE     = module.dynamodb.api_keys_name
-    INCIDENTS_TABLE    = module.dynamodb.incidents_name
-    RATE_LIMITS_TABLE  = module.dynamodb.rate_limits_name
-    MEDIA_BUCKET       = module.s3.bucket_name
-    SQS_QUEUE_URL      = module.sqs.queue_url
-    ENVIRONMENT        = var.environment
-    LOG_LEVEL          = var.environment == "prod" ? "WARNING" : "DEBUG"
-    TTL_SECONDS        = "43200"
+    RATE_LIMIT_ENABLED  = tostring(var.rate_limit_enabled)
+    JOBS_TABLE          = module.dynamodb.table_name
+    API_KEYS_TABLE      = module.dynamodb.api_keys_name
+    INCIDENTS_TABLE     = module.dynamodb.incidents_name
+    RATE_LIMITS_TABLE   = module.dynamodb.rate_limits_name
+    AUTH_SESSIONS_TABLE = module.dynamodb.auth_sessions_name
+    MEDIA_BUCKET        = module.s3.bucket_name
+    CORS_ALLOW_ORIGIN   = "https://${var.subdomain}.${var.domain_name}"
+    SQS_QUEUE_URL       = module.sqs.queue_url
+    ENVIRONMENT         = var.environment
+    COGNITO_CLIENT_ID   = module.cognito.client_id
+    # Prod keeps logs at WARNING to cut CloudWatch noise and spend. Non-prod
+    # stays verbose so staging/debug sessions do not require redeploys.
+    LOG_LEVEL   = var.environment == "prod" ? "WARNING" : "DEBUG"
+    TTL_SECONDS = "43200"
   }
 
   lambda_layer_arns = [
@@ -206,7 +221,14 @@ locals {
     module.layer_deps.layer_arn,
   ]
 
+  # Worker Lambdas are the functions the dispatcher is allowed to invoke.
+  # The IAM policy later scopes lambda:InvokeFunction to this tag instead of
+  # enumerating every worker ARN one by one.
+  worker_tags = merge(local.common_tags, { "superdoc:role" = "worker" })
+
   office_converter_images = {
+    # Image mode uses an ECR-baked LibreOffice runtime. Zip mode leaves these
+    # blank so Terraform does not try to configure image-only settings.
     docx_to_pdf = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:docx_to_pdf-${var.office_converter_image_tag}" : ""
     xlsx_to_pdf = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:xlsx_to_pdf-${var.office_converter_image_tag}" : ""
   }
@@ -219,6 +241,7 @@ locals {
     module.dynamodb.incidents_arn,
     "${module.dynamodb.incidents_arn}/index/*",
     module.dynamodb.rate_limits_arn,
+    module.dynamodb.auth_sessions_arn,
   ]
 }
 
@@ -278,6 +301,30 @@ module "lambda_process_job" {
   ]
 }
 
+module "lambda_auth_session" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "auth-session"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 128
+  timeout               = 10
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/auth_session.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+  extra_iam_statements = [
+    {
+      Effect   = "Allow"
+      Action   = ["cognito-idp:InitiateAuth", "cognito-idp:GetUser"]
+      Resource = [module.cognito.user_pool_arn]
+    },
+  ]
+}
+
 # ── PDF handlers ─────────────────────────────────────────────────────────────
 
 module "lambda_pdf_to_docx" {
@@ -291,7 +338,7 @@ module "lambda_pdf_to_docx" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/pdf_to_docx.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -308,7 +355,7 @@ module "lambda_pdf_merge" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/pdf_merge.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -325,7 +372,7 @@ module "lambda_pdf_split" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/pdf_split.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -342,7 +389,7 @@ module "lambda_pdf_compress" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/pdf_compress.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -359,7 +406,7 @@ module "lambda_pdf_rotate" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/pdf_rotate.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -376,7 +423,7 @@ module "lambda_pdf_annotate" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/pdf_annotate.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -393,7 +440,7 @@ module "lambda_pdf_extract_text" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/pdf_extract_text.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -472,13 +519,15 @@ module "lambda_xlsx_to_csv" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/xlsx_to_csv.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
 }
 
 module "lambda_xlsx_to_pdf" {
+  # LibreOffice-backed conversions run either as a container image or as a
+  # normal zip Lambda. The ternaries below keep both packaging modes valid.
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
   function_name         = "xlsx-to-pdf"
@@ -492,7 +541,7 @@ module "lambda_xlsx_to_pdf" {
   s3_bucket             = var.office_converter_package_type == "Image" ? "" : var.lambda_handler_s3_bucket
   s3_key                = var.office_converter_package_type == "Image" ? "" : "handlers/xlsx_to_pdf.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = var.office_converter_package_type == "Image" ? [] : local.lambda_layer_arns
@@ -509,13 +558,16 @@ module "lambda_docx_to_txt" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/docx_to_txt.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
 }
 
 module "lambda_docx_to_pdf" {
+  # Same packaging split as xlsx_to_pdf: image mode for LibreOffice, zip mode
+  # for the lighter Python path. Keep the two shapes side by side so plan diffs
+  # stay explicit.
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
   function_name         = "docx-to-pdf"
@@ -529,7 +581,7 @@ module "lambda_docx_to_pdf" {
   s3_bucket             = var.office_converter_package_type == "Image" ? "" : var.lambda_handler_s3_bucket
   s3_key                = var.office_converter_package_type == "Image" ? "" : "handlers/docx_to_pdf.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = var.office_converter_package_type == "Image" ? [] : local.lambda_layer_arns
@@ -546,7 +598,7 @@ module "lambda_image_to_pdf" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/image_to_pdf.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -563,7 +615,7 @@ module "lambda_pdf_to_image" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/pdf_to_image.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -582,10 +634,17 @@ module "lambda_pdf_to_txt" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/pdf_to_txt.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
+  extra_iam_statements = [
+    {
+      Effect   = "Allow"
+      Action   = ["textract:DetectDocumentText"]
+      Resource = ["*"]
+    },
+  ]
 }
 
 module "lambda_markdown_convert" {
@@ -599,7 +658,24 @@ module "lambda_markdown_convert" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/markdown_convert.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_html_convert" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "html-convert"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 120
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/html_convert.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -643,7 +719,7 @@ module "lambda_doc_edit" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/doc_edit.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
@@ -660,10 +736,17 @@ module "lambda_image_convert" {
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/image_convert.zip"
   environment_variables = local.lambda_common_env
-  common_tags           = local.common_tags
+  common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = local.lambda_layer_arns
+  extra_iam_statements = [
+    {
+      Effect   = "Allow"
+      Action   = ["textract:DetectDocumentText"]
+      Resource = ["*"]
+    },
+  ]
 }
 
 # ── Video handler ────────────────────────────────────────────────────────────
@@ -679,7 +762,7 @@ module "lambda_video_process" {
   s3_bucket                      = var.lambda_handler_s3_bucket
   s3_key                         = "handlers/video_process.zip"
   environment_variables          = merge(local.lambda_common_env, { FFMPEG_LAYER_S3_KEY = "layers/ffmpeg/ffmpeg" })
-  common_tags                    = local.common_tags
+  common_tags                    = local.worker_tags
   dynamodb_table_arns            = local.dynamodb_arns
   media_bucket_arn               = module.s3.bucket_arn
   layer_arns                     = local.lambda_layer_arns
@@ -712,26 +795,14 @@ module "lambda_dispatch_job" {
     {
       Effect = "Allow"
       Action = ["lambda:InvokeFunction"]
-      Resource = [
-        module.lambda_pdf_compress.function_arn,
-        module.lambda_pdf_merge.function_arn,
-        module.lambda_pdf_split.function_arn,
-        module.lambda_pdf_to_docx.function_arn,
-        module.lambda_xlsx_to_csv.function_arn,
-        module.lambda_xlsx_to_pdf.function_arn,
-        module.lambda_docx_to_txt.function_arn,
-        module.lambda_docx_to_pdf.function_arn,
-        module.lambda_image_to_pdf.function_arn,
-        module.lambda_pdf_to_image.function_arn,
-        module.lambda_pdf_to_txt.function_arn,
-        module.lambda_pdf_rotate.function_arn,
-        module.lambda_pdf_annotate.function_arn,
-        module.lambda_pdf_extract_text.function_arn,
-        module.lambda_image_convert.function_arn,
-        module.lambda_markdown_convert.function_arn,
-        module.lambda_doc_edit.function_arn,
-        module.lambda_video_process.function_arn,
-      ]
+      # Tag-scoped wildcard keeps the dispatcher limited to worker Lambdas
+      # without maintaining a brittle per-ARN allowlist.
+      Resource = ["arn:aws:lambda:*:*:function:${local.name_prefix}-*"]
+      Condition = {
+        StringEquals = {
+          "aws:ResourceTag/superdoc:role" = "worker"
+        }
+      }
     }
   ]
 }

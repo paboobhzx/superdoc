@@ -86,3 +86,8 @@ build.zip
 /tmp/
 # --- Smoke test output ---
 /tmp/superdoc-*
+
+# Local/generated test artifacts
+/frontend/src/tests/
+/frontend/tests/e2e/
+/tests/

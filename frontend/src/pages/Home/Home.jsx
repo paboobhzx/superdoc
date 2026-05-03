@@ -1,10 +1,7 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react"
-import { useNavigate } from "react-router-dom"
-import { useAuth } from "../../context/AuthContext"
+import { useState, useRef } from "react"
 import { useI18n } from "../../context/I18nContext"
-import { api } from "../../lib/api"
-import { dispatchPick } from "./pickerRouting"
-import { buildTargetGridChoices, findClientEditorOperation, TARGET_GRID } from "./targetGrid"
+import { TARGET_GRID } from "./targetGrid"
+import { useConversionFlow } from "./useConversionFlow"
 
 const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "WEBP", "GIF", "TIFF", "XLSX", "CSV", "TXT"]
 // MIME types and extensions that the file picker accepts. Keep this in sync
@@ -58,113 +55,25 @@ function formatFileSize(bytes) {
 }
 
 export function Home() {
-  const navigate = useNavigate()
-  const auth = useAuth()
   const { t } = useI18n()
-
-  const [pendingFile, setPendingFile] = useState(null)
-  const [operations, setOperations] = useState([])
-  const [loadingOps, setLoadingOps] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [startingAction, setStartingAction] = useState(null)
-  const [err, setErr] = useState(null)
   const [dragging, setDragging] = useState(false)
   const [openFaq, setOpenFaq] = useState(null)
   const inputRef = useRef(null)
-
-  const inputType = extensionOf(pendingFile)
-  const hasEmptyKnownCatalog = Boolean(pendingFile && !loadingOps && !err && operations.length === 0 && KNOWN_CATALOG_TYPES.has(inputType))
-
-  const resetToDrop = useCallback(() => {
-    setPendingFile(null)
-    setOperations([])
-    setStartingAction(null)
-    setErr(null)
-  }, [])
-
-  const refreshOperations = useCallback(() => {
-    if (!pendingFile) return
-    setLoadingOps(true)
-    setErr(null)
-    api.getOperations(inputType)
-      .then((data) => setOperations(data?.operations || []))
-      .catch((e) => {
-        setOperations([])
-        setErr(e.message || t("home.errors.loadActions"))
-      })
-      .finally(() => setLoadingOps(false))
-  }, [pendingFile, inputType, t])
-
-  const handleFiles = useCallback((files) => {
-    const list = Array.from(files || []).filter(Boolean)
-    if (list.length === 0) return
-    if (list.length > 1) {
-      setErr(t("home.errors.multipleFiles"))
-      return
-    }
-    setErr(null)
-    setPendingFile(list[0])
-  }, [t])
-
-  useEffect(() => {
-    if (!pendingFile) return
-    let cancelled = false
-    setLoadingOps(true)
-    setErr(null)
-
-    api.getOperations(inputType)
-      .then((data) => {
-        if (cancelled) return
-        setOperations(data?.operations || [])
-      })
-      .catch((e) => {
-        if (cancelled) return
-        setOperations([])
-        setErr(e.message || t("home.errors.loadActions"))
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingOps(false)
-      })
-
-    return () => { cancelled = true }
-  }, [pendingFile, inputType, t])
-
-  const gridChoices = useMemo(
-    () => buildTargetGridChoices(inputType, operations),
-    [inputType, operations],
-  )
-  const editOperation = useMemo(() => findClientEditorOperation(operations), [operations])
-
-  const handlePick = useCallback(async (opMeta) => {
-    if (!pendingFile || !opMeta || uploading) return
-    setErr(null)
-    setUploading(true)
-    setStartingAction(opMeta.target ? `${opMeta.operation}:${opMeta.target}` : opMeta.operation)
-    try {
-      const sessionId = sessionStorage.getItem("superdoc_session") || crypto.randomUUID()
-      sessionStorage.setItem("superdoc_session", sessionId)
-
-      const target = await dispatchPick(opMeta, {
-        file: pendingFile,
-        auth,
-        sessionId,
-      })
-
-      setPendingFile(null)
-      setOperations([])
-
-      if (target.type === "external") {
-        window.location.href = target.url
-        return
-      }
-      navigate(target.path)
-    } catch (e) {
-      setErr(e.message || t("home.errors.actionFailed"))
-    } finally {
-      setUploading(false)
-      setStartingAction(null)
-    }
-  }, [pendingFile, auth, navigate, uploading, t])
+  const {
+    pendingFile,
+    loadingOps,
+    uploading,
+    startingAction,
+    err,
+    inputType,
+    hasEmptyKnownCatalog,
+    gridChoices,
+    editOperation,
+    resetToDrop,
+    refreshOperations,
+    handleFiles,
+    handlePick,
+  } = useConversionFlow()
 
   return (
     <div className="min-h-[calc(100vh-60px)]">

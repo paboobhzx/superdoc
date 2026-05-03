@@ -1,15 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
-  AuthenticationDetails,
   CognitoUser,
   CognitoUserAttribute,
   CognitoUserPool,
 } from "amazon-cognito-identity-js";
+import { api } from "../lib/api";
 
 const USER_POOL_ID = import.meta.env.VITE_COGNITO_USER_POOL_ID || "";
 const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID || "";
 
-const TOKEN_STORAGE_KEY = "superdoc_id_token";
 const EMAIL_STORAGE_KEY = "superdoc_email";
 
 const AuthContext = createContext(null);
@@ -25,27 +24,10 @@ function getPool() {
   });
 }
 
-function readToken() {
-  try {
-    return localStorage.getItem(TOKEN_STORAGE_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-function writeToken(token) {
-  try {
-    if (!token) localStorage.removeItem(TOKEN_STORAGE_KEY);
-    else localStorage.setItem(TOKEN_STORAGE_KEY, token);
-  } catch {
-    // ignore
-  }
-}
-
 function writeEmail(email) {
   try {
-    if (!email) localStorage.removeItem(EMAIL_STORAGE_KEY);
-    else localStorage.setItem(EMAIL_STORAGE_KEY, email);
+    if (!email) sessionStorage.removeItem(EMAIL_STORAGE_KEY);
+    else sessionStorage.setItem(EMAIL_STORAGE_KEY, email);
   } catch {
     // ignore
   }
@@ -53,20 +35,37 @@ function writeEmail(email) {
 
 function readEmail() {
   try {
-    return localStorage.getItem(EMAIL_STORAGE_KEY) || "";
+    return sessionStorage.getItem(EMAIL_STORAGE_KEY) || "";
   } catch {
     return "";
   }
 }
 
 export function AuthProvider({ children }) {
-  const [idToken, setIdToken] = useState(() => readToken());
+  const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [email, setEmail] = useState(() => readEmail());
   const configured = isConfigured();
 
   useEffect(() => {
-    writeToken(idToken);
-  }, [idToken]);
+    let cancelled = false;
+    api
+      .me()
+      .then((data) => {
+        if (cancelled) return;
+        setUser(data.user || null);
+        if (data.user?.email) setEmail(data.user.email);
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     writeEmail(email);
@@ -74,30 +73,12 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(() => {
     async function signIn(nextEmail, password) {
-      if (!configured) throw new Error("Auth not configured.");
       if (!nextEmail || !password) throw new Error("Email and password are required.");
 
-      const pool = getPool();
-      const user = new CognitoUser({ Username: nextEmail, Pool: pool });
-      const authDetails = new AuthenticationDetails({
-        Username: nextEmail,
-        Password: password,
-      });
-
-      const session = await new Promise((resolve, reject) => {
-        user.authenticateUser(authDetails, {
-          onSuccess: resolve,
-          onFailure: reject,
-          newPasswordRequired: () => reject(new Error("New password required.")),
-          mfaRequired: () => reject(new Error("MFA required.")),
-          totpRequired: () => reject(new Error("TOTP required.")),
-        });
-      });
-
-      const token = session.getIdToken().getJwtToken();
-      setIdToken(token);
+      const result = await api.login({ email: nextEmail, password });
+      setUser(result.user || null);
       setEmail(nextEmail);
-      return token;
+      return result.user || null;
     }
 
     async function signUp(nextEmail, password) {
@@ -143,22 +124,27 @@ export function AuthProvider({ children }) {
       });
     }
 
-    function signOut() {
-      setIdToken("");
+    async function signOut() {
+      try {
+        await api.logout();
+      } finally {
+        setUser(null);
+      }
     }
 
     return {
       configured,
-      idToken,
+      authChecked,
+      user,
       email,
-      isAuthenticated: Boolean(idToken),
+      isAuthenticated: Boolean(user),
       signIn,
       signUp,
       confirmEmail,
       resendConfirmation,
       signOut,
     };
-  }, [configured, email, idToken]);
+  }, [authChecked, configured, email, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -166,4 +152,3 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
-

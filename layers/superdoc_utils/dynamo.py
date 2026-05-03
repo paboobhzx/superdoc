@@ -10,6 +10,7 @@ _dynamodb = boto3.resource("dynamodb")
 JOBS_TABLE = os.environ.get("JOBS_TABLE", "superdoc-jobs")
 INCIDENTS_TABLE = os.environ.get("INCIDENTS_TABLE", "superdoc-incidents")
 RATE_LIMITS_TABLE = os.environ.get("RATE_LIMITS_TABLE", "superdoc-rate-limits")
+AUTH_SESSIONS_TABLE = os.environ.get("AUTH_SESSIONS_TABLE", "superdoc-auth-sessions")
 TTL_SECONDS = int(os.environ.get("TTL_SECONDS", "43200"))
 
 
@@ -23,6 +24,10 @@ def _incidents():
 
 def _rate_limits():
     return _dynamodb.Table(RATE_LIMITS_TABLE)
+
+
+def _auth_sessions():
+    return _dynamodb.Table(AUTH_SESSIONS_TABLE)
 
 
 def create_job(
@@ -85,7 +90,39 @@ def update_job(job_id: str, **kwargs) -> None:
 
 
 def mark_done(job_id: str, output_key: str) -> None:
-    update_job(job_id, status="DONE", output_key=output_key, completed_at=int(time.time()))
+    completed_at = int(time.time())
+    job = get_job(job_id)
+    if not job:
+        # TTL cleanup can race with late callbacks. Preserve the terminal state
+        # even if the original row is already gone, but skip duration math.
+        update_job(job_id, status="DONE", output_key=output_key, completed_at=completed_at)
+        return
+
+    started_at = job.get("started_at")
+    actual_seconds = None
+    if isinstance(started_at, (int, float)):
+        # started_at is the best countdown anchor because it excludes upload
+        # time; created_at would overstate the runtime for the user.
+        actual_seconds = max(int(completed_at - started_at), 0)
+    else:
+        # Older jobs may not have started_at yet. Fall back to created_at so
+        # the UI still gets a useful completion duration instead of nothing.
+        created_at_iso = job.get("created_at")
+        if isinstance(created_at_iso, str):
+            try:
+                created_dt = datetime.fromisoformat(created_at_iso.replace("Z", "+00:00"))
+                actual_seconds = max(int(completed_at - created_dt.timestamp()), 0)
+            except (ValueError, AttributeError):
+                actual_seconds = None
+
+    fields = {
+        "status": "DONE",
+        "output_key": output_key,
+        "completed_at": completed_at,
+    }
+    if actual_seconds is not None:
+        fields["actual_seconds"] = actual_seconds
+    update_job(job_id, **fields)
 
 
 def mark_failed(job_id: str, error: str) -> None:
@@ -132,6 +169,34 @@ def rate_limit_increment(pk: str, sk: str, ttl: int) -> int:
         ReturnValues="UPDATED_NEW",
     )
     return int(resp["Attributes"]["count"])
+
+
+def put_auth_session(
+    session_id_hash: str,
+    user_id: str,
+    email: str,
+    refresh_token: str,
+    expires_at: int,
+) -> None:
+    _auth_sessions().put_item(
+        Item={
+            "session_id_hash": session_id_hash,
+            "user_id": user_id,
+            "email": email or "",
+            "refresh_token": refresh_token,
+            "created_at": int(time.time()),
+            "expires_at": int(expires_at),
+        }
+    )
+
+
+def get_auth_session(session_id_hash: str) -> dict:
+    resp = _auth_sessions().get_item(Key={"session_id_hash": session_id_hash})
+    return resp.get("Item", {})
+
+
+def delete_auth_session(session_id_hash: str) -> None:
+    _auth_sessions().delete_item(Key={"session_id_hash": session_id_hash})
 
 # ── Payments table helpers (added in round 3a-2) ────────────────────────────
 # The payments table is used for Stripe-backed conversions. Schema:

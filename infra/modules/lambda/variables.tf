@@ -43,12 +43,8 @@ variable "sns_trigger_arn" {
 
 variable "extra_iam_statements" {
   description = "Additional IAM policy statements for this Lambda"
-  type = list(object({
-    Effect   = string
-    Action   = list(string)
-    Resource = list(string)
-  }))
-  default = []
+  type        = list(any)
+  default     = []
 }
 
 variable "layer_arns" {

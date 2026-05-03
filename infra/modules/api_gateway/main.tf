@@ -3,7 +3,8 @@ data "aws_region" "current" {}
 
 locals {
   # Construído explicitamente pra evitar drift do provider no execution_arn
-  api_execution_arn = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.superdoc.id}"
+  api_execution_arn        = "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.superdoc.id}"
+  cors_allow_origin_header = "'${var.cors_allow_origin}'"
 }
 
 resource "aws_api_gateway_rest_api" "superdoc" {
@@ -23,9 +24,10 @@ resource "aws_api_gateway_gateway_response" "cors_4xx" {
   response_type = "DEFAULT_4XX"
 
   response_parameters = {
-    "gatewayresponse.header.Access-Control-Allow-Origin"  = "'*'"
-    "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
-    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "gatewayresponse.header.Access-Control-Allow-Origin"      = local.cors_allow_origin_header
+    "gatewayresponse.header.Access-Control-Allow-Headers"     = "'Content-Type,Authorization,X-Api-Key'"
+    "gatewayresponse.header.Access-Control-Allow-Methods"     = "'GET,POST,DELETE,OPTIONS'"
+    "gatewayresponse.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   response_templates = {
@@ -38,9 +40,10 @@ resource "aws_api_gateway_gateway_response" "cors_5xx" {
   response_type = "DEFAULT_5XX"
 
   response_parameters = {
-    "gatewayresponse.header.Access-Control-Allow-Origin"  = "'*'"
-    "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
-    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "gatewayresponse.header.Access-Control-Allow-Origin"      = local.cors_allow_origin_header
+    "gatewayresponse.header.Access-Control-Allow-Headers"     = "'Content-Type,Authorization,X-Api-Key'"
+    "gatewayresponse.header.Access-Control-Allow-Methods"     = "'GET,POST,DELETE,OPTIONS'"
+    "gatewayresponse.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   response_templates = {
@@ -55,7 +58,8 @@ resource "aws_api_gateway_gateway_response" "throttle" {
   status_code   = "429"
 
   response_parameters = {
-    "gatewayresponse.header.Access-Control-Allow-Origin" = "'*'"
+    "gatewayresponse.header.Access-Control-Allow-Origin"      = local.cors_allow_origin_header
+    "gatewayresponse.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   response_templates = {
@@ -76,10 +80,116 @@ resource "aws_api_gateway_authorizer" "cognito" {
 
 locals {
   cors_response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = true
-    "method.response.header.Access-Control-Allow-Headers" = true
-    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"      = true
+    "method.response.header.Access-Control-Allow-Headers"     = true
+    "method.response.header.Access-Control-Allow-Methods"     = true
+    "method.response.header.Access-Control-Allow-Credentials" = true
   }
+
+  auth_routes = {
+    login  = { method = "POST", path = "login" }
+    me     = { method = "GET", path = "me" }
+    logout = { method = "POST", path = "logout" }
+  }
+}
+
+# ── /auth ───────────────────────────────────────────────────────────────────
+
+resource "aws_api_gateway_resource" "auth" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  parent_id   = aws_api_gateway_rest_api.superdoc.root_resource_id
+  path_part   = "auth"
+}
+
+resource "aws_api_gateway_resource" "auth_route" {
+  for_each    = local.auth_routes
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  parent_id   = aws_api_gateway_resource.auth.id
+  path_part   = each.value.path
+}
+
+resource "aws_api_gateway_method" "auth_route" {
+  for_each      = local.auth_routes
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.auth_route[each.key].id
+  http_method   = each.value.method
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "auth_route" {
+  for_each                = local.auth_routes
+  rest_api_id             = aws_api_gateway_rest_api.superdoc.id
+  resource_id             = aws_api_gateway_resource.auth_route[each.key].id
+  http_method             = aws_api_gateway_method.auth_route[each.key].http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_integrations["auth_session"].invoke_arn
+}
+
+resource "aws_lambda_permission" "auth_session" {
+  statement_id  = "AllowAPIGatewayAuthSession"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_integrations["auth_session"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.api_execution_arn}/*/*"
+}
+
+resource "aws_api_gateway_method_response" "auth_route_200" {
+  for_each    = local.auth_routes
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.auth_route[each.key].id
+  http_method = aws_api_gateway_method.auth_route[each.key].http_method
+  status_code = "200"
+}
+
+resource "aws_api_gateway_method" "auth_route_options" {
+  for_each      = local.auth_routes
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.auth_route[each.key].id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "auth_route_options" {
+  for_each    = local.auth_routes
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.auth_route[each.key].id
+  http_method = aws_api_gateway_method.auth_route_options[each.key].http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "auth_route_options_200" {
+  for_each    = local.auth_routes
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.auth_route[each.key].id
+  http_method = aws_api_gateway_method.auth_route_options[each.key].http_method
+  status_code = "200"
+
+  response_parameters = local.cors_response_parameters
+}
+
+resource "aws_api_gateway_integration_response" "auth_route_options_200" {
+  for_each    = local.auth_routes
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.auth_route[each.key].id
+  http_method = aws_api_gateway_method.auth_route_options[each.key].http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"      = local.cors_allow_origin_header
+    "method.response.header.Access-Control-Allow-Headers"     = "'Content-Type,Authorization,X-Api-Key'"
+    "method.response.header.Access-Control-Allow-Methods"     = "'GET,POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
+  }
+
+  depends_on = [
+    aws_api_gateway_integration.auth_route_options,
+    aws_api_gateway_method_response.auth_route_options_200,
+  ]
 }
 
 # ── /jobs resource ───────────────────────────────────────────────────────────
@@ -157,9 +267,10 @@ resource "aws_api_gateway_integration_response" "jobs_options_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -243,9 +354,10 @@ resource "aws_api_gateway_integration_response" "job_id_options_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -327,9 +439,10 @@ resource "aws_api_gateway_integration_response" "job_process_options_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -362,8 +475,7 @@ resource "aws_api_gateway_method" "users_me_files_get" {
   rest_api_id   = aws_api_gateway_rest_api.superdoc.id
   resource_id   = aws_api_gateway_resource.users_me_files.id
   http_method   = "GET"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "users_me_files_get" {
@@ -395,8 +507,7 @@ resource "aws_api_gateway_method" "users_me_files_post" {
   rest_api_id   = aws_api_gateway_rest_api.superdoc.id
   resource_id   = aws_api_gateway_resource.users_me_files.id
   http_method   = "POST"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "users_me_files_post" {
@@ -457,9 +568,10 @@ resource "aws_api_gateway_integration_response" "users_me_files_options_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -480,8 +592,7 @@ resource "aws_api_gateway_method" "users_me_files_job_delete" {
   rest_api_id   = aws_api_gateway_rest_api.superdoc.id
   resource_id   = aws_api_gateway_resource.users_me_files_job.id
   http_method   = "DELETE"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "users_me_files_job_delete" {
@@ -534,9 +645,10 @@ resource "aws_api_gateway_integration_response" "users_me_files_job_options_200"
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS,DELETE'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -557,8 +669,7 @@ resource "aws_api_gateway_method" "users_me_files_job_complete_post" {
   rest_api_id   = aws_api_gateway_rest_api.superdoc.id
   resource_id   = aws_api_gateway_resource.users_me_files_job_complete.id
   http_method   = "POST"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "users_me_files_job_complete_post" {
@@ -619,9 +730,10 @@ resource "aws_api_gateway_integration_response" "users_me_files_job_complete_opt
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -643,8 +755,7 @@ resource "aws_api_gateway_method" "users_me_jobs_post" {
   rest_api_id   = aws_api_gateway_rest_api.superdoc.id
   resource_id   = aws_api_gateway_resource.users_me_jobs.id
   http_method   = "POST"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "users_me_jobs_post" {
@@ -698,9 +809,10 @@ resource "aws_api_gateway_integration_response" "users_me_jobs_options_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -815,9 +927,10 @@ resource "aws_api_gateway_integration_response" "admin_flags_options_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -924,9 +1037,10 @@ resource "aws_api_gateway_integration_response" "admin_incidents_options_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -1065,9 +1179,10 @@ resource "aws_api_gateway_integration_response" "operations_options_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   # depends_on defensively prevents the race we hit in the first deploy
@@ -1157,9 +1272,10 @@ resource "aws_api_gateway_integration_response" "checkout_options_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -1306,9 +1422,10 @@ resource "aws_api_gateway_integration_response" "files_download_options_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = local.cors_allow_origin_header
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Api-Key'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
   depends_on = [
@@ -1324,6 +1441,10 @@ resource "aws_api_gateway_deployment" "superdoc" {
   triggers = {
     redeployment = sha1(jsonencode([
       aws_api_gateway_resource.files.id,
+      aws_api_gateway_resource.auth.id,
+      [for route in aws_api_gateway_resource.auth_route : route.id],
+      [for method in aws_api_gateway_method.auth_route : method.id],
+      [for integration in aws_api_gateway_integration.auth_route : integration.id],
       aws_api_gateway_resource.files_download.id,
       aws_api_gateway_method.files_download_get.id,
       aws_api_gateway_integration.files_download_get.id,
@@ -1381,6 +1502,8 @@ resource "aws_api_gateway_deployment" "superdoc" {
 
   depends_on = [
     aws_api_gateway_integration.health_mock,
+    aws_api_gateway_integration.auth_route,
+    aws_api_gateway_integration_response.auth_route_options_200,
     aws_api_gateway_integration.files_download_get,
     aws_api_gateway_integration_response.files_download_options_200,
     aws_api_gateway_integration.checkout_post,

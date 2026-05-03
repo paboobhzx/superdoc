@@ -4,6 +4,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import { downloadBlob } from "../lib/download";
 import { api } from "../lib/api";
+import { getSessionId } from "../lib/session";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -253,7 +254,7 @@ export function MarkdownEditor() {
 
     let cancelled = false;
     setLoadingKey(true);
-    api.getPresignedDownload(key)
+    api.getPresignedDownload(key, getSessionId())
       .then((data) => fetch(data.url))
       .then((resp) => {
         if (!resp.ok) throw new Error(`Download failed: HTTP ${resp.status}`);

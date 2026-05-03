@@ -30,6 +30,8 @@ def handler(event, context):
         function_name = f"{NAME_PREFIX}-{fn_suffix}"
 
         # Forward original SQS record so handlers can use event["Records"][0]["body"]
+        # Invoke asynchronously so the dispatcher can ack the queue message
+        # quickly; the worker Lambda owns the actual status transition.
         _lambda.invoke(
             FunctionName=function_name,
             InvocationType="Event",  # async — fire and forget

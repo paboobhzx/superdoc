@@ -25,6 +25,7 @@ import { downloadBlob } from "../lib/download";
 import { htmlToDocxBlob } from "../lib/docxFromHtml";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
+import { getSessionId } from "../lib/session";
 import { useNavigate } from "react-router-dom";
 
 
@@ -46,7 +47,7 @@ function useKeyFileLoader(onFileLoaded) {
     setLoadingKey(true);
     setKeyError("");
 
-    api.getPresignedDownload(key)
+    api.getPresignedDownload(key, getSessionId())
       .then((data) => fetch(data.url))
       .then((resp) => {
         if (!resp.ok) throw new Error(`Download failed: HTTP ${resp.status}`);

@@ -1,4 +1,5 @@
 import json
+import os
 from decimal import Decimal
 
 
@@ -10,23 +11,24 @@ class _DecimalEncoder(json.JSONEncoder):
 
 
 _CORS = {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": os.environ.get("CORS_ALLOW_ORIGIN", "https://superdoc.pablobhz.cloud"),
     "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Api-Key",
     "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
+    "Access-Control-Allow-Credentials": "true",
     "Content-Type": "application/json",
 }
 
 
-def _build(status_code: int, body: dict) -> dict:
+def _build(status_code: int, body: dict, headers: dict | None = None) -> dict:
     return {
         "statusCode": status_code,
-        "headers": _CORS,
+        "headers": {**_CORS, **(headers or {})},
         "body": json.dumps(body, cls=_DecimalEncoder),
     }
 
 
-def ok(body: dict) -> dict:
-    return _build(200, body)
+def ok(body: dict, headers: dict | None = None) -> dict:
+    return _build(200, body, headers=headers)
 
 
 def accepted(body: dict) -> dict:

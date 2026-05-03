@@ -17,11 +17,13 @@ log = get_logger(__name__)
 
 
 _DEFAULT_DPI = 150
+# Cap page count to keep worst-case render memory bounded. At 150 DPI, a
+# 200-page PDF can already push Lambda memory hard if every page is rasterized.
 _MAX_PAGES = 200
 
 
-def _render_pdf_to_zip(pdf_bytes: bytes, dpi: int) -> bytes:
-    """Render every PDF page as PNG and zip them into a single archive.
+def _render_pdf_to_zip(pdf_bytes: bytes, dpi: int, target_format: str = "png") -> bytes:
+    """Render every PDF page as PNG/JPG and zip them into a single archive.
 
     Page count is capped at _MAX_PAGES to protect Lambda memory. Rendering
     is sequential - concurrent rendering inside a Lambda worker is rarely
@@ -31,6 +33,12 @@ def _render_pdf_to_zip(pdf_bytes: bytes, dpi: int) -> bytes:
     # only paid when this operation is actually invoked (not during layer
     # scans for unrelated handlers).
     import pymupdf
+
+    target = (target_format or "png").lower()
+    if target == "jpeg":
+        target = "jpg"
+    if target not in {"png", "jpg"}:
+        raise ValueError("target_format must be one of: jpg, png")
 
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     try:
@@ -46,9 +54,9 @@ def _render_pdf_to_zip(pdf_bytes: bytes, dpi: int) -> bytes:
             for page_num in range(page_count):
                 page = doc.load_page(page_num)
                 pix = page.get_pixmap(matrix=matrix, alpha=False)
-                png_bytes = pix.tobytes("png")
-                arcname = f"page-{page_num + 1:04d}.png"
-                zf.writestr(arcname, png_bytes)
+                image_bytes = pix.tobytes("jpeg" if target == "jpg" else "png")
+                arcname = f"page-{page_num + 1:04d}.{target}"
+                zf.writestr(arcname, image_bytes)
 
         return buffer.getvalue()
     finally:
@@ -60,11 +68,14 @@ def handler(event, context):
     job_id = body["job_id"]
     file_key = body["file_key"]
     params = body.get("params") or {}
+    target_format = (params.get("target_format") or body.get("target_format") or "png").lower()
 
     raw_dpi = params.get("dpi")
     if raw_dpi is None:
         raw_dpi = body.get("dpi")
     if raw_dpi is None:
+        # Keep the default moderate so image exports do not explode memory or
+        # output size for casual use. Higher DPI is opt-in via the request.
         dpi = _DEFAULT_DPI
     else:
         dpi = int(raw_dpi)
@@ -72,11 +83,11 @@ def handler(event, context):
     try:
         dynamo.update_job(job_id, status="PROCESSING")
         data = s3.get_bytes(file_key)
-        result = _render_pdf_to_zip(data, dpi=dpi)
+        result = _render_pdf_to_zip(data, dpi=dpi, target_format=target_format)
         out_key = s3.make_output_key(job_id, file_key, "pages.zip")
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)
-        log.info("pdf_to_image done", extra={"job_id": job_id, "dpi": dpi})
+        log.info("pdf_to_image done", extra={"job_id": job_id, "dpi": dpi, "target_format": target_format})
     except Exception as exc:
         log.exception("pdf_to_image failed: %s", exc)
         dynamo.mark_failed(job_id, str(exc))

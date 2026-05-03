@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api"
+import { getSessionId } from "../lib/session"
 import { fabric } from "fabric";
 import { downloadBlob } from "../lib/download";
 
@@ -21,7 +22,7 @@ function useKeyFileLoader(onFileLoaded) {
     setLoadingKey(true)
     setKeyError("")
 
-    api.getPresignedDownload(key)
+    api.getPresignedDownload(key, getSessionId())
       .then((data) => fetch(data.url))
       .then((resp) => {
         if (!resp.ok) {

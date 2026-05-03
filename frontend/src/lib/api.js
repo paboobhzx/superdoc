@@ -7,6 +7,9 @@ function stripTrailingSlash(url) {
 function resolveApiUrl() {
   if (!ENV_API_URL) return "";
 
+  // Vite may inject either a relative CloudFront path or an absolute API
+  // Gateway URL. Normalize both into one base so every request path stays
+  // consistent regardless of how the app is deployed.
   const hasWindow = typeof window !== "undefined" && window?.location?.origin;
   if (!hasWindow) return stripTrailingSlash(ENV_API_URL);
 
@@ -72,18 +75,11 @@ const FRIENDLY_BY_STATUS = {
 async function request(method, path, body = null) {
   if (!API_URL) throw new Error("Backend not configured. Set VITE_API_URL.");
 
-  let authToken = "";
-  try {
-    authToken = localStorage.getItem("superdoc_id_token") || "";
-  } catch {
-    authToken = "";
-  }
-
   const opts = {
     method,
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
   };
-  if (authToken) opts.headers.Authorization = `Bearer ${authToken}`;
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(`${API_URL}${path}`, opts);
 
@@ -111,13 +107,23 @@ async function request(method, path, body = null) {
   return parsed.data;
 }
 
+function sessionQuery(path, sessionId) {
+  if (!sessionId) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}session_id=${encodeURIComponent(sessionId)}`;
+}
+
 export const api = {
+  login: (payload) => request("POST", "/auth/login", payload),
+  me: () => request("GET", "/auth/me"),
+  logout: () => request("POST", "/auth/logout"),
+
   // Create a job and get a presigned upload URL
   createJob: (payload) => request("POST", "/jobs", payload),
   createUserJob: (payload) => request("POST", "/users/me/jobs", payload),
 
   // Get job status (poll this)
-  getStatus: (jobId) => request("GET", `/jobs/${jobId}`),
+  getStatus: (jobId, sessionId = "") => request("GET", sessionQuery(`/jobs/${jobId}`, sessionId)),
 
   // Upload file directly to S3 via presigned POST
   uploadToS3: async (upload, file) => {
@@ -161,9 +167,10 @@ export const api = {
 
   // Fetch a short-lived presigned GET URL for an S3 key. Used by editors
   // to load a file uploaded via the client_editor flow.
-  getPresignedDownload: (key) => {
+  getPresignedDownload: (key, sessionId = "") => {
     const qs = `?key=${encodeURIComponent(key)}`
-    return request("GET", `/files/download${qs}`)
+    const path = sessionQuery(`/files/download${qs}`, sessionId)
+    return request("GET", path)
   },
 
   // Create a Stripe Checkout Session for a paid_backend_job. Returns
@@ -172,9 +179,8 @@ export const api = {
   createCheckout: (payload) => request("POST", "/checkout", payload),
 
 
-  // Fetch the catalog of supported operations.
-  // Used by OperationPicker. The optional input_type filters to
-  // operations that accept that file extension.
+  // Fetch the catalog of supported operations. The optional input_type
+  // filters to operations that accept that file extension.
   getOperations: (inputType) => {
     const qs = inputType ? `?input_type=${encodeURIComponent(inputType)}` : ""
     return request("GET", `/operations${qs}`)

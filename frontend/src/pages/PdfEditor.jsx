@@ -3,6 +3,7 @@ import { PDFDocument, degrees, rgb, StandardFonts } from "pdf-lib";
 import { downloadBlob } from "../lib/download";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
+import { getSessionId } from "../lib/session";
 import { useNavigate } from "react-router-dom";
 
 // Auto-load from ?key=<s3_key> when present. Added in round 3a-3.
@@ -23,7 +24,7 @@ function useKeyFileLoader(onFileLoaded) {
     setLoadingKey(true)
     setKeyError("")
 
-    api.getPresignedDownload(key)
+    api.getPresignedDownload(key, getSessionId())
       .then((data) => fetch(data.url))
       .then((resp) => {
         if (!resp.ok) {

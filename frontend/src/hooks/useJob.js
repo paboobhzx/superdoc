@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api";
+import { getSessionId } from "../lib/session";
 
 const TERMINAL = new Set(["DONE", "FAILED"]);
 const POLL_MS  = 2000;
@@ -25,7 +26,7 @@ export function useJob(jobId) {
 
     async function poll() {
       try {
-        const data = await api.getStatus(jobId);
+        const data = await api.getStatus(jobId, getSessionId());
         if (!active) return;
         setJob(data);
         setLoading(false);

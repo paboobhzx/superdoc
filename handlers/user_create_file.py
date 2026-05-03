@@ -2,6 +2,7 @@ import json
 import os
 import uuid
 
+import auth_session
 import dynamo
 import response
 import s3
@@ -12,18 +13,6 @@ log = get_logger(__name__)
 _MAX_BYTES = 100 * 1024 * 1024
 _USER_TTL_SECONDS = int(os.environ.get("USER_TTL_SECONDS", str(7 * 24 * 3600)))
 _USER_MAX_DOCS = int(os.environ.get("USER_MAX_DOCS", "10"))
-
-
-def _claims(event: dict) -> dict:
-    return (
-        (event.get("requestContext") or {})
-        .get("authorizer", {})
-        .get("claims", {})
-    ) or {}
-
-
-def _current_user_id(event: dict) -> str:
-    return _claims(event).get("sub") or ""
 
 
 def _validate_file_name(file_name: str) -> str:
@@ -39,7 +28,7 @@ def handler(event, context):
         if event.get("httpMethod") == "OPTIONS":
             return response.preflight()
 
-        user_id = _current_user_id(event)
+        user_id = auth_session.current_user_id(event)
         if not user_id:
             return response.error("Unauthorized", 401)
 
@@ -81,4 +70,3 @@ def handler(event, context):
     except Exception as exc:
         log.exception("user_create_file error: %s", exc)
         return response.error("Internal error", 500)
-

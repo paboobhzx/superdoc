@@ -1,20 +1,9 @@
+import auth_session
 import dynamo
 import response
 from logger import get_logger
 
 log = get_logger(__name__)
-
-
-def _claims(event: dict) -> dict:
-    return (
-        (event.get("requestContext") or {})
-        .get("authorizer", {})
-        .get("claims", {})
-    ) or {}
-
-
-def _current_user_id(event: dict) -> str:
-    return _claims(event).get("sub") or ""
 
 
 def handler(event, context):
@@ -23,7 +12,7 @@ def handler(event, context):
         if method == "OPTIONS":
             return response.preflight()
 
-        user_id = _current_user_id(event)
+        user_id = auth_session.current_user_id(event)
         if not user_id:
             return response.error("Unauthorized", 401)
 
@@ -55,4 +44,3 @@ def handler(event, context):
     except Exception as exc:
         log.exception("user_complete_file error: %s", exc)
         return response.error("Internal error", 500)
-

@@ -81,3 +81,21 @@ variable "office_converter_package_type" {
     error_message = "office_converter_package_type must be Zip or Image."
   }
 }
+
+variable "enable_media_customer_managed_kms" {
+  description = "Use a customer-managed KMS key for the media S3 bucket. Adds KMS key/request cost when enabled."
+  type        = bool
+  default     = false
+}
+
+variable "enable_dynamodb_customer_managed_kms" {
+  description = "Use a customer-managed KMS key for sensitive DynamoDB tables. Adds KMS key/request cost when enabled."
+  type        = bool
+  default     = false
+}
+
+variable "cors_allowed_origins" {
+  description = "Approved browser origins for CORS. Include production and explicit local dev origins only."
+  type        = list(string)
+  default     = ["https://superdoc.pablobhz.cloud", "http://localhost:5173", "http://localhost:4173"]
+}

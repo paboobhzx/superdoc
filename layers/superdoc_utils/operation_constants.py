@@ -1,0 +1,8 @@
+IMAGE_TYPES = ["png", "jpg", "jpeg", "webp", "gif"]
+IMAGE_TARGETS = ["png", "jpg", "jpeg", "webp", "gif"]
+MARKDOWN_TARGETS = ["pdf", "docx", "png", "jpg", "jpeg", "tiff", "md", "txt", "html"]
+PDF_IMAGE_TARGETS = ["png", "jpg", "jpeg"]
+DOCX_IMAGE_TARGETS = ["png", "jpg", "jpeg"]
+OCR_DOCUMENT_TARGETS = ["txt", "md", "docx"]
+HTML_TARGETS = ["pdf", "docx", "png", "jpg", "jpeg", "txt", "html"]
+XLSX_TEXT_TARGETS = ["csv", "md", "txt", "html"]

@@ -6,3 +6,5 @@ output "incidents_name" { value = aws_dynamodb_table.incidents.name }
 output "incidents_arn" { value = aws_dynamodb_table.incidents.arn }
 output "rate_limits_name" { value = aws_dynamodb_table.rate_limits.name }
 output "rate_limits_arn" { value = aws_dynamodb_table.rate_limits.arn }
+output "auth_sessions_name" { value = aws_dynamodb_table.auth_sessions.name }
+output "auth_sessions_arn" { value = aws_dynamodb_table.auth_sessions.arn }

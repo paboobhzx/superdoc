@@ -1,20 +1,18 @@
+import auth_session
 import dynamo
 import response
 import s3
+import uuid
 from logger import get_logger
 
 log = get_logger(__name__)
 
-def _claims(event: dict) -> dict:
-    return (
-        (event.get("requestContext") or {})
-        .get("authorizer", {})
-        .get("claims", {})
-    ) or {}
-
-
-def _current_user_id(event: dict) -> str:
-    return _claims(event).get("sub") or ""
+def _valid_anon_session(session_id: str) -> bool:
+    try:
+        uuid.UUID(session_id)
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 def handler(event, context):
@@ -23,11 +21,13 @@ def handler(event, context):
         if method == "OPTIONS":
             return response.preflight()
 
-        user_id = _current_user_id(event)
+        user_id = auth_session.current_user_id(event)
         session_id = user_id or (event.get("queryStringParameters") or {}).get("session_id", "")
 
         if not session_id:
             return response.error("session_id required", 400)
+        if not user_id and not _valid_anon_session(session_id):
+            return response.error("valid session_id required", 400)
 
         if method == "DELETE":
             job_id = (event.get("pathParameters") or {}).get("jobId", "")
@@ -38,7 +38,7 @@ def handler(event, context):
             if not job:
                 return response.error("Job not found", 404)
 
-            if user_id and job.get("session_id") != user_id:
+            if job.get("session_id") != session_id:
                 return response.error("Forbidden", 403)
 
             s3.delete_key(job.get("file_key", ""))

@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from decimal import Decimal
 
 import boto3
@@ -60,6 +61,16 @@ def handler(event, context):
         _sqs.send_message(QueueUrl=SQS_QUEUE_URL, MessageBody=json.dumps(payload))
 
         estimated = estimator.estimate_seconds(job["operation"], job.get("file_size_bytes", 0))
+
+        # Persist the estimate and enqueue timestamp so GET /jobs/{id} can
+        # drive the polling countdown. We use started_at instead of created_at
+        # because the user sees this page after upload completes, so upload
+        # latency should not stretch the remaining-time estimate.
+        dynamo.update_job(
+            job_id,
+            estimated_seconds=estimated,
+            started_at=int(time.time()),
+        )
 
         log.info("Job queued", extra={"job_id": job_id, "operation": job["operation"]})
         return response.accepted({"success": True, "estimated_seconds": estimated})

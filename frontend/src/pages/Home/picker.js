@@ -38,9 +38,17 @@ export const OPERATION_UI = {
     icon: "text_fields",
     description: "Plain text of every page, ideal for search, indexing, or AI pipelines.",
   },
+  pdf_to_md: {
+    icon: "article",
+    description: "Markdown text extracted page by page, with OCR fallback for scanned pages.",
+  },
   pdf_to_image: {
     icon: "image",
-    description: "Render each page as a PNG image and download them in one ZIP file.",
+    description: "Render each page as an image and download them in one ZIP file.",
+  },
+  pdf_to_html: {
+    icon: "html",
+    description: "Convert page text into a normalized HTML document.",
   },
   pdf_edit: {
     icon: "edit_document",
@@ -61,9 +69,21 @@ export const OPERATION_UI = {
     icon: "text_fields",
     description: "Extract plain text from the Word document. Formatting is dropped.",
   },
+  docx_to_md: {
+    icon: "article",
+    description: "Extract headings, lists, paragraphs, and tables as conservative Markdown.",
+  },
   docx_to_pdf: {
     icon: "picture_as_pdf",
     description: "Create a clean readable PDF from paragraphs and tables.",
+  },
+  docx_to_image: {
+    icon: "image",
+    description: "Render each page as an image and download them in one ZIP file.",
+  },
+  docx_to_html: {
+    icon: "html",
+    description: "Convert Word content into a normalized HTML document.",
   },
   xlsx_to_csv: {
     icon: "table_chart",
@@ -72,6 +92,26 @@ export const OPERATION_UI = {
   xlsx_to_pdf: {
     icon: "picture_as_pdf",
     description: "Create a readable PDF table from the first sheet.",
+  },
+  xlsx_to_md: {
+    icon: "article",
+    description: "Export the first sheet as a conservative Markdown table.",
+  },
+  xlsx_to_txt: {
+    icon: "text_fields",
+    description: "Export the first sheet as tab-separated plain text.",
+  },
+  xlsx_to_html: {
+    icon: "html",
+    description: "Export the first sheet as a simple HTML table.",
+  },
+  xlsx_to_docx: {
+    icon: "description",
+    description: "Export the first sheet into a Word document table.",
+  },
+  xlsx_to_image: {
+    icon: "image",
+    description: "Render the spreadsheet as page images inside a ZIP file.",
   },
 
   // ── Image ops ──────────────────────────────────────────────────────────
@@ -83,9 +123,17 @@ export const OPERATION_UI = {
     icon: "picture_as_pdf",
     description: "Wrap the image into a single-page PDF document.",
   },
+  image_to_document: {
+    icon: "document_scanner",
+    description: "Extract OCR text from the image as Text, Markdown, or Word.",
+  },
   markdown_convert: {
     icon: "article",
     description: "Render Markdown or plain text as PDF, Word, or a full-document image.",
+  },
+  html_convert: {
+    icon: "html",
+    description: "Render HTML into PDF, Word, image, or plain text outputs.",
   },
   image_edit: {
     icon: "crop",
