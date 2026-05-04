@@ -1,12 +1,13 @@
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import { randomUUID } from "node:crypto"
 import { expect } from "@playwright/test"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const SAMPLES_DIR = path.join(HERE, "samples")
 
 export function newSessionId(testInfo) {
-  return `e2e-${testInfo.testId}-${Date.now()}`
+  return randomUUID()
 }
 
 export function samplePath(name) {
