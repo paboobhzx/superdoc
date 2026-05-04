@@ -18,9 +18,9 @@ mkdir -p "${DIST}"
 echo "Building superdoc_utils layer..."
 UTILS_TMP="$(mktemp -d)"
 mkdir -p "${UTILS_TMP}/python"
-cp "${REPO_ROOT}/layers/superdoc_utils"/*.py "${UTILS_TMP}/python/"
+cp -R "${REPO_ROOT}/layers/superdoc_utils/." "${UTILS_TMP}/python/"
 rm -f "${DIST}/superdoc_utils.zip"
-(cd "${UTILS_TMP}" && zip -r "${DIST}/superdoc_utils.zip" python/ -x "*.pyc" -x "*/__pycache__/*")
+(cd "${UTILS_TMP}" && zip -r "${DIST}/superdoc_utils.zip" python/ -x "*.pyc" -x "*/__pycache__/*" -x "*.bak*")
 rm -rf "${UTILS_TMP}"
 echo "  built dist/layers/superdoc_utils.zip ($(du -sh "${DIST}/superdoc_utils.zip" | cut -f1))"
 
