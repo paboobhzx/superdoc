@@ -1,3 +1,12 @@
+# Build command (from repo root):
+#   docker buildx build --platform linux/arm64 --provenance=false \
+#     --build-arg HANDLER_FILE=handlers/docx_to_pdf.py \
+#     -f office_image/Dockerfile \
+#     -t <ECR_REPO>:docx_to_pdf-latest --push .
+#
+# --provenance=false is required: buildx otherwise creates an OCI manifest
+# list (with attestation layers) that Lambda rejects as an unsupported media
+# type. Single-platform images pushed without provenance work correctly.
 FROM python:3.12-slim-bookworm
 
 RUN apt-get update \
