@@ -99,3 +99,15 @@ variable "cors_allowed_origins" {
   type        = list(string)
   default     = ["https://superdoc.pablobhz.cloud", "http://localhost:5173", "http://localhost:4173"]
 }
+
+variable "amplify_app_name" {
+  description = "Display name for the Amplify app. Defaults to <name_prefix>-frontend when empty."
+  type        = string
+  default     = ""
+}
+
+variable "amplify_repository" {
+  description = "GitHub repository URL for Amplify auto-build. Empty means manual deployments only."
+  type        = string
+  default     = ""
+}
