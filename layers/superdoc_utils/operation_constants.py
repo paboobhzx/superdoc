@@ -1,5 +1,5 @@
-IMAGE_TYPES = ["png", "jpg", "jpeg", "webp", "gif"]
-IMAGE_TARGETS = ["png", "jpg", "jpeg", "webp", "gif"]
+IMAGE_TYPES = ["png", "jpg", "jpeg", "webp", "gif", "tiff"]
+IMAGE_TARGETS = ["png", "jpg", "jpeg", "webp", "gif", "tiff"]
 MARKDOWN_TARGETS = ["pdf", "docx", "png", "jpg", "jpeg", "tiff", "md", "txt", "html"]
 PDF_IMAGE_TARGETS = ["png", "jpg", "jpeg"]
 DOCX_IMAGE_TARGETS = ["png", "jpg", "jpeg"]

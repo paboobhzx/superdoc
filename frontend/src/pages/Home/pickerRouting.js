@@ -11,6 +11,7 @@
 //   - Home.jsx stays focused on UI rather than business routing.
 
 import { api } from "../../lib/api"
+import { extensionOf } from "./useConversionFlow"
 
 // Maps an input extension to the editor route. Client-editor ops today are
 // only doc_edit, which can apply to docx and xlsx. PDF and image editing
@@ -30,16 +31,6 @@ const EDITOR_ROUTES_BY_EXTENSION = {
   jpeg: "/editor/image",
   gif: "/editor/image",
   webp: "/editor/image",
-}
-
-
-function extensionOf(file) {
-  const name = (file && file.name) ? file.name : ""
-  const dot = name.lastIndexOf(".")
-  if (dot < 0) {
-    return ""
-  }
-  return name.substring(dot + 1).toLowerCase()
 }
 
 

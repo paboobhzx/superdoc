@@ -7,9 +7,9 @@ import { getSessionId } from "../../lib/session"
 import { dispatchPick } from "./pickerRouting"
 import { buildTargetGridChoices, findClientEditorOperation } from "./targetGrid"
 
-export const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "WEBP", "GIF", "TIFF", "XLSX", "CSV", "TXT"]
-export const ACCEPT = "application/pdf,.docx,.xlsx,.csv,.jpg,.jpeg,.png,.webp,.gif,.tiff,.md,.markdown,.html,.htm,.txt"
-export const KNOWN_CATALOG_TYPES = new Set(["pdf", "docx", "xlsx", "csv", "png", "jpg", "jpeg", "webp", "gif", "tiff", "md", "markdown", "txt", "html", "htm"])
+export const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "WEBP", "GIF", "TIFF", "XLSX", "TXT"]
+export const ACCEPT = "application/pdf,.docx,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.tiff,.md,.markdown,.html,.htm,.txt"
+export const KNOWN_CATALOG_TYPES = new Set(["pdf", "docx", "xlsx", "png", "jpg", "jpeg", "webp", "gif", "tiff", "md", "markdown", "txt", "html", "htm"])
 
 export function extensionOf(file) {
   const name = file?.name || ""
