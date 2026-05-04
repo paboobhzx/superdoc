@@ -114,6 +114,8 @@ module "amplify" {
   api_url              = module.api_gateway.invoke_url
   cognito_user_pool_id = module.cognito.user_pool_id
   cognito_client_id    = module.cognito.client_id
+  app_name             = var.amplify_app_name
+  repository           = var.amplify_repository
 }
 
 module "cloudfront" {

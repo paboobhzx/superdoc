@@ -25,6 +25,10 @@ module "superdoc" {
   enable_dynamodb_customer_managed_kms = var.enable_dynamodb_customer_managed_kms
   office_converter_package_type        = "Image"
   office_converter_image_tag           = "latest"
+  amplify_app_name                     = "superdoc"
+  # amplify_repository is intentionally not set here — GitHub connection is
+  # established once via the Amplify Console OAuth flow (Terraform requires a
+  # PAT token to set this via API, which we don't want stored in code).
 }
 
 variable "lambda_handler_s3_bucket" {

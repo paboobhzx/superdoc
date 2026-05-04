@@ -1,6 +1,7 @@
 resource "aws_amplify_app" "superdoc" {
-  name = "${var.name_prefix}-frontend"
-  tags = var.common_tags
+  name       = var.app_name != "" ? var.app_name : "${var.name_prefix}-frontend"
+  repository = var.repository != "" ? var.repository : null
+  tags       = var.common_tags
 
   build_spec = <<-EOT
     version: 1
