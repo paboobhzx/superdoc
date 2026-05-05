@@ -7,9 +7,9 @@ import { getSessionId } from "../../lib/session"
 import { dispatchPick } from "./pickerRouting"
 import { buildTargetGridChoices, findClientEditorOperation } from "./targetGrid"
 
-export const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "WEBP", "GIF", "TIFF", "XLSX", "TXT"]
-export const ACCEPT = "application/pdf,.docx,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.tiff,.md,.markdown,.html,.htm,.txt"
-export const KNOWN_CATALOG_TYPES = new Set(["pdf", "docx", "xlsx", "png", "jpg", "jpeg", "webp", "gif", "tiff", "md", "markdown", "txt", "html", "htm"])
+export const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "WEBP", "GIF", "TIFF", "XLSX", "XLS", "TXT"]
+export const ACCEPT = "application/pdf,.docx,.xlsx,.xls,.jpg,.jpeg,.png,.webp,.gif,.tiff,.md,.markdown,.html,.htm,.txt"
+export const KNOWN_CATALOG_TYPES = new Set(["pdf", "docx", "xlsx", "xls", "png", "jpg", "jpeg", "webp", "gif", "tiff", "md", "markdown", "txt", "html", "htm"])
 
 export function extensionOf(file) {
   const name = file?.name || ""
@@ -35,6 +35,7 @@ export function useConversionFlow() {
   const [uploading, setUploading] = useState(false)
   const [startingAction, setStartingAction] = useState(null)
   const [err, setErr] = useState(null)
+  const [pendingOp, setPendingOp] = useState(null)
 
   const inputType = extensionOf(pendingFile)
   const hasEmptyKnownCatalog = Boolean(pendingFile && !loadingOps && !err && operations.length === 0 && KNOWN_CATALOG_TYPES.has(inputType))
@@ -44,6 +45,7 @@ export function useConversionFlow() {
     setOperations([])
     setStartingAction(null)
     setErr(null)
+    setPendingOp(null)
   }, [])
 
   const refreshOperations = useCallback(() => {
@@ -99,7 +101,7 @@ export function useConversionFlow() {
   )
   const editOperation = useMemo(() => findClientEditorOperation(operations), [operations])
 
-  const handlePick = useCallback(async (opMeta) => {
+  const _startConvert = useCallback(async (opMeta) => {
     if (!pendingFile || !opMeta || uploading) return
     setErr(null)
     setUploading(true)
@@ -127,6 +129,25 @@ export function useConversionFlow() {
     }
   }, [pendingFile, auth, navigate, uploading, t])
 
+  const handlePick = useCallback((opMeta) => {
+    if (!pendingFile || !opMeta || uploading) return
+    if (opMeta?.params_schema?.paper_size) {
+      setErr(null)
+      setPendingOp(opMeta)
+      return
+    }
+    _startConvert(opMeta)
+  }, [pendingFile, _startConvert, uploading])
+
+  const confirmConvert = useCallback((extraParams) => {
+    if (!pendingOp) return
+    const merged = { ...pendingOp, params: { ...(pendingOp.params || {}), ...extraParams } }
+    setPendingOp(null)
+    _startConvert(merged)
+  }, [pendingOp, _startConvert])
+
+  const cancelPending = useCallback(() => setPendingOp(null), [])
+
   return {
     pendingFile,
     operations,
@@ -138,9 +159,12 @@ export function useConversionFlow() {
     hasEmptyKnownCatalog,
     gridChoices,
     editOperation,
+    pendingOp,
     resetToDrop,
     refreshOperations,
     handleFiles,
     handlePick,
+    confirmConvert,
+    cancelPending,
   }
 }

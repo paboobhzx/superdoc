@@ -281,7 +281,14 @@ OPERATIONS: dict[str, dict] = {
         "targets": ["pdf"],
         "editor_route": None,
         "requires_multiple": False,
-        "params_schema": {},
+        "params_schema": {
+            "paper_size": {
+                "type": "string",
+                "required": False,
+                "enum": ["A4", "A3", "Letter", "Legal", "A5"],
+                "default": "A4",
+            }
+        },
         "category": "convert",
         "label": "Word to PDF",
         "lambda_suffix": "docx-to-pdf",
@@ -295,6 +302,12 @@ OPERATIONS: dict[str, dict] = {
         "editor_route": None,
         "requires_multiple": False,
         "params_schema": {
+            "paper_size": {
+                "type": "string",
+                "required": False,
+                "enum": ["A4", "A3", "Letter", "Legal", "A5"],
+                "default": "A4",
+            },
             "dpi": {
                 "type": "integer",
                 "default": 150,
@@ -395,7 +408,7 @@ OPERATIONS: dict[str, dict] = {
     "xlsx_to_pdf": {
         "intent": "convert",
         "kind": "backend_job",
-        "input_types": ["xlsx"],
+        "input_types": ["xlsx", "xls"],
         "output_type": "pdf",
         "targets": ["pdf"],
         "editor_route": None,
@@ -406,7 +419,13 @@ OPERATIONS: dict[str, dict] = {
                 "required": False,
                 "maxLength": 64,
                 "default": "",
-            }
+            },
+            "paper_size": {
+                "type": "string",
+                "required": False,
+                "enum": ["A4", "A3", "Letter", "Legal", "A5"],
+                "default": "A4",
+            },
         },
         "category": "convert",
         "label": "Excel to PDF",
@@ -446,6 +465,12 @@ OPERATIONS: dict[str, dict] = {
                 "required": False,
                 "maxLength": 64,
                 "default": "",
+            },
+            "paper_size": {
+                "type": "string",
+                "required": False,
+                "enum": ["A4", "A3", "Letter", "Legal", "A5"],
+                "default": "A4",
             },
             "dpi": {
                 "type": "integer",

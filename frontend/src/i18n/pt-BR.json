@@ -24,7 +24,12 @@
     "downloadFile": "Baixar arquivo",
     "view": "Ver",
     "unknown": "Desconhecido",
-    "conversion": "Conversao"
+    "conversion": "Conversao",
+    "back": "Voltar"
+  },
+  "paramsPanel": {
+    "pageSize": "Tamanho da pagina",
+    "convert": "Converter"
   },
   "theme": {
     "azure": "Azul Azure",

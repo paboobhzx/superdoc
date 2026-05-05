@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useI18n } from "../../context/I18nContext"
 import { ACCEPT, SUPPORTED_FORMATS, formatFileSize, useConversionFlow } from "./useConversionFlow"
+import { ParamsPanel } from "../../components/ParamsPanel"
 
 const DESKTOP_PREF_KEY = "superdoc_desktop_preference"
 
@@ -35,9 +36,12 @@ export function MobileHome() {
     hasEmptyKnownCatalog,
     gridChoices,
     editOperation,
+    pendingOp,
     resetToDrop,
     handleFiles,
     handlePick,
+    confirmConvert,
+    cancelPending,
   } = useConversionFlow()
 
   const options = useMemo(() => {
@@ -133,34 +137,42 @@ export function MobileHome() {
               </div>
             </div>
 
-            <label className="block">
-              <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-outline">{t("home.convertTo")}</span>
-              <select
-                value={selected}
-                disabled={loadingOps || uploading || hasEmptyKnownCatalog || options.length === 0}
-                onChange={(e) => setSelected(e.target.value)}
-                className="h-14 w-full rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-lowest px-4 text-base font-semibold text-on-surface disabled:opacity-60"
-              >
-                <option value="">{loadingOps ? t("common.loading") : t("home.pickTarget")}</option>
-                {options.map((option) => (
-                  <option key={option.key} value={option.key}>{option.label}</option>
-                ))}
-              </select>
-            </label>
+            {pendingOp ? (
+              <div className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-4">
+                <ParamsPanel opMeta={pendingOp} onConfirm={confirmConvert} onCancel={cancelPending} />
+              </div>
+            ) : (
+              <>
+                <label className="block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-outline">{t("home.convertTo")}</span>
+                  <select
+                    value={selected}
+                    disabled={loadingOps || uploading || hasEmptyKnownCatalog || options.length === 0}
+                    onChange={(e) => setSelected(e.target.value)}
+                    className="h-14 w-full rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-lowest px-4 text-base font-semibold text-on-surface disabled:opacity-60"
+                  >
+                    <option value="">{loadingOps ? t("common.loading") : t("home.pickTarget")}</option>
+                    {options.map((option) => (
+                      <option key={option.key} value={option.key}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
 
-            <button
-              type="button"
-              disabled={!selectedOption || uploading}
-              onClick={() => selectedOption && handlePick(selectedOption.opMeta)}
-              className="flex h-14 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-primary px-5 text-sm font-bold text-on-primary transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-outline-variant disabled:text-on-surface-variant"
-            >
-              <span className={`material-symbols-outlined text-[18px] ${isStarting ? "animate-spin" : ""}`}>{isStarting ? "progress_activity" : "arrow_forward"}</span>
-              {isStarting ? t("common.starting") : t("common.process")}
-            </button>
+                <button
+                  type="button"
+                  disabled={!selectedOption || uploading}
+                  onClick={() => selectedOption && handlePick(selectedOption.opMeta)}
+                  className="flex h-14 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-primary px-5 text-sm font-bold text-on-primary transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-outline-variant disabled:text-on-surface-variant"
+                >
+                  <span className={`material-symbols-outlined text-[18px] ${isStarting ? "animate-spin" : ""}`}>{isStarting ? "progress_activity" : "arrow_forward"}</span>
+                  {isStarting ? t("common.starting") : t("common.process")}
+                </button>
 
-            <div className="rounded-[var(--radius-md)] border border-outline-variant bg-surface-container px-4 py-3 text-sm leading-6 text-on-surface-variant" aria-live="polite">
-              {err || (selectedOption?.detail) || (hasEmptyKnownCatalog ? t("home.catalogEmpty") : t("home.pickTarget"))}
-            </div>
+                <div className="rounded-[var(--radius-md)] border border-outline-variant bg-surface-container px-4 py-3 text-sm leading-6 text-on-surface-variant" aria-live="polite">
+                  {err || (selectedOption?.detail) || (hasEmptyKnownCatalog ? t("home.catalogEmpty") : t("home.pickTarget"))}
+                </div>
+              </>
+            )}
           </div>
         )}
       </section>

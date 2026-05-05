@@ -24,7 +24,12 @@
     "downloadFile": "Download file",
     "view": "View",
     "unknown": "Unknown",
-    "conversion": "Conversion"
+    "conversion": "Conversion",
+    "back": "Back"
+  },
+  "paramsPanel": {
+    "pageSize": "Page size",
+    "convert": "Convert"
   },
   "theme": {
     "azure": "Azure Blue",

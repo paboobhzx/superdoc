@@ -102,4 +102,13 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
         if params.get("sheet"):
             cleaned["sheet"] = params.get("sheet")
 
+    _PAPER_SIZES = {"A4", "A3", "Letter", "Legal", "A5"}
+    if operation in ("docx_to_pdf", "docx_to_image", "xlsx_to_pdf", "xlsx_to_image"):
+        raw_paper = params.get("paper_size")
+        ok_flag, err_msg = _one_of(raw_paper, name="paper_size", allowed=_PAPER_SIZES)
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if raw_paper:
+            cleaned["paper_size"] = raw_paper
+
     return ValidationResult(ok=True, params=cleaned)

@@ -2,6 +2,7 @@ import html
 import io
 import json as _json
 import os
+import pathlib
 import shutil
 import subprocess
 import tempfile
@@ -14,6 +15,24 @@ from logger import get_logger
 log = get_logger(__name__)
 
 _LIBREOFFICE_BIN = os.environ.get("LIBREOFFICE_BIN", "libreoffice")
+
+_OPENPYXL_PAPER_SIZES: dict[str, int] = {
+    "A4": 9, "A3": 8, "Letter": 1, "Legal": 5, "A5": 11,
+}
+
+
+def _set_xlsx_paper_size(xlsx_bytes: bytes, paper_size: str) -> bytes:
+    """Return xlsx_bytes with all sheets' page_setup.paperSize set."""
+    code = _OPENPYXL_PAPER_SIZES.get(paper_size)
+    if not code:
+        return xlsx_bytes
+    from openpyxl import load_workbook
+    wb = load_workbook(io.BytesIO(xlsx_bytes))
+    for ws in wb.worksheets:
+        ws.page_setup.paperSize = code
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
 
 
 def _load_sheet_rows(xlsx_bytes: bytes, sheet_name: str | None):
@@ -64,24 +83,41 @@ def _rows_to_docx(rows) -> bytes:
     return out.getvalue()
 
 
-def _xlsx_to_pdf(xlsx_bytes: bytes, sheet_name: str | None = None) -> bytes:
-    from openpyxl import load_workbook
+def _xlsx_to_pdf(
+    xlsx_bytes: bytes,
+    sheet_name: str | None = None,
+    paper_size: str | None = None,
+    source_ext: str = ".xlsx",
+) -> bytes:
+    source_name = f"input{source_ext}"
 
-    if sheet_name:
+    if paper_size and source_ext == ".xlsx":
+        xlsx_bytes = _set_xlsx_paper_size(xlsx_bytes, paper_size)
+
+    if sheet_name and source_ext == ".xlsx":
+        # _select_sheet_workbook uses openpyxl — only safe for .xlsx
         workbook_path = _select_sheet_workbook(xlsx_bytes, sheet_name)
         try:
             with open(workbook_path, "rb") as fh:
-                return _office_to_pdf(fh.read(), "input.xlsx")
+                return _office_to_pdf(fh.read(), source_name)
         finally:
             try:
                 os.unlink(workbook_path)
             except FileNotFoundError:
                 pass
-    return _office_to_pdf(xlsx_bytes, "input.xlsx")
+
+    return _office_to_pdf(xlsx_bytes, source_name)
 
 
-def _xlsx_to_image_zip(xlsx_bytes: bytes, sheet_name: str | None, target_format: str = "png", dpi: int = 150) -> bytes:
-    pdf_bytes = _xlsx_to_pdf(xlsx_bytes, sheet_name=sheet_name)
+def _xlsx_to_image_zip(
+    xlsx_bytes: bytes,
+    sheet_name: str | None,
+    target_format: str = "png",
+    dpi: int = 150,
+    paper_size: str | None = None,
+    source_ext: str = ".xlsx",
+) -> bytes:
+    pdf_bytes = _xlsx_to_pdf(xlsx_bytes, sheet_name=sheet_name, paper_size=paper_size, source_ext=source_ext)
     return _render_pdf_to_zip(pdf_bytes, target_format=target_format, dpi=dpi)
 
 
@@ -222,6 +258,8 @@ def handler(event, context):
     target_format = (params.get("target_format") or body.get("target_format") or "pdf").lower()
     sheet_name = params.get("sheet") or body.get("sheet")
     dpi = int(params.get("dpi") or body.get("dpi") or 150)
+    paper_size = params.get("paper_size") or None
+    source_ext = pathlib.Path(file_key).suffix.lower() or ".xlsx"
 
     try:
         dynamo.update_job(job_id, status="PROCESSING")
@@ -230,13 +268,13 @@ def handler(event, context):
             result = _xlsx_to_docx(data, sheet_name=sheet_name)
             output_name = "output.docx"
         elif target_format in ("png", "jpg", "jpeg") or operation == "xlsx_to_image":
-            result = _xlsx_to_image_zip(data, sheet_name=sheet_name, target_format=target_format, dpi=dpi)
+            result = _xlsx_to_image_zip(data, sheet_name=sheet_name, target_format=target_format, dpi=dpi, paper_size=paper_size, source_ext=source_ext)
             output_name = "pages.zip"
         elif target_format == "html" or operation == "xlsx_to_html":
             result = _xlsx_to_html(data, sheet_name=sheet_name)
             output_name = "output.html"
         else:
-            result = _xlsx_to_pdf(data, sheet_name=sheet_name)
+            result = _xlsx_to_pdf(data, sheet_name=sheet_name, paper_size=paper_size, source_ext=source_ext)
             output_name = "output.pdf"
         out_key = s3.make_output_key(job_id, file_key, output_name)
         s3.put_bytes(out_key, result)

@@ -14,13 +14,40 @@ log = get_logger(__name__)
 
 _LIBREOFFICE_BIN = os.environ.get("LIBREOFFICE_BIN", "libreoffice")
 
+_PAPER_SIZES_MM: dict[str, tuple[float, float]] = {
+    "A4":     (210.0,  297.0),
+    "A3":     (297.0,  420.0),
+    "Letter": (215.9,  279.4),
+    "Legal":  (215.9,  355.6),
+    "A5":     (148.0,  210.0),
+}
 
-def _docx_to_pdf(docx_bytes: bytes) -> bytes:
+
+def _set_docx_paper_size(docx_bytes: bytes, paper_size: str) -> bytes:
+    """Return docx_bytes with every section resized to paper_size (e.g. 'A4', 'Letter')."""
+    dims = _PAPER_SIZES_MM.get(paper_size)
+    if not dims:
+        return docx_bytes
+    from docx import Document
+    from docx.shared import Mm
+    w_mm, h_mm = dims
+    doc = Document(io.BytesIO(docx_bytes))
+    for section in doc.sections:
+        section.page_width = Mm(w_mm)
+        section.page_height = Mm(h_mm)
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def _docx_to_pdf(docx_bytes: bytes, paper_size: str | None = None) -> bytes:
+    if paper_size:
+        docx_bytes = _set_docx_paper_size(docx_bytes, paper_size)
     return _office_to_pdf(docx_bytes, "input.docx")
 
 
-def _docx_to_image_zip(docx_bytes: bytes, target_format: str = "png", dpi: int = 150) -> bytes:
-    pdf_bytes = _docx_to_pdf(docx_bytes)
+def _docx_to_image_zip(docx_bytes: bytes, target_format: str = "png", dpi: int = 150, paper_size: str | None = None) -> bytes:
+    pdf_bytes = _docx_to_pdf(docx_bytes, paper_size=paper_size)
     return _render_pdf_to_zip(pdf_bytes, target_format=target_format, dpi=dpi)
 
 
@@ -111,15 +138,16 @@ def handler(event, context):
     # target format is an image extension.
     target_format = (params.get("target_format") or body.get("target_format") or "pdf").lower()
     dpi = int(params.get("dpi") or body.get("dpi") or 150)
+    paper_size = params.get("paper_size") or None
 
     try:
         dynamo.update_job(job_id, status="PROCESSING")
         data = s3.get_bytes(file_key)
         if operation == "docx_to_image" or target_format in ("png", "jpg", "jpeg"):
-            result = _docx_to_image_zip(data, target_format=target_format, dpi=dpi)
+            result = _docx_to_image_zip(data, target_format=target_format, dpi=dpi, paper_size=paper_size)
             output_name = "pages.zip"
         else:
-            result = _docx_to_pdf(data)
+            result = _docx_to_pdf(data, paper_size=paper_size)
             output_name = "output.pdf"
         out_key = s3.make_output_key(job_id, file_key, output_name)
         s3.put_bytes(out_key, result)

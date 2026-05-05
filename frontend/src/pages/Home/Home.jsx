@@ -1,16 +1,8 @@
 import { useState, useRef } from "react"
 import { useI18n } from "../../context/I18nContext"
 import { TARGET_GRID } from "./targetGrid"
-import { useConversionFlow } from "./useConversionFlow"
-
-const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "WEBP", "GIF", "TIFF", "XLSX", "CSV", "TXT"]
-// MIME types and extensions that the file picker accepts. Keep this in sync
-// with the supported inputs in operations.py so new backend capabilities can
-// actually be uploaded from the Home surface.
-const ACCEPT = "application/pdf,.docx,.xlsx,.csv,.jpg,.jpeg,.png,.webp,.gif,.tiff,.md,.markdown,.html,.htm,.txt"
-// Catalog gate used by Home.jsx to decide when an empty response is a real
-// problem instead of a format we do not support yet.
-const KNOWN_CATALOG_TYPES = new Set(["pdf", "docx", "xlsx", "csv", "png", "jpg", "jpeg", "webp", "gif", "tiff", "md", "markdown", "txt", "html", "htm"])
+import { ACCEPT, SUPPORTED_FORMATS, formatFileSize, useConversionFlow } from "./useConversionFlow"
+import { ParamsPanel } from "../../components/ParamsPanel"
 
 const FORMAT_CARDS = [
   { from: "PDF", to: "DOCX", key: "pdfWord" },
@@ -41,19 +33,6 @@ const FAQ_ITEMS = [
   { key: "routes" },
 ]
 
-function extensionOf(file) {
-  const name = file?.name || ""
-  const dot = name.lastIndexOf(".")
-  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : ""
-}
-
-function formatFileSize(bytes) {
-  if (!bytes) return "-"
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
-
 export function Home() {
   const { t } = useI18n()
   const [dragging, setDragging] = useState(false)
@@ -69,10 +48,13 @@ export function Home() {
     hasEmptyKnownCatalog,
     gridChoices,
     editOperation,
+    pendingOp,
     resetToDrop,
     refreshOperations,
     handleFiles,
     handlePick,
+    confirmConvert,
+    cancelPending,
   } = useConversionFlow()
 
   return (
@@ -192,66 +174,72 @@ export function Home() {
                 </div>
               ) : null}
 
-              <div className="mb-7">
-                <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-outline">{t("home.convertTo")}</div>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                  {(loadingOps || hasEmptyKnownCatalog ? TARGET_GRID.map((item) => ({ ...item, enabled: false, disabledReason: loadingOps ? t("common.loading") : t("common.unavailable") })) : gridChoices).map((choice) => {
-                    const actionKey = choice.opMeta ? (choice.opMeta.target ? `${choice.opMeta.operation}:${choice.opMeta.target}` : choice.opMeta.operation) : choice.target
-                    const isStarting = startingAction === actionKey
-                    return (
+              {pendingOp ? (
+                <ParamsPanel opMeta={pendingOp} onConfirm={confirmConvert} onCancel={cancelPending} />
+              ) : (
+                <>
+                  <div className="mb-7">
+                    <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-outline">{t("home.convertTo")}</div>
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                      {(loadingOps || hasEmptyKnownCatalog ? TARGET_GRID.map((item) => ({ ...item, enabled: false, disabledReason: loadingOps ? t("common.loading") : t("common.unavailable") })) : gridChoices).map((choice) => {
+                        const actionKey = choice.opMeta ? (choice.opMeta.target ? `${choice.opMeta.operation}:${choice.opMeta.target}` : choice.opMeta.operation) : choice.target
+                        const isStarting = startingAction === actionKey
+                        return (
+                        <button
+                          key={choice.target}
+                          type="button"
+                          disabled={!choice.enabled || uploading || loadingOps}
+                          aria-busy={isStarting ? "true" : undefined}
+                          onClick={() => handlePick(choice.opMeta)}
+                          className={`min-h-[74px] rounded-[var(--radius-md)] border p-3 text-left transition-all active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                            isStarting
+                              ? "border-primary bg-primary/15 text-primary shadow-sm ring-2 ring-primary/20"
+                              : ""
+                          } ${
+                            choice.enabled
+                              ? "border-outline-variant bg-surface-container-low text-on-surface hover:border-primary/70 hover:bg-primary/10 disabled:border-primary/40 disabled:bg-primary/10 disabled:text-primary"
+                              : "cursor-not-allowed border-outline-variant bg-surface-container-low text-outline opacity-55 grayscale"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2 font-headline text-sm font-bold">
+                            {isStarting ? <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span> : null}
+                            {choice.label}
+                          </span>
+                          <span className="mt-0.5 block text-[11px] text-on-surface-variant">
+                            {isStarting ? t("common.starting") : choice.enabled ? choice.description : choice.disabledReason}
+                          </span>
+                        </button>
+                      )})}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {(() => {
+                      const editKey = editOperation?.operation
+                      const isStartingEdit = Boolean(editKey && startingAction === editKey)
+                      return (
                     <button
-                      key={choice.target}
                       type="button"
-                      disabled={!choice.enabled || uploading || loadingOps}
-                      aria-busy={isStarting ? "true" : undefined}
-                      onClick={() => handlePick(choice.opMeta)}
-                      className={`min-h-[74px] rounded-[var(--radius-md)] border p-3 text-left transition-all active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                        isStarting
-                          ? "border-primary bg-primary/15 text-primary shadow-sm ring-2 ring-primary/20"
-                          : ""
-                      } ${
-                        choice.enabled
-                          ? "border-outline-variant bg-surface-container-low text-on-surface hover:border-primary/70 hover:bg-primary/10 disabled:border-primary/40 disabled:bg-primary/10 disabled:text-primary"
-                          : "cursor-not-allowed border-outline-variant bg-surface-container-low text-outline opacity-55 grayscale"
+                      disabled={!editOperation || uploading || loadingOps || hasEmptyKnownCatalog}
+                      aria-busy={isStartingEdit ? "true" : undefined}
+                      onClick={() => handlePick(editOperation)}
+                      className={`sd-button-secondary min-h-12 px-5 active:scale-[0.98] disabled:cursor-not-allowed disabled:border-outline-variant disabled:bg-surface-container disabled:text-outline disabled:opacity-60 ${
+                        isStartingEdit ? "border-primary bg-primary/15 text-primary ring-2 ring-primary/20" : ""
                       }`}
                     >
-                      <span className="flex items-center gap-2 font-headline text-sm font-bold">
-                        {isStarting ? <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span> : null}
-                        {choice.label}
-                      </span>
-                      <span className="mt-0.5 block text-[11px] text-on-surface-variant">
-                        {isStarting ? t("common.starting") : choice.enabled ? choice.description : choice.disabledReason}
-                      </span>
+                      <span className={`material-symbols-outlined text-[18px] ${isStartingEdit ? "animate-spin" : ""}`}>{isStartingEdit ? "progress_activity" : "edit"}</span>
+                      {isStartingEdit ? t("common.starting") : editOperation ? t("home.edit") : t("home.editUnavailable")}
                     </button>
-                  )})}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 sm:flex-row">
-                {(() => {
-                  const editKey = editOperation?.operation
-                  const isStartingEdit = Boolean(editKey && startingAction === editKey)
-                  return (
-                <button
-                  type="button"
-                  disabled={!editOperation || uploading || loadingOps || hasEmptyKnownCatalog}
-                  aria-busy={isStartingEdit ? "true" : undefined}
-                  onClick={() => handlePick(editOperation)}
-                  className={`sd-button-secondary min-h-12 px-5 active:scale-[0.98] disabled:cursor-not-allowed disabled:border-outline-variant disabled:bg-surface-container disabled:text-outline disabled:opacity-60 ${
-                    isStartingEdit ? "border-primary bg-primary/15 text-primary ring-2 ring-primary/20" : ""
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-[18px] ${isStartingEdit ? "animate-spin" : ""}`}>{isStartingEdit ? "progress_activity" : "edit"}</span>
-                  {isStartingEdit ? t("common.starting") : editOperation ? t("home.edit") : t("home.editUnavailable")}
-                </button>
-                  )
-                })()}
-                <div className="flex-1 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container px-4 py-3 text-xs text-on-surface-variant">
-                  <span aria-live="polite">
-                    {uploading ? t("common.starting") : loadingOps ? t("home.checkingOperations") : hasEmptyKnownCatalog ? t("home.catalogEmpty") : t("home.pickTarget")}
-                  </span>
-                </div>
-              </div>
+                      )
+                    })()}
+                    <div className="flex-1 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container px-4 py-3 text-xs text-on-surface-variant">
+                      <span aria-live="polite">
+                        {uploading ? t("common.starting") : loadingOps ? t("home.checkingOperations") : hasEmptyKnownCatalog ? t("home.catalogEmpty") : t("home.pickTarget")}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
