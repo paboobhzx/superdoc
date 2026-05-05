@@ -7,9 +7,56 @@
 #   SKIP_BUILD=1 bash infra/apply.sh -target=module.superdoc.module.lambda_dispatch_job
 #   SKIP_FRONTEND=1 bash infra/apply.sh   # skip frontend build + Amplify deploy
 #   SKIP_BUILD=1 SKIP_FRONTEND=1 bash infra/apply.sh -target=...  # terraform only
+#
+# Also accepted:
+#   bash infra/apply.sh --skip-build
+#   bash infra/apply.sh --skip-frontend
+#   bash infra/apply.sh --skip-build --skip-frontend
+#   bash infra/apply.sh -skip-build -skip-frontend
+#   bash infra/apply.sh SKIP_BUILD=1 SKIP_FRONTEND=1
+#   bash infra/apply.sh --SKIP_BUILD=1 --SKIP_FRONTEND=1
+#   bash infra/apply.sh --skip-build --skip-frontend -target=...
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# ----------------------------------------------------------------------
+# 0. Parse script flags
+# ----------------------------------------------------------------------
+TERRAFORM_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --skip-build|-skip-build|--SKIP_BUILD|-SKIP_BUILD)
+      export SKIP_BUILD=1
+      shift
+      ;;
+    --skip-frontend|-skip-frontend|--SKIP_FRONTEND|-SKIP_FRONTEND)
+      export SKIP_FRONTEND=1
+      shift
+      ;;
+    --skip-build=1|-skip-build=1|--SKIP_BUILD=1|-SKIP_BUILD=1)
+      export SKIP_BUILD=1
+      shift
+      ;;
+    --skip-frontend=1|-skip-frontend=1|--SKIP_FRONTEND=1|-SKIP_FRONTEND=1)
+      export SKIP_FRONTEND=1
+      shift
+      ;;
+    SKIP_BUILD=1)
+      export SKIP_BUILD=1
+      shift
+      ;;
+    SKIP_FRONTEND=1)
+      export SKIP_FRONTEND=1
+      shift
+      ;;
+    *)
+      TERRAFORM_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
 
 # ----------------------------------------------------------------------
 # 1. Determine the environment directory (single env only)
@@ -40,6 +87,17 @@ echo "==> Using Lambda zip bucket: $LAMBDA_ZIPS_BUCKET"
 export TF_VAR_lambda_handler_s3_bucket="$LAMBDA_ZIPS_BUCKET"
 
 # ----------------------------------------------------------------------
+# 3b. Fetch GitHub PAT from SSM and export for Terraform
+# ----------------------------------------------------------------------
+echo "==> Fetching GitHub token from SSM..."
+export TF_VAR_amplify_oauth_token
+TF_VAR_amplify_oauth_token=$(aws ssm get-parameter \
+  --name "/superdoc/github/access_token" \
+  --with-decryption \
+  --query "Parameter.Value" \
+  --output text)
+
+# ----------------------------------------------------------------------
 # 4. Optionally skip building (if SKIP_BUILD=1)
 # ----------------------------------------------------------------------
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
@@ -62,8 +120,8 @@ fi
 # 5. Run terraform apply
 # ----------------------------------------------------------------------
 echo "==> Running terraform apply from ${INFRA_ENV_DIR}..."
-# Pass any extra arguments (like -target=...) to terraform
-terraform -chdir="${INFRA_ENV_DIR}" apply -auto-approve "$@"
+# Pass any extra arguments, like -target=..., to terraform
+terraform -chdir="${INFRA_ENV_DIR}" apply -auto-approve ${TERRAFORM_ARGS[@]+"${TERRAFORM_ARGS[@]}"}
 
 # ----------------------------------------------------------------------
 # 6. Build frontend and deploy to Amplify

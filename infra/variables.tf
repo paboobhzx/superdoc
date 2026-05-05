@@ -111,3 +111,10 @@ variable "amplify_repository" {
   type        = string
   default     = ""
 }
+
+variable "amplify_oauth_token" {
+  description = "GitHub PAT for Amplify auto-build. Fetched from SSM /superdoc/github/access_token by apply.sh — never set this in tfvars."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
