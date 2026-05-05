@@ -3,6 +3,13 @@ resource "aws_amplify_app" "superdoc" {
   repository = var.repository != "" ? var.repository : null
   tags       = var.common_tags
 
+  # Prevent Terraform from resetting the GitHub OAuth connection established via
+  # the Amplify Console. Connect once through the Console (Apps → <app> → General
+  # → Connect repository) — subsequent applies will not touch these fields.
+  lifecycle {
+    ignore_changes = [oauth_token, repository]
+  }
+
   build_spec = <<-EOT
     version: 1
     frontend:

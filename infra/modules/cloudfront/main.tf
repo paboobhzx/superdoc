@@ -69,6 +69,10 @@ resource "aws_cloudfront_distribution" "superdoc" {
   }
 
   default_cache_behavior {
+    # Serves index.html and any unmatched paths from Amplify.
+    # TTL = 0 so CloudFront never caches HTML — every request fetches the latest
+    # index.html from Amplify, which always references the current hashed assets.
+    # This prevents users from seeing stale HTML after a new Amplify deploy.
     allowed_methods            = ["GET", "HEAD", "OPTIONS"]
     cached_methods             = ["GET", "HEAD"]
     target_origin_id           = "amplify-origin"
@@ -82,8 +86,29 @@ resource "aws_cloudfront_distribution" "superdoc" {
     }
 
     min_ttl     = 0
-    default_ttl = 3600
-    max_ttl     = 86400
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+  # Hashed static assets are safe to cache for a long time — Vite generates a
+  # new content hash on every build, so stale references are impossible as long
+  # as index.html is never cached (see default_cache_behavior above).
+  ordered_cache_behavior {
+    path_pattern           = "/assets/*"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "amplify-origin"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+
+    forwarded_values {
+      query_string = false
+      cookies { forward = "none" }
+    }
+
+    min_ttl     = 0
+    default_ttl = 86400
+    max_ttl     = 31536000
   }
 
   ordered_cache_behavior {
