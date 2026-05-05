@@ -27,6 +27,7 @@ module "superdoc" {
   office_converter_image_tag           = "latest"
   amplify_app_name                     = "superdoc"
   amplify_repository                   = "https://github.com/paboobhzx/superdoc"
+  amplify_oauth_token                  = var.amplify_oauth_token
 }
 
 variable "lambda_handler_s3_bucket" {
@@ -44,6 +45,13 @@ variable "enable_dynamodb_customer_managed_kms" {
   description = "Use customer-managed KMS for DynamoDB table encryption."
   type        = bool
   default     = false
+}
+
+variable "amplify_oauth_token" {
+  description = "GitHub PAT for Amplify auto-build. Injected via TF_VAR_amplify_oauth_token in apply.sh — never set in tfvars."
+  type        = string
+  default     = ""
+  sensitive   = true
 }
 
 # The previous hotfix attempt created these IAM resources through AWS CLI before
