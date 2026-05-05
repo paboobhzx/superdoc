@@ -543,7 +543,7 @@ fi
 # ---------------------------------------------------------------------
 
 if [[ "${SKIP_FRONTEND:-0}" != "1" ]]; then
-  print_header "Building frontend and deploying to Amplify"
+  print_header "Deploying frontend"
 
   if [[ -z "$APP_ID" ]]; then
     echo "ERROR: Amplify app ID not found."
@@ -552,83 +552,122 @@ if [[ "${SKIP_FRONTEND:-0}" != "1" ]]; then
     exit 1
   fi
 
-  echo "Reading VITE_* env vars from Amplify..."
-  echo "Amplify app ID:"
-  echo "  $APP_ID"
-
-  AMPLIFY_ENV="$(aws amplify get-app \
+  # Detect whether the app is repo-connected (GitHub auto-build) or manual deploy.
+  AMPLIFY_REPO="$(aws amplify get-app \
     --app-id "$APP_ID" \
-    --query "app.environmentVariables" \
-    --output json)"
+    --query "app.repository" \
+    --output text 2>/dev/null || echo "")"
 
-  VITE_API_URL="$(echo "$AMPLIFY_ENV" | json_get "VITE_API_URL")"
-  VITE_COGNITO_POOL="$(echo "$AMPLIFY_ENV" | json_get "VITE_COGNITO_USER_POOL_ID")"
-  VITE_COGNITO_CLIENT="$(echo "$AMPLIFY_ENV" | json_get "VITE_COGNITO_CLIENT_ID")"
-  VITE_ENV_VAR="$(echo "$AMPLIFY_ENV" | python3 -c "import sys,json; print(json.load(sys.stdin).get('VITE_ENV','prod'))")"
+  if [[ -n "$AMPLIFY_REPO" && "$AMPLIFY_REPO" != "None" ]]; then
+    # ----------------------------------------------------------------
+    # Repo-connected mode: Amplify builds from GitHub source.
+    # Trigger a RELEASE job instead of uploading a local zip.
+    # ----------------------------------------------------------------
+    echo "App is connected to GitHub:"
+    echo "  $AMPLIFY_REPO"
+    echo
+    echo "Triggering Amplify RELEASE build..."
 
-  echo "Frontend env:"
-  echo "  VITE_API_URL=$VITE_API_URL"
-  echo "  VITE_ENV=$VITE_ENV_VAR"
-  echo "  VITE_COGNITO_USER_POOL_ID=$VITE_COGNITO_POOL"
-  echo "  VITE_COGNITO_CLIENT_ID=${VITE_COGNITO_CLIENT:0:8}..."
+    RELEASE_JOB="$(aws amplify start-job \
+      --app-id "$APP_ID" \
+      --branch-name main \
+      --job-type RELEASE \
+      --output json)"
 
-  echo
-  echo "Building frontend..."
-  (
-    cd "${REPO_ROOT}/frontend"
+    JOB_ID="$(echo "$RELEASE_JOB" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobSummary']['jobId'])")"
+    JOB_STATUS="$(echo "$RELEASE_JOB" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobSummary']['status'])")"
 
-    npm ci --prefer-offline --silent
+    echo "Build triggered:"
+    echo "  job: $JOB_ID  status: $JOB_STATUS"
+    echo
+    echo "Amplify will build and deploy from the main branch."
+    echo "Monitor progress in the Amplify console or run:"
+    echo "  aws amplify get-job --app-id $APP_ID --branch-name main --job-id $JOB_ID"
 
-    VITE_API_URL="$VITE_API_URL" \
-    VITE_ENV="$VITE_ENV_VAR" \
-    VITE_COGNITO_USER_POOL_ID="$VITE_COGNITO_POOL" \
-    VITE_COGNITO_CLIENT_ID="$VITE_COGNITO_CLIENT" \
-    npm run build
-  )
+  else
+    # ----------------------------------------------------------------
+    # Manual deploy mode: build locally and upload zip to Amplify.
+    # ----------------------------------------------------------------
+    echo "App is in manual deploy mode (no GitHub repo connected)."
+    echo
+    echo "Reading VITE_* env vars from Amplify..."
+    echo "Amplify app ID:"
+    echo "  $APP_ID"
 
-  echo
-  echo "Zipping frontend dist..."
+    AMPLIFY_ENV="$(aws amplify get-app \
+      --app-id "$APP_ID" \
+      --query "app.environmentVariables" \
+      --output json)"
 
-  DEPLOY_ZIP="/tmp/superdoc-deploy.zip"
-  rm -f "$DEPLOY_ZIP"
+    VITE_API_URL="$(echo "$AMPLIFY_ENV" | json_get "VITE_API_URL")"
+    VITE_COGNITO_POOL="$(echo "$AMPLIFY_ENV" | json_get "VITE_COGNITO_USER_POOL_ID")"
+    VITE_COGNITO_CLIENT="$(echo "$AMPLIFY_ENV" | json_get "VITE_COGNITO_CLIENT_ID")"
+    VITE_ENV_VAR="$(echo "$AMPLIFY_ENV" | python3 -c "import sys,json; print(json.load(sys.stdin).get('VITE_ENV','prod'))")"
 
-  (
-    cd "${REPO_ROOT}/frontend/dist"
-    zip -r "$DEPLOY_ZIP" . -q
-  )
+    echo "Frontend env:"
+    echo "  VITE_API_URL=$VITE_API_URL"
+    echo "  VITE_ENV=$VITE_ENV_VAR"
+    echo "  VITE_COGNITO_USER_POOL_ID=$VITE_COGNITO_POOL"
+    echo "  VITE_COGNITO_CLIENT_ID=${VITE_COGNITO_CLIENT:0:8}..."
 
-  echo "Creating Amplify deployment..."
+    echo
+    echo "Building frontend..."
+    (
+      cd "${REPO_ROOT}/frontend"
 
-  DEPLOYMENT="$(aws amplify create-deployment \
-    --app-id "$APP_ID" \
-    --branch-name main \
-    --output json)"
+      npm ci --prefer-offline --silent
 
-  JOB_ID="$(echo "$DEPLOYMENT" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobId'])")"
-  ZIP_URL="$(echo "$DEPLOYMENT" | python3 -c "import sys,json; print(json.load(sys.stdin)['zipUploadUrl'])")"
+      VITE_API_URL="$VITE_API_URL" \
+      VITE_ENV="$VITE_ENV_VAR" \
+      VITE_COGNITO_USER_POOL_ID="$VITE_COGNITO_POOL" \
+      VITE_COGNITO_CLIENT_ID="$VITE_COGNITO_CLIENT" \
+      npm run build
+    )
 
-  echo "Uploading build artifact..."
-  echo "Amplify job:"
-  echo "  $JOB_ID"
+    echo
+    echo "Zipping frontend dist..."
 
-  curl -s -T "$DEPLOY_ZIP" "$ZIP_URL"
+    DEPLOY_ZIP="/tmp/superdoc-deploy.zip"
+    rm -f "$DEPLOY_ZIP"
 
-  echo
-  echo "Starting Amplify deployment..."
+    (
+      cd "${REPO_ROOT}/frontend/dist"
+      zip -r "$DEPLOY_ZIP" . -q
+    )
 
-  aws amplify start-deployment \
-    --app-id "$APP_ID" \
-    --branch-name main \
-    --job-id "$JOB_ID" \
-    --output json \
-    | python3 -c "import sys,json; j=json.load(sys.stdin)['jobSummary']; print(f\"  status: {j['status']}  job: {j['jobId']}\")"
+    echo "Creating Amplify deployment..."
 
-  rm -f "$DEPLOY_ZIP"
+    DEPLOYMENT="$(aws amplify create-deployment \
+      --app-id "$APP_ID" \
+      --branch-name main \
+      --output json)"
 
-  echo
-  echo "Frontend deployed to Amplify."
-  echo "Amplify job:"
-  echo "  $JOB_ID"
+    JOB_ID="$(echo "$DEPLOYMENT" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobId'])")"
+    ZIP_URL="$(echo "$DEPLOYMENT" | python3 -c "import sys,json; print(json.load(sys.stdin)['zipUploadUrl'])")"
+
+    echo "Uploading build artifact..."
+    echo "Amplify job:"
+    echo "  $JOB_ID"
+
+    curl -s -T "$DEPLOY_ZIP" "$ZIP_URL"
+
+    echo
+    echo "Starting Amplify deployment..."
+
+    aws amplify start-deployment \
+      --app-id "$APP_ID" \
+      --branch-name main \
+      --job-id "$JOB_ID" \
+      --output json \
+      | python3 -c "import sys,json; j=json.load(sys.stdin)['jobSummary']; print(f\"  status: {j['status']}  job: {j['jobId']}\")"
+
+    rm -f "$DEPLOY_ZIP"
+
+    echo
+    echo "Frontend deployed to Amplify."
+    echo "Amplify job:"
+    echo "  $JOB_ID"
+  fi
 
   if [[ -n "$CF_DIST_ID" ]]; then
     print_header "Invalidating CloudFront cache"
@@ -651,7 +690,7 @@ if [[ "${SKIP_FRONTEND:-0}" != "1" ]]; then
   fi
 else
   print_header "Skipping frontend deploy"
-  echo "SKIP_FRONTEND=1 detected. Skipping frontend build, Amplify deploy and CloudFront invalidation."
+  echo "SKIP_FRONTEND=1 detected. Skipping Amplify deploy and CloudFront invalidation."
 fi
 
 # ---------------------------------------------------------------------
