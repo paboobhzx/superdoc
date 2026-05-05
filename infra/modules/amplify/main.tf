@@ -1,14 +1,8 @@
 resource "aws_amplify_app" "superdoc" {
-  name       = var.app_name != "" ? var.app_name : "${var.name_prefix}-frontend"
-  repository = var.repository != "" ? var.repository : null
-  tags       = var.common_tags
-
-  # Prevent Terraform from resetting the GitHub OAuth connection established via
-  # the Amplify Console. Connect once through the Console (Apps → <app> → General
-  # → Connect repository) — subsequent applies will not touch these fields.
-  lifecycle {
-    ignore_changes = [oauth_token, repository]
-  }
+  name        = var.app_name != "" ? var.app_name : "${var.name_prefix}-frontend"
+  repository  = var.repository != "" ? var.repository : null
+  oauth_token = var.oauth_token != "" ? var.oauth_token : null
+  tags        = var.common_tags
 
   build_spec = <<-EOT
     version: 1
@@ -45,9 +39,10 @@ resource "aws_amplify_app" "superdoc" {
 }
 
 resource "aws_amplify_branch" "main" {
-  app_id      = aws_amplify_app.superdoc.id
-  branch_name = "main"
-  tags        = var.common_tags
+  app_id           = aws_amplify_app.superdoc.id
+  branch_name      = "main"
+  enable_auto_build = true
+  tags             = var.common_tags
 
   environment_variables = {
     VITE_API_URL              = var.api_url

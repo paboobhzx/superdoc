@@ -14,6 +14,13 @@ variable "repository" {
   default     = ""
 }
 
+variable "oauth_token" {
+  description = "GitHub Personal Access Token for Amplify repo auto-build. Sourced from SSM at /superdoc/github/access_token."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "api_url" {
   type    = string
   default = ""

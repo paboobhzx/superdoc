@@ -106,6 +106,14 @@ module "api_gateway" {
   }
 }
 
+# GitHub PAT for Amplify auto-build — stored in SSM, never in code.
+# To populate: aws ssm put-parameter --name /superdoc/github/access_token \
+#   --type SecureString --value ghp_xxx --overwrite
+data "aws_ssm_parameter" "github_access_token" {
+  name            = "/superdoc/github/access_token"
+  with_decryption = true
+}
+
 module "amplify" {
   source               = "./modules/amplify"
   name_prefix          = local.name_prefix
@@ -116,6 +124,7 @@ module "amplify" {
   cognito_client_id    = module.cognito.client_id
   app_name             = var.amplify_app_name
   repository           = var.amplify_repository
+  oauth_token          = data.aws_ssm_parameter.github_access_token.value
 }
 
 module "cloudfront" {
