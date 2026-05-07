@@ -454,9 +454,14 @@ class SuperDocClient:
             body=b"{}",
         )
 
-    def get_job(self, job_id: str) -> HttpResponse:
-        log_verbose(f"GET /jobs/{job_id}", self.verbose)
-        return http_request("GET", self._url(f"/jobs/{job_id}"))
+    def get_job(self, job_id: str, session_id: Optional[str] = None) -> HttpResponse:
+        from urllib.parse import urlencode
+
+        path = f"/jobs/{job_id}"
+        if session_id:
+            path = f"{path}?{urlencode({'session_id': session_id})}"
+        log_verbose(f"GET {path}", self.verbose)
+        return http_request("GET", self._url(path))
 
     def upload_s3(self, upload_url: str, content: bytes, content_type: str) -> HttpResponse:
         log_verbose(f"PUT {upload_url[:80]}... ({len(content)} bytes)", self.verbose)
@@ -472,10 +477,13 @@ class SuperDocClient:
         log_verbose(f"GET {url[:80]}...", self.verbose)
         return http_request("GET", url, timeout=60)
 
-    def presign_download(self, s3_key: str) -> HttpResponse:
+    def presign_download(self, s3_key: str, session_id: Optional[str] = None) -> HttpResponse:
         from urllib.parse import quote
+        from urllib.parse import urlencode
 
         path = f"/files/download?key={quote(s3_key, safe='/')}"
+        if session_id:
+            path = f"{path}&{urlencode({'session_id': session_id})}"
         log_verbose(f"GET {path}", self.verbose)
         return http_request("GET", self._url(path))
 
@@ -703,11 +711,16 @@ def test_catalog_filters(client: SuperDocClient, registry: Registry, all_ops: Li
 # ---------------------------------------------------------------------------
 
 
-def poll_job(client: SuperDocClient, job_id: str, timeout_sec: int = POLL_TIMEOUT_SEC) -> Dict[str, Any]:
+def poll_job(
+    client: SuperDocClient,
+    job_id: str,
+    session_id: Optional[str] = None,
+    timeout_sec: int = POLL_TIMEOUT_SEC,
+) -> Dict[str, Any]:
     deadline = time.time() + timeout_sec
     last_status = None
     while time.time() < deadline:
-        resp = client.get_job(job_id)
+        resp = client.get_job(job_id, session_id=session_id)
         if resp.status != 200:
             time.sleep(POLL_INTERVAL_SEC)
             continue
@@ -857,7 +870,7 @@ def run_backend_job(
 
     # 4. Poll until terminal
     try:
-        final = poll_job(client, job_id)
+        final = poll_job(client, job_id, session_id=session_id)
     except TimeoutError as e:
         registry.record(f"{test_name} :: poll", "fail", str(e))
         return s3_key
@@ -909,7 +922,12 @@ def run_backend_job(
 # ---------------------------------------------------------------------------
 
 
-def test_presign_download(client: SuperDocClient, registry: Registry, known_key: Optional[str]) -> None:
+def test_presign_download(
+    client: SuperDocClient,
+    registry: Registry,
+    known_key: Optional[str],
+    session_id: Optional[str] = None,
+) -> None:
     log_step("Presign download endpoint — GET /files/download (3a-3)")
 
     # Case 1: missing ?key= param — expect 400
@@ -981,7 +999,7 @@ def test_presign_download(client: SuperDocClient, registry: Registry, known_key:
         return
 
     t0 = time.time()
-    resp = client.presign_download(known_key)
+    resp = client.presign_download(known_key, session_id=session_id)
     dur = int((time.time() - t0) * 1000)
     if resp.status != 200:
         registry.record(
@@ -1593,7 +1611,7 @@ def main() -> int:
         registry.record("backend_job flows", "skip", "--skip-backend-jobs set")
 
     # 4. Presign download
-    test_presign_download(client, registry, known_key)
+    test_presign_download(client, registry, known_key, session_id=smoke_session)
 
     # 5. Stripe dormant
     if args.skip_paid_checks:
