@@ -31,6 +31,10 @@
     "pageSize": "Page size",
     "convert": "Convert"
   },
+  "params": {
+    "highFidelity": "High fidelity",
+    "highFidelityHint": "Uses LibreOffice for complex documents. Uncheck for simple text files — faster but basic formatting only."
+  },
   "batch": {
     "title": "Batch conversion",
     "summary": "{{count}} .{{type}} files selected. This account can process up to {{limit}} files per batch.",

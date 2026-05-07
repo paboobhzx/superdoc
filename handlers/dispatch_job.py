@@ -27,6 +27,10 @@ def handler(event, context):
             log.error("Unknown operation, skipping", extra={"operation": operation, "job_id": body.get("job_id")})
             continue
 
+        params = body.get("params") or {}
+        if params.get("high_fidelity") is False and operation in operations.HAS_FAST_VARIANT:
+            fn_suffix = fn_suffix + "-fast"
+
         function_name = f"{NAME_PREFIX}-{fn_suffix}"
 
         # Forward original SQS record so handlers can use event["Records"][0]["body"]

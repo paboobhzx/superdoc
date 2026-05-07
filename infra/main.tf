@@ -118,7 +118,7 @@ module "amplify" {
   repository           = var.amplify_repository
   # Token is injected by apply.sh via TF_VAR_amplify_oauth_token (read from SSM).
   # Never set this in tfvars — the value is sensitive and lives in SSM only.
-  oauth_token          = var.amplify_oauth_token
+  oauth_token = var.amplify_oauth_token
 }
 
 module "cloudfront" {
@@ -619,6 +619,60 @@ module "lambda_docx_to_pdf" {
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = var.office_converter_package_type == "Image" ? [] : local.lambda_layer_arns
+}
+
+# Fast (pure-Python) variants — always zip, never container, no warmer needed.
+# Routed by dispatch_job when params.high_fidelity is explicitly false.
+
+module "lambda_docx_to_pdf_fast" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "docx-to-pdf-fast"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 60
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/docx_to_pdf_fast.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.worker_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_xlsx_to_pdf_fast" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "xlsx-to-pdf-fast"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 60
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/xlsx_to_pdf_fast.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.worker_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_pdf_to_docx_fast" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "pdf-to-docx-fast"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 60
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/pdf_to_docx_fast.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.worker_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
 }
 
 module "lambda_image_to_pdf" {

@@ -94,7 +94,14 @@ OPERATIONS: dict[str, dict] = {
         "targets": ["docx"],
         "editor_route": None,
         "requires_multiple": False,
-        "params_schema": {},
+        "params_schema": {
+            "high_fidelity": {
+                "type": "boolean",
+                "required": False,
+                "default": True,
+                "label": "High fidelity (LibreOffice)",
+            }
+        },
         "category": "convert",
         "label": "PDF to Word (.docx)",
         "lambda_suffix": "pdf-to-docx",
@@ -300,7 +307,13 @@ OPERATIONS: dict[str, dict] = {
                 "required": False,
                 "enum": ["A4", "A3", "Letter", "Legal", "A5"],
                 "default": "A4",
-            }
+            },
+            "high_fidelity": {
+                "type": "boolean",
+                "required": False,
+                "default": True,
+                "label": "High fidelity (LibreOffice)",
+            },
         },
         "category": "convert",
         "label": "Word to PDF",
@@ -439,6 +452,12 @@ OPERATIONS: dict[str, dict] = {
                 "enum": ["A4", "A3", "Letter", "Legal", "A5"],
                 "default": "A4",
             },
+            "high_fidelity": {
+                "type": "boolean",
+                "required": False,
+                "default": True,
+                "label": "High fidelity (LibreOffice)",
+            },
         },
         "category": "convert",
         "label": "Excel to PDF",
@@ -529,6 +548,10 @@ OPERATION_FUNCTION_SUFFIX: dict[str, str] = {}
 for _op, _meta in OPERATIONS.items():
     if _meta["kind"] in ("backend_job", "paid_backend_job"):
         OPERATION_FUNCTION_SUFFIX[_op] = _meta["lambda_suffix"]
+
+# Operations that have a fast pure-Python Lambda variant (-fast suffix).
+# When params.high_fidelity is explicitly False the dispatcher routes there.
+HAS_FAST_VARIANT: frozenset[str] = frozenset({"docx_to_pdf", "xlsx_to_pdf", "pdf_to_docx"})
 
 
 def is_supported(operation: str) -> bool:

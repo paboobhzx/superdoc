@@ -31,6 +31,10 @@
     "pageSize": "Tamanho da pagina",
     "convert": "Converter"
   },
+  "params": {
+    "highFidelity": "Alta fidelidade",
+    "highFidelityHint": "Usa LibreOffice para documentos complexos. Desmarque para arquivos de texto simples — mais rapido, mas apenas formatacao basica."
+  },
   "batch": {
     "title": "Conversao em lote",
     "summary": "{{count}} arquivos .{{type}} selecionados. Esta conta pode processar ate {{limit}} arquivos por lote.",

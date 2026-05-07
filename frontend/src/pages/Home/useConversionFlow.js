@@ -144,7 +144,8 @@ export function useConversionFlow() {
 
   const handlePick = useCallback((opMeta) => {
     if (!pendingFile || !opMeta || uploading) return
-    if (opMeta?.params_schema?.paper_size) {
+    const schema = opMeta?.params_schema || {}
+    if (schema.paper_size || schema.high_fidelity) {
       setErr(null)
       setPendingOp(opMeta)
       return
