@@ -1114,6 +1114,20 @@ def test_stripe_dormant(client: SuperDocClient, registry: Registry) -> None:
 # ---------------------------------------------------------------------------
 
 
+def smoke_params_for_op(op: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    schema = (op.get("params_schema") or {}).get("target_format") or {}
+    if not schema.get("required"):
+        return None
+
+    target = schema.get("default")
+    if not target:
+        enum = schema.get("enum") or []
+        target = enum[0] if enum else None
+    if not target:
+        return None
+    return {"target_format": target}
+
+
 def pick_backend_ops_for_smoke(ops: List[Dict[str, Any]], only: Optional[set]) -> List[Tuple[str, str, Optional[Dict[str, Any]]]]:
     """Pick one representative backend_job op per input_type. Prefer the new 3a-1 ops."""
     priority = ["pdf_to_image", "docx_to_txt", "xlsx_to_csv", "image_to_pdf"]
@@ -1132,7 +1146,7 @@ def pick_backend_ops_for_smoke(ops: List[Dict[str, Any]], only: Optional[set]) -
         if only and input_type not in only:
             continue
         if input_type not in picked:
-            picked[input_type] = (op_id, input_type, None)
+            picked[input_type] = (op_id, input_type, smoke_params_for_op(op))
     # Second pass: fill remaining input_types with any backend_job op
     for op in backend_ops:
         input_types = op.get("input_types") or []
@@ -1140,7 +1154,7 @@ def pick_backend_ops_for_smoke(ops: List[Dict[str, Any]], only: Optional[set]) -
             if only and it not in only:
                 continue
             if it not in picked and it in SAMPLE_GENERATORS:
-                picked[it] = (op.get("operation"), it, None)
+                picked[it] = (op.get("operation"), it, smoke_params_for_op(op))
                 break
     return list(picked.values())
 
