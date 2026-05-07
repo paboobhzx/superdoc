@@ -1,7 +1,7 @@
 # Codebase Intelligence
 
 > Generated from scanning 8 reference repositories in `Aux/`.
-> Last updated: 2026-04-12
+> Last updated: 2026-05-06
 
 ---
 
@@ -227,6 +227,18 @@ Patterns appearing across multiple repos that should become part of the `superdo
 | Retry with circuit breaker | New (tenacity) | `superdoc_utils/retry.py` | Exponential backoff for boto3 ClientError |
 | API Gateway response builder | New | `superdoc_utils/response.py` | Standard ok/error with CORS headers |
 | Job time estimator | New | `superdoc_utils/estimator.py` | Historical DynamoDB average for operation type |
+
+### Page Sizing and Overflow Policy
+
+- Text can stay flow-based. Paragraphs, lists, code blocks, and plain text exports should continue to reflow naturally.
+- Tables should preserve rows and columns where the target format supports structure. Avoid flattening wide tables into clipped A4 output just to fit a default page.
+- Oversized tables or sheets should expand the target page when the renderer or export path supports paper-size control.
+- The key touchpoints are:
+  - `handlers/pdf_to_xls.py` for PDF table/text extraction into workbook rows and columns
+  - `handlers/xlsx_to_pdf.py` for spreadsheet-to-PDF and spreadsheet-to-image exports
+  - `handlers/docx_to_pdf.py` for Word-to-PDF and Word-to-image exports
+  - `layers/superdoc_utils/document_blocks/render_pdf.py` for block-to-PDF rendering
+- Matrix coverage should treat `pdf_to_docx` and `pdf_to_xls` as required PDF routes, since they exercise the page-sizing policy in opposite directions.
 
 ---
 

@@ -34,6 +34,10 @@ export const OPERATION_UI = {
     icon: "description",
     description: "Editable Word document while keeping layout as close as possible.",
   },
+  pdf_to_xls: {
+    icon: "table_chart",
+    description: "Rebuild detected tables into an Excel workbook.",
+  },
   pdf_to_txt: {
     icon: "text_fields",
     description: "Plain text of every page, ideal for search, indexing, or AI pipelines.",

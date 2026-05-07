@@ -217,8 +217,13 @@ locals {
     COGNITO_CLIENT_ID   = module.cognito.client_id
     # Prod keeps logs at WARNING to cut CloudWatch noise and spend. Non-prod
     # stays verbose so staging/debug sessions do not require redeploys.
-    LOG_LEVEL   = var.environment == "prod" ? "WARNING" : "DEBUG"
-    TTL_SECONDS = "43200"
+    LOG_LEVEL                   = var.environment == "prod" ? "WARNING" : "DEBUG"
+    ANON_DAILY_CONVERSION_LIMIT = "3"
+    USER_DAILY_CONVERSION_LIMIT = "10"
+    ANON_PDF_PAGE_LIMIT         = "100"
+    USER_PDF_PAGE_LIMIT         = "300"
+    TTL_SECONDS                 = "43200"
+    USER_TTL_SECONDS            = "64800"
   }
 
   lambda_layer_arns = [
@@ -236,6 +241,7 @@ locals {
     # blank so Terraform does not try to configure image-only settings.
     docx_to_pdf = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:docx_to_pdf-${var.office_converter_image_tag}" : ""
     xlsx_to_pdf = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:xlsx_to_pdf-${var.office_converter_image_tag}" : ""
+    pdf_to_docx = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:pdf_to_docx-${var.office_converter_image_tag}" : ""
   }
 
   dynamodb_arns = [
@@ -333,20 +339,25 @@ module "lambda_auth_session" {
 # ── PDF handlers ─────────────────────────────────────────────────────────────
 
 module "lambda_pdf_to_docx" {
+  # LibreOffice-backed conversion: image mode for faithful PDF→DOCX via
+  # writer_pdf_import filter; zip mode as a fallback for Zip-only deployments.
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
   function_name         = "pdf-to-docx"
-  handler               = "handler.handler"
-  runtime               = var.lambda_runtime
-  memory_size           = 512
-  timeout               = 300
-  s3_bucket             = var.lambda_handler_s3_bucket
-  s3_key                = "handlers/pdf_to_docx.zip"
+  handler               = var.office_converter_package_type == "Image" ? "" : "handler.handler"
+  runtime               = var.office_converter_package_type == "Image" ? "" : var.lambda_runtime
+  package_type          = var.office_converter_package_type
+  image_uri             = local.office_converter_images.pdf_to_docx
+  architectures         = var.office_converter_package_type == "Image" ? ["arm64"] : []
+  memory_size           = var.office_converter_package_type == "Image" ? 2048 : 512
+  timeout               = var.office_converter_package_type == "Image" ? 300 : 120
+  s3_bucket             = var.office_converter_package_type == "Image" ? "" : var.lambda_handler_s3_bucket
+  s3_key                = var.office_converter_package_type == "Image" ? "" : "handlers/pdf_to_docx.zip"
   environment_variables = local.lambda_common_env
   common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
-  layer_arns            = local.lambda_layer_arns
+  layer_arns            = var.office_converter_package_type == "Image" ? [] : local.lambda_layer_arns
 }
 
 module "lambda_pdf_merge" {
@@ -550,6 +561,24 @@ module "lambda_xlsx_to_pdf" {
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = var.office_converter_package_type == "Image" ? [] : local.lambda_layer_arns
+}
+
+module "lambda_pdf_to_xls" {
+  # Pure pdfplumber+openpyxl — no LibreOffice dependency. Always Zip mode.
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "pdf-to-xls"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 120
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/pdf_to_xls.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.worker_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
 }
 
 module "lambda_docx_to_txt" {
@@ -887,6 +916,69 @@ module "lambda_restore_anonymous" {
   ]
 }
 
+# ── LibreOffice Lambda warmer ────────────────────────────────────────────────
+# Keeps the LibreOffice containers warm to avoid 30–90s cold starts.
+# Each ping is a _warmup payload; handlers return immediately. Cost: ~$0.
+
+resource "aws_cloudwatch_event_rule" "office_warmer" {
+  count               = var.office_converter_package_type == "Image" ? 1 : 0
+  name                = "${local.name_prefix}-office-warmer"
+  description         = "Ping LibreOffice Lambdas every 4 minutes to prevent cold starts"
+  schedule_expression = "rate(4 minutes)"
+  tags                = local.common_tags
+}
+
+resource "aws_cloudwatch_event_target" "office_warmer_docx_to_pdf" {
+  count     = var.office_converter_package_type == "Image" ? 1 : 0
+  rule      = aws_cloudwatch_event_rule.office_warmer[0].name
+  target_id = "docx-to-pdf-warmer"
+  arn       = module.lambda_docx_to_pdf.function_arn
+  input     = jsonencode({ _warmup = true })
+}
+
+resource "aws_cloudwatch_event_target" "office_warmer_xlsx_to_pdf" {
+  count     = var.office_converter_package_type == "Image" ? 1 : 0
+  rule      = aws_cloudwatch_event_rule.office_warmer[0].name
+  target_id = "xlsx-to-pdf-warmer"
+  arn       = module.lambda_xlsx_to_pdf.function_arn
+  input     = jsonencode({ _warmup = true })
+}
+
+resource "aws_cloudwatch_event_target" "office_warmer_pdf_to_docx" {
+  count     = var.office_converter_package_type == "Image" ? 1 : 0
+  rule      = aws_cloudwatch_event_rule.office_warmer[0].name
+  target_id = "pdf-to-docx-warmer"
+  arn       = module.lambda_pdf_to_docx.function_arn
+  input     = jsonencode({ _warmup = true })
+}
+
+resource "aws_lambda_permission" "office_warmer_docx_to_pdf" {
+  count         = var.office_converter_package_type == "Image" ? 1 : 0
+  statement_id  = "AllowEventBridgeWarmerDocxToPdf"
+  action        = "lambda:InvokeFunction"
+  function_name = module.lambda_docx_to_pdf.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.office_warmer[0].arn
+}
+
+resource "aws_lambda_permission" "office_warmer_xlsx_to_pdf" {
+  count         = var.office_converter_package_type == "Image" ? 1 : 0
+  statement_id  = "AllowEventBridgeWarmerXlsxToPdf"
+  action        = "lambda:InvokeFunction"
+  function_name = module.lambda_xlsx_to_pdf.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.office_warmer[0].arn
+}
+
+resource "aws_lambda_permission" "office_warmer_pdf_to_docx" {
+  count         = var.office_converter_package_type == "Image" ? 1 : 0
+  statement_id  = "AllowEventBridgeWarmerPdfToDocx"
+  action        = "lambda:InvokeFunction"
+  function_name = module.lambda_pdf_to_docx.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.office_warmer[0].arn
+}
+
 # ── User / Admin handlers ────────────────────────────────────────────────────
 
 module "lambda_user_files" {
@@ -916,7 +1008,7 @@ module "lambda_user_create_file" {
   timeout               = 20
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/user_create_file.zip"
-  environment_variables = merge(local.lambda_common_env, { USER_TTL_SECONDS = "604800" })
+  environment_variables = local.lambda_common_env
   common_tags           = local.common_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
@@ -933,7 +1025,7 @@ module "lambda_user_complete_file" {
   timeout               = 10
   s3_bucket             = var.lambda_handler_s3_bucket
   s3_key                = "handlers/user_complete_file.zip"
-  environment_variables = merge(local.lambda_common_env, { USER_TTL_SECONDS = "604800" })
+  environment_variables = local.lambda_common_env
   common_tags           = local.common_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn

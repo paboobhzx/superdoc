@@ -193,6 +193,23 @@ fi
 echo "Using environment directory:"
 echo "  $INFRA_ENV_DIR"
 
+OFFICE_CONVERTER_PACKAGE_TYPE="$(grep -oE 'office_converter_package_type[[:space:]]*=[[:space:]]*"[^"]+"' "${INFRA_ENV_DIR}/main.tf" | head -n1 | cut -d'"' -f2 || true)"
+OFFICE_CONVERTER_IMAGE_TAG="$(grep -oE 'office_converter_image_tag[[:space:]]*=[[:space:]]*"[^"]+"' "${INFRA_ENV_DIR}/main.tf" | head -n1 | cut -d'"' -f2 || true)"
+PROJECT_NAME="$(grep -oE 'project_name[[:space:]]*=[[:space:]]*"[^"]+"' "${INFRA_ENV_DIR}/main.tf" | head -n1 | cut -d'"' -f2 || true)"
+DEPLOY_ENV="$(grep -oE 'environment[[:space:]]*=[[:space:]]*"[^"]+"' "${INFRA_ENV_DIR}/main.tf" | head -n1 | cut -d'"' -f2 || true)"
+OFFICE_ECR_REPOSITORY="${PROJECT_NAME}-${DEPLOY_ENV}-office-conversion"
+
+echo "Office converter package type:"
+echo "  ${OFFICE_CONVERTER_PACKAGE_TYPE:-unknown}"
+echo "Office converter image tag:"
+echo "  ${OFFICE_CONVERTER_IMAGE_TAG:-latest}"
+echo "Office converter ECR repository:"
+echo "  ${OFFICE_ECR_REPOSITORY}"
+
+if [[ "${SKIP_BUILD:-0}" != "1" && "${OFFICE_CONVERTER_PACKAGE_TYPE:-}" == "Image" ]]; then
+  require_cmd docker
+fi
+
 # ---------------------------------------------------------------------
 # 3. Resolve Lambda zip bucket
 # ---------------------------------------------------------------------
@@ -265,10 +282,28 @@ if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
     "s3://${LAMBDA_ZIPS_BUCKET}/layers/" \
     --no-progress
 
+  if [[ "${OFFICE_CONVERTER_PACKAGE_TYPE:-}" == "Image" ]]; then
+    print_header "Building office converter images"
+
+    AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+    echo "Pushing office images to ECR repository:"
+    echo "  ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION:-us-east-1}.amazonaws.com/${OFFICE_ECR_REPOSITORY}"
+
+    (
+      cd "${REPO_ROOT}"
+      IMAGE_TAG="${OFFICE_CONVERTER_IMAGE_TAG:-latest}" \
+      ECR_REPOSITORY="${OFFICE_ECR_REPOSITORY}" \
+      AWS_REGION="${AWS_REGION:-us-east-1}" \
+      AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID}" \
+      PUSH=true \
+      bash "${REPO_ROOT}/scripts/build_office_images.sh"
+    )
+  fi
+
   echo "Backend build/sync completed."
 else
   print_header "Skipping backend build"
-  echo "SKIP_BUILD=1 detected. Skipping handlers, layers and S3 sync."
+  echo "SKIP_BUILD=1 detected. Skipping handlers, layers, office images and S3 sync."
 fi
 
 # ---------------------------------------------------------------------

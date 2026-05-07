@@ -23,7 +23,7 @@ Most file conversion sites make users trade privacy, time, or trust for simple t
 - Pick an operation (convert or edit).
 - Process it in isolated serverless workers.
 - Download the result.
-- Let temporary files expire automatically (12h for anonymous, 7 days for authenticated).
+- Let temporary files expire automatically (12h for anonymous, 18h for authenticated).
 
 No accounts required, no ad funnels, no subscription lock-in.
 
@@ -34,6 +34,7 @@ No accounts required, no ad funnels, no subscription lock-in.
 | PDF | to DOCX, TXT, Markdown, HTML, Images (ZIP); extract text (JSON); edit in browser |
 | DOCX | to PDF, TXT, Markdown, HTML, Images (ZIP); WYSIWYG editor |
 | XLSX | to CSV, PDF, TXT, Markdown, HTML, DOCX, Images (ZIP); spreadsheet editor |
+| PDF | to XLSX (Excel workbook) |
 | Markdown | to PDF, DOCX, HTML, Images; edit in browser |
 | HTML | to PDF, DOCX, TXT, Images |
 | Images | format conversion (PNG, JPG, WebP, GIF); to PDF; OCR to TXT/MD/DOCX; image editor |
@@ -67,7 +68,7 @@ flowchart LR
 | Edge / CDN | CloudFront (custom domain + /api origin routing) |
 | Web hosting | Amplify (manual deploy of pre-built dist/) |
 | API | API Gateway REST with Cognito authorizer |
-| Compute | 26 Lambda functions (Python 3.12, Zip packaging) |
+| Compute | 27 Lambda functions (Python 3.12, Zip and Image packaging) |
 | Queue | SQS standard queue with single dispatcher pattern |
 | State | DynamoDB (jobs, api_keys, incidents, rate_limits, auth_sessions, payments) |
 | Storage | S3 with lifecycle TTL for temporary files |
@@ -105,7 +106,7 @@ flowchart LR
 │   ├── modules/           # acm, amplify, api_gateway, budget, cloudfront,
 │   │                      # cognito, dynamodb, lambda, lambda_layer,
 │   │                      # monitoring, route53, s3, sqs, ssm
-│   └── environments/      # dev, prod, stage entrypoints (S3 backend state)
+│   └── environments/      # default prod entrypoint (S3 backend state)
 ├── tests/                 # Python backend tests
 └── docs/                  # Supporting documentation
 ```
@@ -141,7 +142,7 @@ pytest tests -v
 ### Infrastructure
 
 ```bash
-cd infra/environments/prod
+cd infra/environments/default
 terraform init
 terraform plan
 terraform apply
@@ -152,7 +153,7 @@ terraform fmt -recursive
 terraform validate
 ```
 
-The Terraform root module is `infra/`. Environment entrypoints (`infra/environments/dev/`, `prod/`, `stage/`) call the root module with environment-specific variables. State is stored in S3 (`superdoc-tfstate` bucket). Variables are supplied via `.tfvars` files (not committed).
+The Terraform root module is `infra/`. The active environment entrypoint is `infra/environments/default/`, which maps to the production state in S3 (`superdoc-tfstate`). Variables are supplied via `.tfvars` files (not committed).
 
 ## Deployment
 
@@ -174,7 +175,7 @@ Lambda handlers are packaged as ZIP files, uploaded to a private S3 bucket, and 
 
 ## Operational Notes
 
-- File retention: 12h anonymous, 7 days authenticated (via TTL_SECONDS env vars).
+- File retention: 12h anonymous, 18h authenticated (via TTL_SECONDS and USER_TTL_SECONDS env vars).
 - DynamoDB TTL handles automatic expiration of job records.
 - S3 lifecycle rules expire objects matching the same retention windows.
 - Budget alarm triggers at $5/month; auto-disable Lambda kills anonymous access at $20.

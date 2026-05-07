@@ -8,6 +8,7 @@ import io
 import json as _json
 
 import dynamo
+import limits
 import s3
 from logger import get_logger
 
@@ -43,6 +44,7 @@ def handler(event, context):
         dynamo.update_job(job_id, status="PROCESSING")
         data = s3.get_bytes(file_key)
         result = _image_to_pdf(data)
+        limits.assert_pdf_page_limit(result, body.get("user_id") or "")
         out_key = s3.make_output_key(job_id, file_key, "output.pdf")
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)

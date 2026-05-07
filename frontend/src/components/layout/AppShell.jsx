@@ -76,6 +76,17 @@ export default function AppShell({ children }) {
             <Link className="rounded-[8px] px-3 py-1.5 text-sm text-on-surface-variant no-underline transition-colors hover:bg-surface-container-lowest hover:text-on-surface" to="/dashboard">
               {t('shell.nav.files')}
             </Link>
+            <a
+              className="rounded-[8px] px-3 py-1.5 text-xs text-on-surface-variant no-underline transition-colors hover:bg-surface-container-lowest hover:text-on-surface"
+              href="https://ko-fi.com/superdoc"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="inline-flex items-center gap-1">
+                <span className="material-symbols-outlined text-[15px]">favorite</span>
+                {t('shell.nav.support')}
+              </span>
+            </a>
           </nav>
 
           <div className="flex items-center gap-2">

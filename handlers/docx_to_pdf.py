@@ -7,6 +7,7 @@ import tempfile
 import zipfile
 
 import dynamo
+import limits
 import s3
 from logger import get_logger
 
@@ -128,6 +129,10 @@ def _office_to_pdf(source_bytes: bytes, source_name: str) -> bytes:
 
 
 def handler(event, context):
+    # EventBridge warmup ping arrives as a direct invocation, not via SQS.
+    if event.get("_warmup"):
+        log.info("warmup ping received")
+        return
     body = _json.loads(event["Records"][0]["body"])
     job_id = body["job_id"]
     file_key = body["file_key"]
@@ -143,11 +148,13 @@ def handler(event, context):
     try:
         dynamo.update_job(job_id, status="PROCESSING")
         data = s3.get_bytes(file_key)
+        pdf_bytes = _docx_to_pdf(data, paper_size=paper_size)
+        limits.assert_pdf_page_limit(pdf_bytes, body.get("user_id") or "")
         if operation == "docx_to_image" or target_format in ("png", "jpg", "jpeg"):
-            result = _docx_to_image_zip(data, target_format=target_format, dpi=dpi, paper_size=paper_size)
+            result = _render_pdf_to_zip(pdf_bytes, target_format=target_format, dpi=dpi)
             output_name = "pages.zip"
         else:
-            result = _docx_to_pdf(data, paper_size=paper_size)
+            result = pdf_bytes
             output_name = "output.pdf"
         out_key = s3.make_output_key(job_id, file_key, output_name)
         s3.put_bytes(out_key, result)

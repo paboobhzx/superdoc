@@ -61,13 +61,13 @@ variable "stripe_webhook_secret_ssm_path" {
 }
 
 variable "rate_limit_enabled" {
-  description = "Toggle the anonymous rate-limit + active-jobs cap on create_job Lambda. Default false during early launch; set true once auth + payments are live."
+  description = "Toggle the anonymous active-jobs cap on create_job Lambda. Daily conversion quotas stay enforced regardless."
   type        = bool
   default     = false
 }
 
 variable "office_converter_image_tag" {
-  description = "Tag for LibreOffice Lambda container images. Images are expected as <repository>:docx_to_pdf-<tag> and <repository>:xlsx_to_pdf-<tag>."
+  description = "Tag for LibreOffice Lambda container images. Images are expected as <repository>:docx_to_pdf-<tag>, <repository>:xlsx_to_pdf-<tag>, and <repository>:pdf_to_xls-<tag>."
   type        = string
   default     = "latest"
 }

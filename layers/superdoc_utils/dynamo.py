@@ -41,6 +41,7 @@ def create_job(
     ttl_seconds: int = TTL_SECONDS,
     status: str = "PENDING",
     output_key: str | None = None,
+    user_id: str | None = None,
 ) -> dict:
     now_ts = int(time.time())
     now_iso = datetime.fromtimestamp(now_ts, tz=timezone.utc).isoformat()
@@ -57,6 +58,8 @@ def create_job(
         "created_at": now_iso,         # String — required by user-history-index GSI
         "expires_at": now_ts + ttl,  # Number — DynamoDB TTL
     }
+    if user_id:
+        item["user_id"] = user_id
     if output_key:
         item["output_key"] = output_key
     _jobs().put_item(Item=item)
@@ -137,6 +140,16 @@ def query_by_session(session_id: str) -> list:
     return resp.get("Items", [])
 
 
+def query_jobs_by_user(user_id: str, limit: int = 50) -> list:
+    resp = _jobs().query(
+        IndexName="user-history-index",
+        KeyConditionExpression=Key("user_id").eq(user_id),
+        ScanIndexForward=False,
+        Limit=int(limit),
+    )
+    return resp.get("Items", [])
+
+
 def scan_expired(now: int) -> list:
     resp = _jobs().scan(
         FilterExpression="expires_at < :now AND #s <> :done",
@@ -159,10 +172,10 @@ def list_incidents() -> list:
     return resp.get("Items", [])
 
 
-def rate_limit_increment(pk: str, sk: str, ttl: int) -> int:
+def rate_limit_increment(key: str, ttl: int) -> int:
     table = _rate_limits()
     resp = table.update_item(
-        Key={"pk": pk, "sk": sk},
+        Key={"key": key},
         UpdateExpression="ADD #c :one SET expires_at = if_not_exists(expires_at, :ttl)",
         ExpressionAttributeNames={"#c": "count"},
         ExpressionAttributeValues={":one": 1, ":ttl": ttl},

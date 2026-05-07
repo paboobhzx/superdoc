@@ -9,6 +9,7 @@ import tempfile
 import zipfile
 
 import dynamo
+import limits
 import s3
 from logger import get_logger
 
@@ -250,6 +251,10 @@ def _office_to_pdf(source_bytes: bytes, source_name: str) -> bytes:
 
 
 def handler(event, context):
+    # EventBridge warmup ping arrives as a direct invocation, not via SQS.
+    if event.get("_warmup"):
+        log.info("warmup ping received")
+        return
     body = _json.loads(event["Records"][0]["body"])
     job_id = body["job_id"]
     file_key = body["file_key"]
@@ -267,15 +272,18 @@ def handler(event, context):
         if target_format == "docx" or operation == "xlsx_to_docx":
             result = _xlsx_to_docx(data, sheet_name=sheet_name)
             output_name = "output.docx"
-        elif target_format in ("png", "jpg", "jpeg") or operation == "xlsx_to_image":
-            result = _xlsx_to_image_zip(data, sheet_name=sheet_name, target_format=target_format, dpi=dpi, paper_size=paper_size, source_ext=source_ext)
-            output_name = "pages.zip"
         elif target_format == "html" or operation == "xlsx_to_html":
             result = _xlsx_to_html(data, sheet_name=sheet_name)
             output_name = "output.html"
         else:
-            result = _xlsx_to_pdf(data, sheet_name=sheet_name, paper_size=paper_size, source_ext=source_ext)
-            output_name = "output.pdf"
+            pdf_bytes = _xlsx_to_pdf(data, sheet_name=sheet_name, paper_size=paper_size, source_ext=source_ext)
+            limits.assert_pdf_page_limit(pdf_bytes, body.get("user_id") or "")
+            if target_format in ("png", "jpg", "jpeg") or operation == "xlsx_to_image":
+                result = _render_pdf_to_zip(pdf_bytes, target_format=target_format, dpi=dpi)
+                output_name = "pages.zip"
+            else:
+                result = pdf_bytes
+                output_name = "output.pdf"
         out_key = s3.make_output_key(job_id, file_key, output_name)
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)

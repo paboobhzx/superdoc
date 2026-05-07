@@ -11,6 +11,10 @@ from pathlib import Path
 
 
 def _install_handler_stubs():
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+
     dynamo = types.SimpleNamespace(
         update_job=lambda *args, **kwargs: None,
         mark_done=lambda *args, **kwargs: None,
@@ -25,9 +29,16 @@ def _install_handler_stubs():
         info=lambda *args, **kwargs: None,
         exception=lambda *args, **kwargs: None,
     ))
+    limits = types.SimpleNamespace(
+        assert_pdf_page_limit=lambda *args, **kwargs: None,
+        count_pdf_pages=lambda *args, **kwargs: 1,
+        page_limit_for_user=lambda *args, **kwargs: 20,
+        storage_ttl_for_user=lambda *args, **kwargs: 43200,
+    )
     sys.modules["dynamo"] = dynamo
     sys.modules["s3"] = s3
     sys.modules["logger"] = logger
+    sys.modules["limits"] = limits
     return dynamo, s3
 
 
@@ -61,7 +72,7 @@ class OperationCatalogTests(unittest.TestCase):
             self.assertEqual(ops["md_edit"]["kind"], "client_editor")
             self.assertEqual(ops["md_edit"]["intent"], "edit")
             self.assertEqual(ops["md_edit"]["editor_route"], "/editor/markdown")
-            self.assertEqual(ops["markdown_convert"]["targets"], ["pdf", "docx", "png", "jpg", "jpeg", "tiff"])
+            self.assertEqual(ops["markdown_convert"]["targets"], ["pdf", "docx", "png", "jpg", "jpeg", "tiff", "md", "txt", "html"])
 
     def test_docx_catalog_includes_edit_text_and_pdf(self):
         ops = {item["operation"] for item in self.operations.list_operations("docx")}
@@ -122,7 +133,7 @@ class OfficeToPdfTests(unittest.TestCase):
         self.dynamo.update_job = lambda *args, **kwargs: calls.append(("update", args, kwargs))
         self.dynamo.mark_failed = lambda *args, **kwargs: calls.append(("failed", args, kwargs))
         self.s3.get_bytes = lambda key: b"not a docx"
-        self.docx_mod._docx_to_pdf = lambda data: (_ for _ in ()).throw(ValueError("corrupt document"))
+        self.docx_mod._docx_to_pdf = lambda data, paper_size=None: (_ for _ in ()).throw(ValueError("corrupt document"))
 
         event = {"Records": [{"body": json.dumps({"job_id": "job-1", "file_key": "uploads/job-1/bad.docx"})}]}
         with self.assertRaises(ValueError):

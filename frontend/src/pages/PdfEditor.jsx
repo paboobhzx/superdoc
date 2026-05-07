@@ -356,7 +356,7 @@ export function PdfEditor() {
             </button>
           ) : null}
           <p className="text-xs text-on-surface-variant mt-3">
-            Saved files count toward the 10-document limit and expire after 7 days.
+            Saved files are kept for 18 hours and expire automatically.
           </p>
         </section>
       </div>

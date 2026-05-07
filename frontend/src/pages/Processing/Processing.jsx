@@ -3,6 +3,9 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useI18n } from "../../context/I18nContext"
 import { useJob } from "../../hooks/useJob"
 
+const RECENT_FILES_KEY = "superdoc_recent_files"
+const MAX_RECENT = 20
+
 // Upload is already complete when this page mounts, so the stepper tracks the
 // lifecycle visible from /processing/:jobId rather than the upload flow.
 const STEPS = ["queued", "processing", "finalizing", "done"]
@@ -59,6 +62,24 @@ export function Processing() {
     }
   }, [isDone, job?.download_url, t])
 
+  useEffect(() => {
+    if (!isDone || !job?.download_url) return
+    try {
+      const existing = JSON.parse(sessionStorage.getItem(RECENT_FILES_KEY) || "[]")
+      const entry = {
+        jobId,
+        fileName: job.file_name || jobId,
+        downloadUrl: job.download_url,
+        operation: job.operation || "",
+        convertedAt: new Date().toISOString(),
+      }
+      const updated = [entry, ...existing.filter((f) => f.jobId !== jobId)].slice(0, MAX_RECENT)
+      sessionStorage.setItem(RECENT_FILES_KEY, JSON.stringify(updated))
+    } catch {
+      // sessionStorage unavailable (private mode)
+    }
+  }, [isDone, job?.download_url, job?.file_name, job?.operation, jobId])
+
   if (loading && !job) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -86,6 +107,8 @@ export function Processing() {
 
   const isFailed = job.status === "FAILED"
   const stepIdx = getStepIndex(job.status)
+  const HEAVY_OPERATIONS = ["docx_to_pdf", "docx_to_image", "xlsx_to_pdf", "pdf_to_docx"]
+  const isHeavyOp = HEAVY_OPERATIONS.includes(job?.operation)
   const retentionLabel = job.file_key?.startsWith("users/") ? t("processing.retentionRegistered") : t("processing.retentionAnonymous")
   const shortJobId = jobId ? `${jobId.slice(0, 8)}...` : t("common.unknown")
   const operationLabel = job.operation?.replace(/_/g, " ") ?? t("common.conversion")
@@ -188,8 +211,8 @@ export function Processing() {
             {isDone && job.download_url ? (
               <>
                 <a href={job.download_url} download
-                  className="group w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-sm transition-all hover:brightness-105 hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                  <span aria-hidden="true" className="material-symbols-outlined text-[18px] transition-transform group-hover:translate-y-0.5">download</span>
+                  className="group relative w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-primary text-on-primary font-extrabold text-base shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                  <span aria-hidden="true" className="material-symbols-outlined text-[22px] transition-transform group-hover:translate-y-1">download</span>
                   {t("common.downloadFile")}
                 </a>
                 {canShareDownload ? (
@@ -204,11 +227,19 @@ export function Processing() {
                 ) : null}
               </>
             ) : (
-              <button disabled
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-outline-variant/35 text-on-surface-variant font-semibold text-sm cursor-not-allowed">
-                <span aria-hidden="true" className="material-symbols-outlined text-[18px] animate-pulse">download</span>
-                {t("processing.soon")}
-              </button>
+              <>
+                {isHeavyOp && (
+                  <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-xl bg-surface-container border border-outline-variant/40">
+                    <span className="material-symbols-outlined text-on-surface-variant text-[16px] shrink-0 mt-0.5">schedule</span>
+                    <p className="text-xs text-on-surface-variant leading-relaxed">{t("processing.heavyOpHint")}</p>
+                  </div>
+                )}
+                <button disabled
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-outline-variant/35 text-on-surface-variant font-semibold text-sm cursor-not-allowed">
+                  <span aria-hidden="true" className="material-symbols-outlined text-[18px] animate-pulse">download</span>
+                  {t("processing.soon")}
+                </button>
+              </>
             )}
             <button onClick={() => navigate("/")}
               className="mt-3 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-outline-variant/60 text-on-surface font-semibold text-sm transition-all hover:bg-surface-container hover:border-outline active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">

@@ -6,7 +6,10 @@ from decimal import Decimal
 import boto3
 import dynamo
 import estimator
+import limits
+import operations
 import response
+import s3
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -45,6 +48,22 @@ def handler(event, context):
 
         file_key = job.get("file_key") or f"uploads/{job_id}/{job.get('file_name', 'file')}"
         params = _json_safe(job.get("params") or {})
+        user_id = job.get("user_id") or ""
+
+        job_meta = operations.OPERATIONS.get(job.get("operation"), {})
+        input_types = {str(item).lower().lstrip(".") for item in job_meta.get("input_types", [])}
+        if "pdf" in input_types:
+            try:
+                source_bytes = s3.get_bytes(file_key)
+                page_count = limits.count_pdf_pages(source_bytes)
+            except Exception as exc:
+                dynamo.mark_failed(job_id, f"Invalid PDF upload: {exc}")
+                return response.error("Uploaded PDF could not be read.", 400)
+
+            page_limit = limits.page_limit_for_user(user_id)
+            if page_count > page_limit:
+                dynamo.mark_failed(job_id, f"PDF has {page_count} pages; max {page_limit}")
+                return response.error(f"PDF page limit exceeded. Max {page_limit} pages.", 413)
 
         dynamo.update_job(job_id, status="QUEUED")
 
@@ -54,6 +73,8 @@ def handler(event, context):
             "file_key": file_key,
             "file_size_bytes": int(job.get("file_size_bytes", 0)),
             "file_name": job.get("file_name", "file"),
+            "session_id": job.get("session_id", ""),
+            "user_id": user_id,
         }
         if isinstance(params, dict):
             payload.update(params)

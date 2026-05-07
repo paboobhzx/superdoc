@@ -1,5 +1,5 @@
 # Build command (from repo root):
-#   docker buildx build --platform linux/arm64 --provenance=false \
+#   docker buildx build --platform linux/arm64 --provenance=false --sbom=false \
 #     --build-arg HANDLER_FILE=handlers/docx_to_pdf.py \
 #     -f office_image/Dockerfile \
 #     -t <ECR_REPO>:docx_to_pdf-latest --push .

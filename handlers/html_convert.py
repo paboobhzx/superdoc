@@ -2,6 +2,7 @@ import json
 import os
 
 import dynamo
+import limits
 import s3
 from document_blocks import parse_html, render_to
 from logger import get_logger
@@ -37,6 +38,8 @@ def handler(event, context):
         else:
             blocks = parse_html(source)
             result = render_to(blocks, target)
+            if target == "pdf":
+                limits.assert_pdf_page_limit(result, body.get("user_id") or "")
         out_key = s3.make_output_key(job_id, file_key, _output_filename(body, file_key, target))
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)

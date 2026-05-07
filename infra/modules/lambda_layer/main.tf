@@ -9,6 +9,8 @@ resource "aws_lambda_layer_version" "this" {
   s3_key              = var.s3_key
   source_code_hash    = data.aws_s3_object.layer_zip.etag
   compatible_runtimes = var.compatible_runtimes
+  # common_tags is accepted by the shared module contract even though the
+  # Lambda layer version resource itself does not support tags.
 
   lifecycle {
     create_before_destroy = true

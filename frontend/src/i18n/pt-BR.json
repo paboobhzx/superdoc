@@ -31,6 +31,24 @@
     "pageSize": "Tamanho da pagina",
     "convert": "Converter"
   },
+  "batch": {
+    "title": "Conversao em lote",
+    "summary": "{{count}} arquivos .{{type}} selecionados. Esta conta pode processar ate {{limit}} arquivos por lote.",
+    "convertAllTo": "Converter todos para",
+    "status": {
+      "queued": "Na fila",
+      "creating": "Criando",
+      "uploading": "Enviando",
+      "processing": "Processando",
+      "done": "Pronto",
+      "failed": "Falhou"
+    },
+    "errors": {
+      "mixedTypes": "A conversao em lote exige arquivos com o mesmo formato de entrada.",
+      "limit": "O limite de lote e {{limit}} arquivos para este tier.",
+      "failed": "A conversao falhou."
+    }
+  },
   "theme": {
     "azure": "Azul Azure",
     "dark": "Escuro",
@@ -41,7 +59,8 @@
       "formats": "Formatos",
       "how": "Como funciona",
       "faq": "FAQ",
-      "files": "Arquivos"
+      "files": "Arquivos",
+      "support": "Apoiar"
     }
   },
   "home": {
@@ -133,13 +152,16 @@
     "files": "Arquivos",
     "authNotConfigured": "A autenticacao nao esta configurada. Defina",
     "authUnavailable": "Arquivos salvos estao indisponiveis enquanto o cadastro esta fechado.",
-    "retention": "Ate 10 documentos · armazenados por 7 dias",
+    "retention": "10 conversoes/dia · 300 paginas PDF · retencao de 18h",
     "signOut": "Sair",
     "recent": "Recentes",
     "noFiles": "Nenhum arquivo ainda. Envie algo pela",
     "confirmDelete": "Excluir este arquivo? Isso nao pode ser desfeito.",
     "loadFailed": "Falha ao carregar arquivos.",
-    "deleteFailed": "Falha ao excluir."
+    "deleteFailed": "Falha ao excluir.",
+    "sessionOnly": "Os arquivos mostrados aqui estao disponiveis apenas durante esta sessao do navegador. Crie uma conta para manter seu historico.",
+    "expiresIn": "Expira em {{time}}",
+    "expired": "Expirado"
   },
   "processing": {
     "connecting": "Conectando ao job...",
@@ -164,11 +186,12 @@
     "downloadStarted": "Download iniciado",
     "receipt": "Recibo da conversao",
     "estimated": "Estimado: ~{{seconds}}s restantes",
-    "retentionRegistered": "7 dias",
+    "retentionRegistered": "18 horas",
     "retentionAnonymous": "12 horas",
     "noOutput": "Nenhum arquivo de saida foi criado.",
     "unlock": "O botao de download sera liberado quando o processamento terminar.",
-    "soon": "Download disponivel em breve"
+    "soon": "Download disponivel em breve",
+    "heavyOpHint": "A primeira conversão pode levar alguns segundos, por favor aguarde."
   },
   "editor": {
     "loadFromLink": "Carregando arquivo do link...",
@@ -181,6 +204,6 @@
     "signInToSave": "Entre para salvar arquivos.",
     "fileTooLarge100": "Arquivo muito grande. Maximo de 100MB.",
     "fileTooLarge10": "Arquivo muito grande. Maximo de 10MB.",
-    "savedFilesNote": "Arquivos salvos contam no limite de 10 documentos e expiram depois de 7 dias."
+    "savedFilesNote": "Arquivos salvos ficam por 18 horas e expiram automaticamente."
   }
 }

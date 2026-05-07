@@ -46,12 +46,14 @@ def handler(event, context):
             dynamo.delete_job(job_id)
             return response.ok({"deleted": True, "job_id": job_id})
 
-        jobs = dynamo.query_by_session(session_id)
+        if user_id:
+            jobs = dynamo.query_jobs_by_user(user_id)
+        else:
+            jobs = dynamo.query_by_session(session_id)
 
         for job in jobs:
             if job.get("status") == "DONE" and job.get("output_key"):
                 job["download_url"] = s3.presign_download(job["output_key"])
-            job.pop("expires_at", None)
 
         return response.ok({"jobs": jobs})
 

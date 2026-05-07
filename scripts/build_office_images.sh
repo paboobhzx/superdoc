@@ -16,25 +16,38 @@ build_image() {
   local op="$1"
   local handler_file="handlers/${op}.py"
   local local_tag="superdoc-office-${op}:${IMAGE_TAG}"
-
-  docker build \
-    --platform "${PLATFORM}" \
-    --file "${REPO_ROOT}/office_image/Dockerfile" \
-    --build-arg "HANDLER_FILE=${handler_file}" \
-    --tag "${local_tag}" \
-    "${REPO_ROOT}"
+  local remote_tag=""
 
   if [[ "${PUSH:-false}" == "true" ]]; then
     if [[ -z "${AWS_ACCOUNT_ID:-}" ]]; then
       AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
     fi
-    local remote_tag="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${op}-${IMAGE_TAG}"
+    remote_tag="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${op}-${IMAGE_TAG}"
     aws ecr get-login-password --region "${AWS_REGION}" \
       | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-    docker tag "${local_tag}" "${remote_tag}"
-    docker push "${remote_tag}"
+    docker buildx build \
+      --platform "${PLATFORM}" \
+      --provenance=false \
+      --sbom=false \
+      --file "${REPO_ROOT}/office_image/Dockerfile" \
+      --build-arg "HANDLER_FILE=${handler_file}" \
+      --tag "${remote_tag}" \
+      --push \
+      "${REPO_ROOT}"
+    return
   fi
+
+  docker buildx build \
+    --platform "${PLATFORM}" \
+    --provenance=false \
+    --sbom=false \
+    --file "${REPO_ROOT}/office_image/Dockerfile" \
+    --build-arg "HANDLER_FILE=${handler_file}" \
+    --tag "${local_tag}" \
+    --load \
+    "${REPO_ROOT}"
 }
 
 build_image docx_to_pdf
 build_image xlsx_to_pdf
+build_image pdf_to_docx

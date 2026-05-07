@@ -3,6 +3,7 @@ import { useI18n } from "../../context/I18nContext"
 import { TARGET_GRID } from "./targetGrid"
 import { ACCEPT, SUPPORTED_FORMATS, formatFileSize, useConversionFlow } from "./useConversionFlow"
 import { ParamsPanel } from "../../components/ParamsPanel"
+import { BatchUploader } from "../../components/BatchUploader"
 
 const FORMAT_CARDS = [
   { from: "PDF", to: "DOCX", key: "pdfWord" },
@@ -40,6 +41,7 @@ export function Home() {
   const inputRef = useRef(null)
   const {
     pendingFile,
+    batchFiles,
     loadingOps,
     uploading,
     startingAction,
@@ -89,7 +91,15 @@ export function Home() {
         </div>
 
         <div className="overflow-hidden rounded-[var(--radius-xl)] border border-outline-variant bg-surface-container-lowest shadow-[var(--shadow-glow)] animate-[fade-up_0.7s_0.1s_ease_both]">
-          {!pendingFile ? (
+          {batchFiles.length > 1 ? (
+            <BatchUploader
+              files={batchFiles}
+              gridChoices={loadingOps || hasEmptyKnownCatalog ? [] : gridChoices}
+              loadingOps={loadingOps}
+              inputType={inputType}
+              onReset={resetToDrop}
+            />
+          ) : !pendingFile ? (
             <div
               className={`m-0 flex cursor-pointer flex-col items-center gap-4 rounded-[var(--radius-xl)] border-2 border-dashed px-5 py-12 text-center transition-all md:px-10 md:py-14 ${
                 dragging ? "border-primary bg-primary/10" : "border-transparent hover:bg-surface-container-low"
@@ -106,6 +116,7 @@ export function Home() {
               <input
                 ref={inputRef}
                 type="file"
+                multiple
                 accept={ACCEPT}
                 className="hidden"
                 onChange={(e) => { handleFiles(e.target.files); e.target.value = "" }}

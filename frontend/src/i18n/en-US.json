@@ -31,6 +31,24 @@
     "pageSize": "Page size",
     "convert": "Convert"
   },
+  "batch": {
+    "title": "Batch conversion",
+    "summary": "{{count}} .{{type}} files selected. This account can process up to {{limit}} files per batch.",
+    "convertAllTo": "Convert all to",
+    "status": {
+      "queued": "Queued",
+      "creating": "Creating",
+      "uploading": "Uploading",
+      "processing": "Processing",
+      "done": "Done",
+      "failed": "Failed"
+    },
+    "errors": {
+      "mixedTypes": "Batch conversion needs files with the same input format.",
+      "limit": "Batch limit is {{limit}} files for this tier.",
+      "failed": "Conversion failed."
+    }
+  },
   "theme": {
     "azure": "Azure Blue",
     "dark": "Dark",
@@ -41,7 +59,8 @@
       "formats": "Formats",
       "how": "How it works",
       "faq": "FAQ",
-      "files": "Files"
+      "files": "Files",
+      "support": "Support"
     }
   },
   "home": {
@@ -133,13 +152,16 @@
     "files": "Files",
     "authNotConfigured": "Auth is not configured. Set",
     "authUnavailable": "Saved files are unavailable while registration is closed.",
-    "retention": "Up to 10 documents · stored for 7 days",
+    "retention": "10 conversions/day · 300 PDF pages · 18h retention",
     "signOut": "Sign out",
     "recent": "Recent",
     "noFiles": "No files yet. Upload something from",
     "confirmDelete": "Delete this file? This cannot be undone.",
     "loadFailed": "Failed to load files.",
-    "deleteFailed": "Delete failed."
+    "deleteFailed": "Delete failed.",
+    "sessionOnly": "Files shown here are only available during this browser session. Create an account to keep your history.",
+    "expiresIn": "Expires in {{time}}",
+    "expired": "Expired"
   },
   "processing": {
     "connecting": "Connecting to job...",
@@ -164,11 +186,12 @@
     "downloadStarted": "Download started",
     "receipt": "Conversion receipt",
     "estimated": "Estimated: ~{{seconds}}s remaining",
-    "retentionRegistered": "7 days",
+    "retentionRegistered": "18 hours",
     "retentionAnonymous": "12 hours",
     "noOutput": "No output file was created.",
     "unlock": "The download button will unlock when processing finishes.",
-    "soon": "Download ready soon"
+    "soon": "Download ready soon",
+    "heavyOpHint": "First conversion might take a few seconds, please wait."
   },
   "editor": {
     "loadFromLink": "Loading file from link...",
@@ -181,6 +204,6 @@
     "signInToSave": "Sign in to save files.",
     "fileTooLarge100": "File too large. Max 100MB.",
     "fileTooLarge10": "File too large. Max 10MB.",
-    "savedFilesNote": "Saved files count toward the 10-document limit and expire after 7 days."
+    "savedFilesNote": "Saved files are kept for 18 hours and expire automatically."
   }
 }

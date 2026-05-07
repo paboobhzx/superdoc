@@ -36,12 +36,15 @@ export function useConversionFlow() {
   const [startingAction, setStartingAction] = useState(null)
   const [err, setErr] = useState(null)
   const [pendingOp, setPendingOp] = useState(null)
+  const [batchFiles, setBatchFiles] = useState([])
 
-  const inputType = extensionOf(pendingFile)
-  const hasEmptyKnownCatalog = Boolean(pendingFile && !loadingOps && !err && operations.length === 0 && KNOWN_CATALOG_TYPES.has(inputType))
+  const activeFile = pendingFile || batchFiles[0] || null
+  const inputType = extensionOf(activeFile)
+  const hasEmptyKnownCatalog = Boolean(activeFile && !loadingOps && !err && operations.length === 0 && KNOWN_CATALOG_TYPES.has(inputType))
 
   const resetToDrop = useCallback(() => {
     setPendingFile(null)
+    setBatchFiles([])
     setOperations([])
     setStartingAction(null)
     setErr(null)
@@ -49,7 +52,7 @@ export function useConversionFlow() {
   }, [])
 
   const refreshOperations = useCallback(() => {
-    if (!pendingFile) return
+    if (!activeFile) return
     setLoadingOps(true)
     setErr(null)
     api.getOperations(inputType)
@@ -59,21 +62,31 @@ export function useConversionFlow() {
         setErr(e.message || t("home.errors.loadActions"))
       })
       .finally(() => setLoadingOps(false))
-  }, [pendingFile, inputType, t])
+  }, [activeFile, inputType, t])
 
   const handleFiles = useCallback((files) => {
     const list = Array.from(files || []).filter(Boolean)
     if (list.length === 0) return
     if (list.length > 1) {
-      setErr(t("home.errors.multipleFiles"))
+      const firstType = extensionOf(list[0])
+      const mixed = list.some((file) => extensionOf(file) !== firstType)
+      if (mixed) {
+        setErr(t("batch.errors.mixedTypes"))
+        return
+      }
+      setErr(null)
+      setPendingFile(null)
+      setPendingOp(null)
+      setBatchFiles(list)
       return
     }
     setErr(null)
+    setBatchFiles([])
     setPendingFile(list[0])
   }, [t])
 
   useEffect(() => {
-    if (!pendingFile) return
+    if (!activeFile) return
     let cancelled = false
     setLoadingOps(true)
     setErr(null)
@@ -93,7 +106,7 @@ export function useConversionFlow() {
       })
 
     return () => { cancelled = true }
-  }, [pendingFile, inputType, t])
+  }, [activeFile, inputType, t])
 
   const gridChoices = useMemo(
     () => buildTargetGridChoices(inputType, operations),
@@ -150,6 +163,7 @@ export function useConversionFlow() {
 
   return {
     pendingFile,
+    batchFiles,
     operations,
     loadingOps,
     uploading,

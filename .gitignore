@@ -20,6 +20,7 @@ override.tf.json
 
 # Python
 __pycache__/
+.pytest_cache/
 *.pyc
 *.pyo
 .venv/
@@ -57,6 +58,7 @@ fix-permissions.plan.log
 round*.plan.log
 ut=fix.tfplan
 full_dump.sh
+conversion-matrix.sh
 instructions-general.md
 
 # Reference materials (not project code)
@@ -77,6 +79,9 @@ design2/
 # Local output directories
 output/
 frontend/output/
+conversions/
+test-result.md
+test-results/
 
 # Script backups
 *.bak

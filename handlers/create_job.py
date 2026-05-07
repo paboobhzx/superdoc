@@ -6,6 +6,7 @@ import dynamo
 import auth_session
 import circuit_breaker
 import feature_flags
+import limits
 import operations
 import rate_limit
 import response
@@ -15,20 +16,15 @@ from logger import get_logger
 log = get_logger(__name__)
 
 _MAX_ITERATION_BYTES = 100 * 1024 * 1024  # 100MB
-# Anonymous uploads default to a one-week TTL; registered uploads override
-# this in the branch below so users can come back later and download files.
-_USER_TTL_SECONDS = int(os.environ.get("USER_TTL_SECONDS", str(7 * 24 * 3600)))
-_USER_MAX_DOCS = int(os.environ.get("USER_MAX_DOCS", "10"))
 _ANON_MAX_ACTIVE_DOCS = int(os.environ.get("ANON_MAX_ACTIVE_DOCS", "4"))
 
 
 def _rate_limit_enabled() -> bool:
-    """Read RATE_LIMIT_ENABLED env var. Default true — fail closed.
+    """Read RATE_LIMIT_ENABLED env var for the anonymous active-jobs cap.
 
     Terraform controls this via the `rate_limit_enabled` variable. When set
-    to "false" (case-insensitive), all rate-limit and active-jobs checks are
-    bypassed. Used to open the service up during early launch before auth
-    and payments are wired."""
+    to "false" (case-insensitive), only the anonymous concurrency cap is
+    bypassed. Daily conversion quotas remain enforced."""
     raw = os.environ.get("RATE_LIMIT_ENABLED", "true").strip().lower()
     return raw not in ("false", "0", "no", "off")
 
@@ -83,14 +79,11 @@ def handler(event, context):
             if not feature_flags.get("anonymous_ops_enabled", default=True):
                 return response.error("Anonymous conversions are temporarily disabled.", 503)
 
-            # Rate limit feature-flagged via env var so ops can toggle it
-            # without a code change. Default on — disable only when launch
-            # traffic is known and abuse mitigations are elsewhere.
-            if _rate_limit_enabled() and not rate_limit.check(session_id):
-                return response.error("Rate limit exceeded. Try again later.", 429)
+            if not rate_limit.check(session_id):
+                return response.error("Daily conversion limit reached. Try again tomorrow.", 429)
         else:
-            if _rate_limit_enabled() and not rate_limit.check_user(user_id):
-                return response.error("Rate limit exceeded. Try again later.", 429)
+            if not rate_limit.check_user(user_id):
+                return response.error("Daily conversion limit reached. Try again tomorrow.", 429)
 
         if file_size_bytes <= 0:
             return response.error("file_size_bytes must be > 0")
@@ -105,13 +98,8 @@ def handler(event, context):
 
         job_id = str(uuid.uuid4())
         if is_registered:
-            existing = dynamo.query_by_session(session_id)
-            if len(existing) >= _USER_MAX_DOCS:
-                return response.error("Storage limit reached (10 documents). Delete older files or wait for expiry.", 403)
             file_key = f"users/{session_id}/uploads/{job_id}/{file_name}"
-            # Registered users keep uploads for a week so they can revisit a
-            # file later without re-uploading it.
-            ttl_seconds = _USER_TTL_SECONDS
+            ttl_seconds = limits.storage_ttl_for_user(user_id)
         else:
             existing = dynamo.query_by_session(session_id)
             active = [j for j in existing if j.get("status") not in ("DONE", "FAILED")]
@@ -121,14 +109,13 @@ def handler(event, context):
             if _rate_limit_enabled() and len(active) >= _ANON_MAX_ACTIVE_DOCS:
                 return response.error("Too many active jobs. Please wait for current conversions to finish.", 429)
             file_key = f"uploads/{job_id}/{file_name}"
-            # Anonymous uploads use the short default TTL to cap storage use
-            # and keep transient files from lingering after the session ends.
-            ttl_seconds = int(os.environ.get("TTL_SECONDS", "43200"))
+            ttl_seconds = limits.storage_ttl_for_user(None)
 
         dynamo.create_job(
             job_id=job_id,
             operation=operation,
             session_id=session_id,
+            user_id=user_id if is_registered else None,
             file_size_bytes=file_size_bytes,
             file_name=file_name,
             file_key=file_key,

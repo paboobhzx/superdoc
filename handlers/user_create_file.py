@@ -4,6 +4,7 @@ import uuid
 
 import auth_session
 import dynamo
+import limits
 import response
 import s3
 from logger import get_logger
@@ -11,8 +12,6 @@ from logger import get_logger
 log = get_logger(__name__)
 
 _MAX_BYTES = 100 * 1024 * 1024
-_USER_TTL_SECONDS = int(os.environ.get("USER_TTL_SECONDS", str(7 * 24 * 3600)))
-_USER_MAX_DOCS = int(os.environ.get("USER_MAX_DOCS", "10"))
 
 
 def _validate_file_name(file_name: str) -> str:
@@ -41,10 +40,6 @@ def handler(event, context):
         if file_size_bytes > _MAX_BYTES:
             return response.error("File too large. Max 100MB per upload.", 413)
 
-        existing = dynamo.query_by_session(user_id)
-        if len(existing) >= _USER_MAX_DOCS:
-            return response.error("Storage limit reached (10 documents). Delete older files or wait for expiry.", 403)
-
         job_id = str(uuid.uuid4())
         output_key = f"users/{user_id}/outputs/{job_id}/{file_name}"
 
@@ -52,11 +47,12 @@ def handler(event, context):
             job_id=job_id,
             operation="store",
             session_id=user_id,
+            user_id=user_id,
             file_size_bytes=file_size_bytes,
             file_name=file_name,
             file_key=output_key,
             params={},
-            ttl_seconds=_USER_TTL_SECONDS,
+            ttl_seconds=limits.storage_ttl_for_user(user_id),
             status="UPLOADING",
             output_key=output_key,
         )

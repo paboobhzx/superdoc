@@ -15,23 +15,12 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
+  TF_DIR: infra/environments/default
 
 jobs:
   validate:
     name: Validate & Plan
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - env: dev
-            tf_dir: infra/environments/dev
-            branch: dev
-          - env: stage
-            tf_dir: infra/environments/stage
-            branch: stage
-          - env: prod
-            tf_dir: infra/environments/prod
-            branch: main
     steps:
       - uses: actions/checkout@v4
 
@@ -51,88 +40,17 @@ jobs:
 
       - name: Terraform Init
         run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
-        working-directory: ${{ matrix.tf_dir }}
+        working-directory: ${{ env.TF_DIR }}
 
       - name: Terraform Validate
         run: terraform validate
-        working-directory: ${{ matrix.tf_dir }}
+        working-directory: ${{ env.TF_DIR }}
 
       - name: Terraform Plan
-        id: plan
         run: |
-          terraform plan -no-color -out=tfplan \
+          terraform plan -no-color \
             -var="lambda_handler_s3_bucket=${{ secrets.LAMBDA_ZIPS_BUCKET }}"
-        working-directory: ${{ matrix.tf_dir }}
-
-      - name: Comment Plan on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const output = `#### Terraform Plan (${{ matrix.env }}) 📋
-            \`\`\`
-            ${{ steps.plan.outputs.stdout }}
-            \`\`\``;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });
-
-      - name: Run module tests
-        if: matrix.env == 'dev'
-        run: |
-          pip install pytest python-hcl2 --quiet
-          pytest infra/tests/test_modules.py -v
-
-  deploy-dev:
-    name: Apply (dev)
-    needs: validate
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
-    environment: dev
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.7.5"
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Terraform Init
-        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
-        working-directory: infra/environments/dev
-      - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve \
-            -var="lambda_handler_s3_bucket=${{ secrets.LAMBDA_ZIPS_BUCKET }}"
-        working-directory: infra/environments/dev
-
-  deploy-stage:
-    name: Apply (stage)
-    needs: validate
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/stage' && github.event_name == 'push'
-    environment: stage
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.7.5"
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Terraform Init
-        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
-        working-directory: infra/environments/stage
-      - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve \
-            -var="lambda_handler_s3_bucket=${{ secrets.LAMBDA_ZIPS_BUCKET }}"
-        working-directory: infra/environments/stage
+        working-directory: ${{ env.TF_DIR }}
 
   deploy-prod:
     name: Apply (prod)
@@ -151,9 +69,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: Terraform Init
         run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
-        working-directory: infra/environments/prod
+        working-directory: ${{ env.TF_DIR }}
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve \
             -var="lambda_handler_s3_bucket=${{ secrets.LAMBDA_ZIPS_BUCKET }}"
-        working-directory: infra/environments/prod
+        working-directory: ${{ env.TF_DIR }}

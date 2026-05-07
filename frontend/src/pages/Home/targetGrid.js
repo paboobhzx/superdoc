@@ -42,6 +42,9 @@ function shortLabelFor(inputType, opMeta) {
   if (operation === "pdf_to_image" || operation === "docx_to_image" || operation === "xlsx_to_image") {
     return "ZIP per page"
   }
+  if (operation === "pdf_to_xls") {
+    return "Tables to spreadsheet"
+  }
   if (operation === "xlsx_to_pdf" || operation === "xlsx_to_csv" || operation === "xlsx_to_md" || operation === "xlsx_to_txt" || operation === "xlsx_to_html" || operation === "xlsx_to_docx") {
     return "First sheet"
   }
@@ -67,6 +70,7 @@ function expandedTargetLabel(target) {
 function sourceLabel(inputType, operation) {
   if (operation === "markdown_convert") return normalizeTarget(inputType) === "txt" ? "Text" : "Markdown"
   if (operation === "xlsx_to_csv" || operation === "xlsx_to_pdf" || operation === "xlsx_to_docx" || operation === "xlsx_to_image" || operation === "xlsx_to_md" || operation === "xlsx_to_txt" || operation === "xlsx_to_html") return "Spreadsheet"
+  if (operation === "pdf_to_xls") return "PDF"
   if (operation === "image_to_document") return "Image"
   if (operation === "pdf_to_image") return "PDF"
   if (operation === "docx_to_image") return "Word"
@@ -76,6 +80,7 @@ function sourceLabel(inputType, operation) {
 
 function expandedLabel(inputType, op, target) {
   const normalized = normalizeTarget(target)
+  if (op.operation === "pdf_to_xls") return "PDF to Excel (.xlsx)"
   if (op.operation === "pdf_to_image") return `PDF to ${targetLabel(normalized)} images (.zip)`
   if (op.operation === "docx_to_image") return `Word to ${targetLabel(normalized)} images (.zip)`
   if (op.operation === "xlsx_to_image") return `Spreadsheet to ${targetLabel(normalized)} images (.zip)`

@@ -11,6 +11,7 @@ test.describe("Dashboard (mocked authenticated)", () => {
       operation: "pdf_to_docx",
       status: "DONE",
       created_at: new Date().toISOString(),
+      expires_at: Math.floor(Date.now() / 1000) + 3 * 3600,
       file_size_bytes: 1024,
       download_url: "https://download.example.com/one.docx",
     };
@@ -26,26 +27,20 @@ test.describe("Dashboard (mocked authenticated)", () => {
 
     let jobs = [jobA, jobB];
 
-    await page.addInitScript(() => {
-      localStorage.setItem("superdoc_id_token", "test.jwt.token");
-      localStorage.setItem("superdoc_email", "test@example.com");
-    });
-
     await page.route("**/*", async (route) => {
       const req = route.request();
       const url = req.url();
 
-      if (url === `${apiBase}/users/me/files` && req.method() === "GET") {
-        const auth = req.headers()["authorization"] || "";
-        if (!auth.startsWith("Bearer ")) {
-          await route.fulfill({
-            status: 401,
-            contentType: "application/json",
-            body: JSON.stringify({ error: "missing auth" }),
-          });
-          return;
-        }
+      if (url === `${apiBase}/auth/me` && req.method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ user: { id: "user-1", email: "test@example.com" } }),
+        });
+        return;
+      }
 
+      if (url === `${apiBase}/users/me/files` && req.method() === "GET") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -73,6 +68,7 @@ test.describe("Dashboard (mocked authenticated)", () => {
 
     await expect(page.getByRole("heading", { name: "Files" })).toBeVisible();
     await expect(page.getByText("one.pdf")).toBeVisible();
+    await expect(page.getByText(/Expires in 2h|Expires in 3h/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Download" })).toBeVisible();
 
     await page.getByRole("button", { name: "Delete" }).first().click();
@@ -80,4 +76,3 @@ test.describe("Dashboard (mocked authenticated)", () => {
     await expect(page.getByText("two.png")).toBeVisible();
   });
 });
-

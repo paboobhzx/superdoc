@@ -96,6 +96,20 @@ export function Register() {
           </button>
         </div>
 
+        <div className="mt-6 p-4 rounded-xl border border-outline-variant/30 bg-surface-variant/20">
+          <p className="text-xs font-semibold text-on-surface mb-1">Want more?</p>
+          <p className="text-xs text-on-surface-variant leading-relaxed">
+            The support plan unlocks multimedia tools (audio extraction, transcription, subtitles)
+            and helps keep SuperDoc running. No recurring commitment required.
+          </p>
+          <a
+            href="/support"
+            className="mt-3 inline-block text-xs font-semibold text-primary no-underline hover:underline"
+          >
+            Learn about the support plan →
+          </a>
+        </div>
+
         {err && (
           <div className="mt-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-error-container/20 border border-error/20 text-on-error-container">
             <span className="material-symbols-outlined text-error text-[20px]">warning</span>

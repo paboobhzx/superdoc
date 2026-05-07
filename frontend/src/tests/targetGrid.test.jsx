@@ -42,6 +42,23 @@ describe("target grid", () => {
     expect(choices.find((choice) => choice.target === "csv")?.description).toBe("First sheet")
   })
 
+  it("exposes PDF to Excel on PDF input", () => {
+    const choices = buildTargetGridChoices("pdf", [
+      {
+        operation: "pdf_to_xls",
+        kind: "backend_job",
+        intent: "convert",
+        label: "PDF to Excel (.xlsx)",
+        targets: ["xlsx"],
+      },
+    ])
+
+    expect(choices.find((choice) => choice.target === "xlsx")?.enabled).toBe(true)
+    expect(choices.find((choice) => choice.target === "xlsx")?.opMeta).toMatchObject({
+      operation: "pdf_to_xls",
+    })
+  })
+
   it("explains disabled slots instead of using one generic message", () => {
     const choices = buildTargetGridChoices("jpg", [
       {
