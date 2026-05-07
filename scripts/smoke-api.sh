@@ -13,15 +13,15 @@ curl -sS "${API_URL}/health" | grep -q '"status":"ok"'
 
 echo "[smoke] OPTIONS /jobs (CORS preflight)"
 curl -sS -D - -o /dev/null -X OPTIONS "${API_URL}/jobs" \
-  -H 'Origin: https://example.com' \
+  -H 'Origin: https://superdoc.pablobhz.cloud' \
   -H 'Access-Control-Request-Method: POST' \
-  | tr -d '\r' | grep -qi '^Access-Control-Allow-Origin: \*'
+  | tr -d '\r' | grep -qi '^Access-Control-Allow-Origin: https://superdoc.pablobhz.cloud'
 
 echo "[smoke] OPTIONS /operations (CORS preflight)"
 curl -sS -D - -o /dev/null -X OPTIONS "${API_URL}/operations" \
-  -H 'Origin: https://example.com' \
+  -H 'Origin: https://superdoc.pablobhz.cloud' \
   -H 'Access-Control-Request-Method: GET' \
-  | tr -d '\r' | grep -qi '^Access-Control-Allow-Origin: \*'
+  | tr -d '\r' | grep -qi '^Access-Control-Allow-Origin: https://superdoc.pablobhz.cloud'
 
 echo "[smoke] OPTIONS /users/me/files/dummy (CORS preflight)"
 curl -sS -D - -o /dev/null -X OPTIONS "${API_URL}/users/me/files/dummy" \
@@ -44,7 +44,7 @@ echo "$PDF_OPS_JSON" | grep -q '"pdf_to_image"'
 echo "[smoke] POST /jobs (create job with conversion params)"
 JOB_JSON="$(curl -sS -X POST "${API_URL}/jobs" \
   -H 'Content-Type: application/json' \
-  -d '{"operation":"pdf_to_image","file_size_bytes":1024,"file_name":"smoke.pdf","session_id":"smoke","params":{"dpi":150}}')"
+  -d '{"operation":"pdf_to_image","file_size_bytes":1024,"file_name":"smoke.pdf","session_id":"11111111-1111-4111-8111-111111111111","params":{"dpi":150,"target_format":"png"}}')"
 
 echo "$JOB_JSON" | grep -q '"job_id"'
 echo "$JOB_JSON" | grep -q '"upload"'

@@ -614,15 +614,15 @@ def test_catalog_integrity(client: SuperDocClient, registry: Registry) -> Option
     else:
         registry.record("All ops have 'intent' field (Round 5)", "pass", f"{len(ops)} ops")
         # If intent is present, also validate the values and grouping distribution.
-        valid_intents = {"modify", "convert"}
+        valid_intents = {"edit", "modify", "convert"}
         bad_intent = [
             (o.get("operation"), o.get("intent"))
             for o in ops if o.get("intent") not in valid_intents
         ]
         if bad_intent:
-            registry.record("Intent values valid (modify|convert)", "fail", f"bad: {bad_intent}")
+            registry.record("Intent values valid (edit|modify|convert)", "fail", f"bad: {bad_intent}")
         else:
-            modify_count = sum(1 for o in ops if o.get("intent") == "modify")
+            modify_count = sum(1 for o in ops if o.get("intent") in ("edit", "modify"))
             convert_count = sum(1 for o in ops if o.get("intent") == "convert")
             registry.record(
                 "Intent distribution",
@@ -1526,7 +1526,7 @@ def main() -> int:
     # Build a unique session_id for this run so we don't collide with other
     # smoke runs or the user's own browsing.
     import uuid as _uuid
-    smoke_session = f"smoke-{_uuid.uuid4().hex[:12]}"
+    smoke_session = str(_uuid.uuid4())
     log_info(f"Smoke session_id: {smoke_session}")
 
     client = SuperDocClient(args.base_url, verbose=args.verbose)
