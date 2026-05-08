@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useI18n } from '../../context/I18nContext'
 
 export function ConfirmEmail() {
   const navigate = useNavigate()
   const auth = useAuth()
+  const { t } = useI18n()
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [countdown, setCountdown] = useState(60)
   const [loading, setLoading] = useState(false)
@@ -35,7 +37,7 @@ export function ConfirmEmail() {
   async function onConfirm() {
     setErr('')
     if (fullCode.length !== 6) {
-      setErr('Enter the 6-digit code.')
+      setErr(t('auth.errors.codeRequired'))
       return
     }
     setLoading(true)
@@ -43,7 +45,7 @@ export function ConfirmEmail() {
       await auth.confirmEmail(fullCode)
       navigate('/auth/login')
     } catch (e) {
-      setErr(e?.message || 'Confirmation failed')
+      setErr(e?.message || t('auth.errors.confirmFailed'))
     } finally {
       setLoading(false)
     }
@@ -57,7 +59,7 @@ export function ConfirmEmail() {
       await auth.resendConfirmation()
       setCountdown(60)
     } catch (e) {
-      setErr(e?.message || 'Failed to resend code')
+      setErr(e?.message || t('auth.errors.resendFailed'))
     } finally {
       setLoading(false)
     }
@@ -70,9 +72,15 @@ export function ConfirmEmail() {
           style={{ fontVariationSettings: "'FILL' 1" }}>
           mail
         </span>
-        <h1 className="text-2xl font-bold font-headline text-on-surface mb-2">Check your email</h1>
+        <h1 className="text-2xl font-bold font-headline text-on-surface mb-2">{t('auth.checkEmail')}</h1>
         <p className="text-sm text-on-surface-variant mb-8">
-          We sent a code to <strong className="text-on-surface">{email || 'your email'}</strong>
+          {email ? (
+            <>
+              {t('auth.codeSentToPrefix')} <strong className="text-on-surface">{email}</strong>
+            </>
+          ) : (
+            t('auth.codeSentTo', { email: t('auth.codeSentFallback') })
+          )}
         </p>
 
         <div className="flex justify-center gap-2 mb-6">
@@ -96,7 +104,7 @@ export function ConfirmEmail() {
           disabled={loading}
           className="sd-button-primary w-full px-5 py-3 text-sm mb-3 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {loading ? 'Confirming…' : 'Confirm'}
+          {loading ? t('auth.confirming') : t('auth.confirm')}
         </button>
 
         <button
@@ -105,7 +113,7 @@ export function ConfirmEmail() {
           className="sd-button-secondary w-full px-5 py-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-[16px]">refresh</span>
-          {countdown > 0 ? `Resend code (${countdown}s)` : 'Resend code'}
+          {countdown > 0 ? t('auth.resentIn', { seconds: countdown }) : t('auth.resendCode')}
         </button>
 
         {err && (
@@ -117,7 +125,7 @@ export function ConfirmEmail() {
 
         <Link to="/auth/login" className="mt-4 inline-flex items-center gap-1 text-xs text-on-surface-variant hover:text-on-surface no-underline">
           <span className="material-symbols-outlined text-[14px]">arrow_back</span>
-          Wrong email? Go back
+          {t('auth.wrongEmail')}
         </Link>
       </div>
     </div>

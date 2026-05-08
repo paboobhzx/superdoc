@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useI18n } from "../../context/I18nContext"
 import { useJob } from "../../hooks/useJob"
-
-const RECENT_FILES_KEY = "superdoc_recent_files"
-const MAX_RECENT = 20
+import { saveRecentFile } from "../../lib/recentFiles"
 
 // Upload is already complete when this page mounts, so the stepper tracks the
 // lifecycle visible from /processing/:jobId rather than the upload flow.
@@ -64,20 +62,14 @@ export function Processing() {
 
   useEffect(() => {
     if (!isDone || !job?.download_url) return
-    try {
-      const existing = JSON.parse(sessionStorage.getItem(RECENT_FILES_KEY) || "[]")
-      const entry = {
-        jobId,
-        fileName: job.file_name || jobId,
-        downloadUrl: job.download_url,
-        operation: job.operation || "",
-        convertedAt: new Date().toISOString(),
-      }
-      const updated = [entry, ...existing.filter((f) => f.jobId !== jobId)].slice(0, MAX_RECENT)
-      sessionStorage.setItem(RECENT_FILES_KEY, JSON.stringify(updated))
-    } catch {
-      // sessionStorage unavailable (private mode)
-    }
+    saveRecentFile({
+      jobId,
+      fileName: job.file_name || jobId,
+      downloadUrl: job.download_url,
+      operation: job.operation || "",
+      convertedAt: new Date().toISOString(),
+      expiresAt: job.expires_at,
+    })
   }, [isDone, job?.download_url, job?.file_name, job?.operation, jobId])
 
   if (loading && !job) {

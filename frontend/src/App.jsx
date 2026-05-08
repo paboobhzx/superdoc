@@ -8,6 +8,7 @@ import { Register } from "./pages/auth/Register"
 import { ConfirmEmail } from "./pages/auth/ConfirmEmail"
 import { Settings } from "./pages/Settings"
 import { Dashboard } from "./pages/Dashboard"
+import { Support } from "./pages/Support"
 import { ImageEditor } from "./pages/ImageEditor"
 import { PdfEditor } from "./pages/PdfEditor"
 import { DocxEditor } from "./pages/DocxEditor"
@@ -46,6 +47,7 @@ function AppRoutes() {
       <Route path="/editor/markdown" element={<MarkdownEditor />} />
       <Route path="/editor/xlsx" element={<XlsxEditor />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/support" element={<Support />} />
       <Route path="/processing/:jobId" element={<Processing />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/auth/login" element={<Login />} />

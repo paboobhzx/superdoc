@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useI18n } from '../../context/I18nContext'
 
 export function Login() {
   const navigate = useNavigate()
   const auth = useAuth()
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -18,7 +20,7 @@ export function Login() {
       await auth.signIn(email, password)
       navigate('/dashboard')
     } catch (e) {
-      const msg = e?.message || 'Sign in failed'
+      const msg = e?.message || t('auth.errors.signInFailed')
       if (msg.toLowerCase().includes('not confirmed')) {
         navigate('/auth/confirm')
         return
@@ -38,14 +40,14 @@ export function Login() {
           </span>
           <span className="text-xl font-extrabold text-on-surface font-headline">SuperDoc</span>
         </div>
-        <p className="text-sm text-on-surface-variant mb-8">Convert anything. Free. No tricks.</p>
+        <p className="text-sm text-on-surface-variant mb-8">{t('auth.loginIntro')}</p>
 
         <div className="space-y-4">
           <div className="float-label-group relative">
             <input type="email" placeholder=" " value={email} onChange={(e) => setEmail(e.target.value)}
               className="sd-input px-4 py-3 text-sm peer" />
             <label className="absolute left-4 top-3 text-sm text-on-surface-variant transition-all pointer-events-none origin-left peer-focus:translate-y-[-1.5rem] peer-focus:scale-[0.85] peer-focus:text-primary peer-[:not(:placeholder-shown)]:translate-y-[-1.5rem] peer-[:not(:placeholder-shown)]:scale-[0.85]">
-              Email
+              {t('auth.email')}
             </label>
           </div>
 
@@ -53,7 +55,7 @@ export function Login() {
             <input type={showPw ? 'text' : 'password'} placeholder=" " value={password} onChange={(e) => setPassword(e.target.value)}
               className="sd-input px-4 py-3 pr-12 text-sm peer" />
             <label className="absolute left-4 top-3 text-sm text-on-surface-variant transition-all pointer-events-none origin-left peer-focus:translate-y-[-1.5rem] peer-focus:scale-[0.85] peer-focus:text-primary peer-[:not(:placeholder-shown)]:translate-y-[-1.5rem] peer-[:not(:placeholder-shown)]:scale-[0.85]">
-              Password
+              {t('auth.password')}
             </label>
             <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-3 text-on-surface-variant hover:text-on-surface">
               <span className="material-symbols-outlined text-[20px]">{showPw ? 'visibility_off' : 'visibility'}</span>
@@ -65,7 +67,7 @@ export function Login() {
             disabled={loading}
             className="sd-button-primary w-full px-5 py-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? t('auth.signingIn') : t('auth.signIn')}
             <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
           </button>
         </div>
@@ -84,12 +86,12 @@ export function Login() {
         </div>
 
         <Link to="/" className="sd-button-secondary w-full px-5 py-3 text-sm no-underline">
-          Continue without account
+          {t('auth.continueWithoutAccount')}
         </Link>
 
         <div className="mt-6 flex justify-between text-xs">
-          <Link to="/auth/register" className="text-primary font-semibold no-underline hover:underline">Create free account</Link>
-          <button className="text-on-surface-variant hover:text-on-surface">Forgot password?</button>
+          <Link to="/auth/register" className="text-primary font-semibold no-underline hover:underline">{t('auth.createFreeAccount')}</Link>
+          <button type="button" className="text-on-surface-variant hover:text-on-surface" title={t('auth.forgotPasswordSoon')}>{t('auth.forgotPassword')}</button>
         </div>
       </div>
     </div>

@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Convert, edit and transform any file. Free, serverless, no dark patterns." />
+    <meta name="description" content="Convert and edit documents, images, and spreadsheets without dark patterns." />
     <meta name="theme-color" content="#0b70d8" />
 
     <meta property="og:title"       content="SuperDoc — Convert Any File Free" />
-    <meta property="og:description" content="PDF, Word, images, video — no subscriptions, no forced signups." />
+    <meta property="og:description" content="PDF, Word, Markdown, images, and spreadsheets — no subscriptions, no forced signups." />
     <meta property="og:type"        content="website" />
     <meta property="og:url"         content="https://superdoc.pablobhz.cloud" />
 
@@ -20,6 +20,20 @@
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>SuperDoc — Convert Any File Free</title>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('superdoc-theme');
+          var theme = saved === 'dark' ? 'dark' : 'azure';
+          var root = document.documentElement;
+          root.classList.add('theme-' + theme);
+          root.setAttribute('data-theme', theme);
+          if (theme === 'dark') root.classList.add('dark');
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', theme === 'dark' ? '#0c0c0e' : '#0b70d8');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -25,7 +25,8 @@
     "view": "View",
     "unknown": "Unknown",
     "conversion": "Conversion",
-    "back": "Back"
+    "back": "Back",
+    "learnMore": "Learn more"
   },
   "paramsPanel": {
     "pageSize": "Page size",
@@ -165,7 +166,61 @@
     "deleteFailed": "Delete failed.",
     "sessionOnly": "Files shown here are only available during this browser session. Create an account to keep your history.",
     "expiresIn": "Expires in {{time}}",
-    "expired": "Expired"
+    "expired": "Expired",
+    "lessThanHour": "< 1 hour",
+    "hoursRemaining": "{{count}}h",
+    "daysRemaining": "{{count}}d"
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "loginIntro": "Convert files, keep history, and pick up where you left off.",
+    "registerBadge": "Free forever · No credit card · No spam",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "createAccount": "Create account",
+    "creatingAccount": "Creating...",
+    "continueWithoutAccount": "Continue without account",
+    "createFreeAccount": "Create free account",
+    "alreadyHaveAccount": "Already have an account?",
+    "forgotPassword": "Forgot password?",
+    "forgotPasswordSoon": "Password reset is not live yet.",
+    "checkEmail": "Check your email",
+    "confirm": "Confirm",
+    "confirming": "Confirming...",
+    "resentIn": "Resend code ({{seconds}}s)",
+    "resendCode": "Resend code",
+    "wrongEmail": "Wrong email? Go back",
+    "codeSentToPrefix": "We sent a code to",
+    "codeSentTo": "We sent a code to {{email}}",
+    "codeSentFallback": "your email",
+    "supportEyebrow": "Want more?",
+    "supportBody": "The support plan unlocks multimedia tools, priority experiments, and helps keep SuperDoc running.",
+    "supportLink": "See the support plan",
+    "errors": {
+      "required": "Email and password are required.",
+      "passwordMismatch": "Passwords do not match.",
+      "signUpFailed": "Sign up failed",
+      "signInFailed": "Sign in failed",
+      "codeRequired": "Enter the 6-digit code.",
+      "confirmFailed": "Confirmation failed",
+      "resendFailed": "Failed to resend code"
+    }
+  },
+  "support": {
+    "eyebrow": "Support plan",
+    "title": "Support SuperDoc without locking the core product.",
+    "intro": "Core conversions stay free. Support helps fund the heavier multimedia pipeline and keeps the free document surface sustainable.",
+    "card1Title": "What stays free",
+    "card1Body": "PDF, DOCX, HTML, Markdown, image, and spreadsheet conversions remain on the document workbench.",
+    "card2Title": "What support unlocks",
+    "card2Body": "Multimedia tools, transcription, subtitle flows, and future container-backed processing.",
+    "card3Title": "How to support",
+    "card3Body": "Use Ko-fi if you want to help now. No recurring commitment is required.",
+    "primaryCta": "Open Ko-fi",
+    "secondaryCta": "Back to workbench"
   },
   "processing": {
     "connecting": "Connecting to job...",

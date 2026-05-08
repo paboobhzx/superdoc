@@ -55,6 +55,20 @@ def _int_range(value: object, *, name: str, lo: int, hi: int) -> tuple[bool, str
     return True, ""
 
 
+def _bool_value(value: object, *, name: str) -> tuple[bool, str, bool | None]:
+    if value is None:
+        return True, "", None
+    if isinstance(value, bool):
+        return True, "", value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in ("true", "1", "yes", "on"):
+            return True, "", True
+        if lowered in ("false", "0", "no", "off"):
+            return True, "", False
+    return False, f"{name} must be a boolean", None
+
+
 def validate_params(operation: str, params: dict | None) -> ValidationResult:
     """Whitelist-validate params for operation. Unknown keys are dropped."""
     if params is None:
@@ -110,5 +124,13 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
             return ValidationResult(ok=False, error=err_msg)
         if raw_paper:
             cleaned["paper_size"] = raw_paper
+
+    if operation in ("docx_to_pdf", "xlsx_to_pdf", "pdf_to_docx"):
+        raw_hf = params.get("high_fidelity")
+        ok_flag, err_msg, parsed_hf = _bool_value(raw_hf, name="high_fidelity")
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if parsed_hf is not None:
+            cleaned["high_fidelity"] = parsed_hf
 
     return ValidationResult(ok=True, params=cleaned)

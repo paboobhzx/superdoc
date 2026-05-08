@@ -25,7 +25,8 @@
     "view": "Ver",
     "unknown": "Desconhecido",
     "conversion": "Conversao",
-    "back": "Voltar"
+    "back": "Voltar",
+    "learnMore": "Saiba mais"
   },
   "paramsPanel": {
     "pageSize": "Tamanho da pagina",
@@ -165,7 +166,61 @@
     "deleteFailed": "Falha ao excluir.",
     "sessionOnly": "Os arquivos mostrados aqui estao disponiveis apenas durante esta sessao do navegador. Crie uma conta para manter seu historico.",
     "expiresIn": "Expira em {{time}}",
-    "expired": "Expirado"
+    "expired": "Expirado",
+    "lessThanHour": "< 1 hora",
+    "hoursRemaining": "{{count}}h",
+    "daysRemaining": "{{count}}d"
+  },
+  "auth": {
+    "loginTitle": "Entrar",
+    "loginIntro": "Converta arquivos, mantenha o historico e retome de onde parou.",
+    "registerBadge": "Gratis para sempre · sem cartao · sem spam",
+    "email": "Email",
+    "password": "Senha",
+    "confirmPassword": "Confirmar senha",
+    "signIn": "Entrar",
+    "signingIn": "Entrando...",
+    "createAccount": "Criar conta",
+    "creatingAccount": "Criando...",
+    "continueWithoutAccount": "Continuar sem conta",
+    "createFreeAccount": "Criar conta gratis",
+    "alreadyHaveAccount": "Ja tem conta?",
+    "forgotPassword": "Esqueci minha senha",
+    "forgotPasswordSoon": "A recuperacao de senha ainda nao esta no ar.",
+    "checkEmail": "Verifique seu email",
+    "confirm": "Confirmar",
+    "confirming": "Confirmando...",
+    "resentIn": "Reenviar codigo ({{seconds}}s)",
+    "resendCode": "Reenviar codigo",
+    "wrongEmail": "Email errado? Voltar",
+    "codeSentToPrefix": "Enviamos um codigo para",
+    "codeSentTo": "Enviamos um codigo para {{email}}",
+    "codeSentFallback": "seu email",
+    "supportEyebrow": "Quer mais?",
+    "supportBody": "O plano de apoio libera ferramentas multimidia, experimentos prioritarios e ajuda a manter o SuperDoc no ar.",
+    "supportLink": "Ver o plano de apoio",
+    "errors": {
+      "required": "Email e senha sao obrigatorios.",
+      "passwordMismatch": "As senhas nao coincidem.",
+      "signUpFailed": "Falha no cadastro",
+      "signInFailed": "Falha no login",
+      "codeRequired": "Digite o codigo de 6 digitos.",
+      "confirmFailed": "Falha na confirmacao",
+      "resendFailed": "Falha ao reenviar o codigo"
+    }
+  },
+  "support": {
+    "eyebrow": "Plano de apoio",
+    "title": "Apoie o SuperDoc sem fechar o produto principal.",
+    "intro": "As conversoes principais continuam gratis. O apoio ajuda a financiar a pipeline multimidia e a manter a superficie gratuita de documentos sustentavel.",
+    "card1Title": "O que continua gratis",
+    "card1Body": "Conversoes de PDF, DOCX, HTML, Markdown, imagens e planilhas continuam na bancada de documentos.",
+    "card2Title": "O que o apoio libera",
+    "card2Body": "Ferramentas multimidia, transcricao, fluxos de legenda e processamentos futuros com containers.",
+    "card3Title": "Como apoiar",
+    "card3Body": "Use o Ko-fi se quiser ajudar agora. Nao ha compromisso recorrente obrigatorio.",
+    "primaryCta": "Abrir Ko-fi",
+    "secondaryCta": "Voltar para a bancada"
   },
   "processing": {
     "connecting": "Conectando ao job...",

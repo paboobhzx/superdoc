@@ -1,9 +1,14 @@
 :root {
-  --amber: #0b70d8;
-  --amber-bright: #2388f5;
-  --amber-dim: #0759b8;
-  --amber-glow: rgba(11, 112, 216, 0.14);
-  --amber-glow-strong: rgba(11, 112, 216, 0.25);
+  --accent: #0b70d8;
+  --accent-bright: #2388f5;
+  --accent-dim: #0759b8;
+  --accent-glow: rgba(11, 112, 216, 0.14);
+  --accent-glow-strong: rgba(11, 112, 216, 0.25);
+  --amber: var(--accent);
+  --amber-bright: var(--accent-bright);
+  --amber-dim: var(--accent-dim);
+  --amber-glow: var(--accent-glow);
+  --amber-glow-strong: var(--accent-glow-strong);
 
   --font-display: "Syne", sans-serif;
   --font-body: "DM Sans", sans-serif;
@@ -20,23 +25,6 @@
 }
 
 :root,
-.theme-dark,
-[data-theme="dark"] {
-  --bg: #0c0c0e;
-  --bg-surface: #141416;
-  --bg-card: #1a1a1e;
-  --bg-card-hover: #202026;
-  --bg-input: #111113;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-active: rgba(245, 158, 11, 0.5);
-  --text-primary: #f0ede8;
-  --text-secondary: #8a8880;
-  --text-muted: #4a4844;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 40px rgba(245, 158, 11, 0.12), 0 8px 32px rgba(0, 0, 0, 0.4);
-  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-}
-
 .theme-azure,
 [data-theme="azure"] {
   --bg: #f4f9ff;
@@ -53,6 +41,23 @@
   --shadow-glow: 0 0 40px rgba(11, 112, 216, 0.08), 0 12px 34px rgba(21, 85, 150, 0.12);
   --noise: none;
   --color-on-error-container: #991b1b;
+}
+
+.theme-dark,
+[data-theme="dark"] {
+  --bg: #0c0c0e;
+  --bg-surface: #141416;
+  --bg-card: #1a1a1e;
+  --bg-card-hover: #202026;
+  --bg-input: #111113;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-active: rgba(245, 158, 11, 0.5);
+  --text-primary: #f0ede8;
+  --text-secondary: #8a8880;
+  --text-muted: #4a4844;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 40px rgba(11, 112, 216, 0.14), 0 8px 32px rgba(0, 0, 0, 0.4);
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
 }
 
 :root,

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useI18n } from "../context/I18nContext";
 import { api } from "../lib/api";
+import { loadRecentFiles } from "../lib/recentFiles";
 
 function formatBytes(bytes) {
   if (!bytes || bytes <= 0) return "";
@@ -10,11 +11,11 @@ function formatBytes(bytes) {
   return `${mb.toFixed(1)} MB`;
 }
 
-function formatWhen(iso) {
+function formatWhen(iso, locale) {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString();
+  return d.toLocaleString(locale);
 }
 
 function expiryMeta(expiresAt) {
@@ -23,19 +24,9 @@ function expiryMeta(expiresAt) {
   if (!Number.isFinite(ms)) return null;
   if (ms <= 0) return { key: "dashboard.expired", params: {}, urgent: true };
   const hours = Math.floor(ms / 3_600_000);
-  if (hours < 1) return { key: "dashboard.expiresIn", params: { time: "< 1 hour" }, urgent: true };
-  if (hours < 24) return { key: "dashboard.expiresIn", params: { time: `${hours}h` }, urgent: hours < 2 };
-  return { key: "dashboard.expiresIn", params: { time: `${Math.floor(hours / 24)}d` }, urgent: false };
-}
-
-const RECENT_FILES_KEY = "superdoc_recent_files";
-
-function loadRecentFiles() {
-  try {
-    return JSON.parse(sessionStorage.getItem(RECENT_FILES_KEY) || "[]");
-  } catch {
-    return [];
-  }
+  if (hours < 1) return { key: "dashboard.expiresIn", params: { time: "ltHour" }, urgent: true };
+  if (hours < 24) return { key: "dashboard.expiresIn", params: { time: { unit: "hours", value: hours } }, urgent: hours < 2 };
+  return { key: "dashboard.expiresIn", params: { time: { unit: "days", value: Math.floor(hours / 24) } }, urgent: false };
 }
 
 function RecentFilesView({ t }) {
@@ -81,7 +72,7 @@ function RecentFilesView({ t }) {
 
 export function Dashboard() {
   const auth = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [err, setErr] = useState("");
@@ -213,6 +204,15 @@ export function Dashboard() {
           <ul className="divide-y divide-outline-variant/10">
             {sorted.map((job) => {
               const expires = expiryMeta(job.expires_at);
+              const expiryLabel = expires
+                ? (
+                  expires.params.time === "ltHour"
+                    ? t("dashboard.lessThanHour")
+                    : expires.params.time?.unit === "hours"
+                      ? t("dashboard.hoursRemaining", { count: expires.params.time.value })
+                      : t("dashboard.daysRemaining", { count: expires.params.time.value })
+                )
+                : null;
               return (
               <li key={job.job_id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1 min-w-0">
@@ -227,14 +227,14 @@ export function Dashboard() {
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         expires.urgent ? "bg-amber-500/15 text-amber-700" : "bg-surface-container text-on-surface-variant"
                       }`}>
-                        {t(expires.key, expires.params)}
+                        {t(expires.key, { time: expiryLabel })}
                       </span>
                     ) : null}
                   </div>
                   <div className="text-xs text-on-surface-variant mt-1">
                     {job.operation ? job.operation.replace(/_/g, " ") : ""}
                     {job.file_size_bytes ? ` · ${formatBytes(job.file_size_bytes)}` : ""}
-                    {job.created_at ? ` · ${formatWhen(job.created_at)}` : ""}
+                    {job.created_at ? ` · ${formatWhen(job.created_at, locale)}` : ""}
                   </div>
                 </div>
 

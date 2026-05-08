@@ -19,11 +19,15 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     const root = document.documentElement
     const nextTheme = theme === 'light' ? 'azure' : theme
-    root.classList.remove('theme-dark', 'theme-light', 'theme-azure', 'dark')
+    root.classList.remove('theme-dark', 'theme-azure', 'dark')
     root.removeAttribute('data-theme')
     root.classList.add(`theme-${nextTheme}`)
     root.setAttribute('data-theme', nextTheme)
     if (nextTheme === 'dark') root.classList.add('dark')
+    const metaTheme = document.querySelector('meta[name="theme-color"]')
+    if (metaTheme) {
+      metaTheme.setAttribute('content', nextTheme === 'dark' ? '#0c0c0e' : '#0b70d8')
+    }
     if (nextTheme !== theme) setTheme(nextTheme)
     localStorage.setItem('superdoc-theme', nextTheme)
   }, [theme])

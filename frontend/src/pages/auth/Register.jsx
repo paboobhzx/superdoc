@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useI18n } from '../../context/I18nContext'
 
 export function Register() {
   const navigate = useNavigate()
   const auth = useAuth()
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -18,11 +20,11 @@ export function Register() {
   async function onSubmit() {
     setErr('')
     if (!email || !password) {
-      setErr('Email and password are required.')
+      setErr(t('auth.errors.required'))
       return
     }
     if (password !== confirm) {
-      setErr('Passwords do not match.')
+      setErr(t('auth.errors.passwordMismatch'))
       return
     }
     setLoading(true)
@@ -30,7 +32,7 @@ export function Register() {
       await auth.signUp(email, password)
       navigate('/auth/confirm')
     } catch (e) {
-      setErr(e?.message || 'Sign up failed')
+      setErr(e?.message || t('auth.errors.signUpFailed'))
     } finally {
       setLoading(false)
     }
@@ -47,7 +49,7 @@ export function Register() {
         </div>
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/40 bg-primary/10 text-primary text-[10px] font-semibold mb-6">
-          Free forever · No credit card · No spam
+          {t('auth.registerBadge')}
         </div>
 
         <div className="space-y-4">
@@ -55,7 +57,7 @@ export function Register() {
             <input type="email" placeholder=" " value={email} onChange={(e) => setEmail(e.target.value)}
               className="sd-input px-4 py-3 text-sm peer" />
             <label className="absolute left-4 top-3 text-sm text-on-surface-variant transition-all pointer-events-none origin-left peer-focus:translate-y-[-1.5rem] peer-focus:scale-[0.85] peer-focus:text-primary peer-[:not(:placeholder-shown)]:translate-y-[-1.5rem] peer-[:not(:placeholder-shown)]:scale-[0.85]">
-              Email
+              {t('auth.email')}
             </label>
           </div>
 
@@ -64,7 +66,7 @@ export function Register() {
               <input type={showPw ? 'text' : 'password'} placeholder=" " value={password} onChange={(e) => setPassword(e.target.value)}
                 className="sd-input px-4 py-3 pr-12 text-sm peer" />
               <label className="absolute left-4 top-3 text-sm text-on-surface-variant transition-all pointer-events-none origin-left peer-focus:translate-y-[-1.5rem] peer-focus:scale-[0.85] peer-focus:text-primary peer-[:not(:placeholder-shown)]:translate-y-[-1.5rem] peer-[:not(:placeholder-shown)]:scale-[0.85]">
-                Password
+                {t('auth.password')}
               </label>
               <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-3 text-on-surface-variant hover:text-on-surface">
                 <span className="material-symbols-outlined text-[20px]">{showPw ? 'visibility_off' : 'visibility'}</span>
@@ -83,7 +85,7 @@ export function Register() {
             <input type="password" placeholder=" " value={confirm} onChange={(e) => setConfirm(e.target.value)}
               className="sd-input px-4 py-3 text-sm peer" />
             <label className="absolute left-4 top-3 text-sm text-on-surface-variant transition-all pointer-events-none origin-left peer-focus:translate-y-[-1.5rem] peer-focus:scale-[0.85] peer-focus:text-primary peer-[:not(:placeholder-shown)]:translate-y-[-1.5rem] peer-[:not(:placeholder-shown)]:scale-[0.85]">
-              Confirm password
+                {t('auth.confirmPassword')}
             </label>
           </div>
 
@@ -92,22 +94,21 @@ export function Register() {
             disabled={loading}
             className="sd-button-primary w-full px-5 py-3 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creating…' : 'Create account'}
+            {loading ? t('auth.creatingAccount') : t('auth.createAccount')}
           </button>
         </div>
 
         <div className="mt-6 p-4 rounded-xl border border-outline-variant/30 bg-surface-variant/20">
-          <p className="text-xs font-semibold text-on-surface mb-1">Want more?</p>
+          <p className="text-xs font-semibold text-on-surface mb-1">{t('auth.supportEyebrow')}</p>
           <p className="text-xs text-on-surface-variant leading-relaxed">
-            The support plan unlocks multimedia tools (audio extraction, transcription, subtitles)
-            and helps keep SuperDoc running. No recurring commitment required.
+            {t('auth.supportBody')}
           </p>
-          <a
-            href="/support"
+          <Link
+            to="/support"
             className="mt-3 inline-block text-xs font-semibold text-primary no-underline hover:underline"
           >
-            Learn about the support plan →
-          </a>
+            {t('auth.supportLink')} →
+          </Link>
         </div>
 
         {err && (
@@ -118,7 +119,7 @@ export function Register() {
         )}
 
         <p className="mt-6 text-center text-xs text-on-surface-variant">
-          Already have an account? <Link to="/auth/login" className="text-primary font-semibold no-underline hover:underline">Sign in</Link>
+          {t('auth.alreadyHaveAccount')} <Link to="/auth/login" className="text-primary font-semibold no-underline hover:underline">{t('auth.signIn')}</Link>
         </p>
 
         <p className="mt-4 text-[10px] text-center text-outline">

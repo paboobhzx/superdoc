@@ -49,6 +49,13 @@ def _import_operations():
     return importlib.import_module("operations")
 
 
+def _import_operation_validation():
+    _setup_sys_path()
+    sys.modules.pop("operation_validation", None)
+    sys.modules.pop("operation_constants", None)
+    return importlib.import_module("operation_validation")
+
+
 
 class OperationsSchemaTests(unittest.TestCase):
     def setUp(self):
@@ -81,6 +88,26 @@ class OperationsSchemaTests(unittest.TestCase):
     def test_list_operations_exposes_high_fidelity_in_params_schema(self):
         result = {item["operation"]: item for item in self.ops.list_operations("docx")}
         self.assertIn("high_fidelity", result["docx_to_pdf"]["params_schema"])
+
+
+class ParamsValidationTests(unittest.TestCase):
+    def setUp(self):
+        self.validation = _import_operation_validation()
+
+    def test_accepts_boolean_high_fidelity_false(self):
+        result = self.validation.validate_params("docx_to_pdf", {"high_fidelity": False})
+        self.assertTrue(result.ok)
+        self.assertEqual(result.params, {"high_fidelity": False})
+
+    def test_accepts_string_high_fidelity_false(self):
+        result = self.validation.validate_params("pdf_to_docx", {"high_fidelity": "false"})
+        self.assertTrue(result.ok)
+        self.assertEqual(result.params, {"high_fidelity": False})
+
+    def test_rejects_invalid_high_fidelity_value(self):
+        result = self.validation.validate_params("xlsx_to_pdf", {"high_fidelity": "maybe"})
+        self.assertFalse(result.ok)
+        self.assertIn("high_fidelity must be a boolean", result.error)
 
 
 def _make_dispatch_module(invocations: list) -> types.ModuleType:

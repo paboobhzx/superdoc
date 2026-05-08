@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useI18n } from "../context/I18nContext"
 import { api } from "../lib/api"
+import { interactiveSchemaFor, hasUnsupportedBatchParams, needsInteractiveParams } from "../lib/operationParams"
+import { saveRecentFile } from "../lib/recentFiles"
 import { getSessionId } from "../lib/session"
 import { formatFileSize } from "../pages/Home/useConversionFlow"
+import { ParamsPanel } from "./ParamsPanel"
 
 const TERMINAL = new Set(["DONE", "FAILED"])
 const POLL_MS = 2000
@@ -33,11 +36,13 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
   const [items, setItems] = useState([])
   const [running, setRunning] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [pendingOp, setPendingOp] = useState(null)
   const maxItems = auth?.isAuthenticated ? 10 : 3
 
   useEffect(() => {
     setSelected(null)
     setRunning(false)
+    setPendingOp(null)
     setItems(files.map((file, index) => ({
       localId: localId(file, index),
       file,
@@ -50,7 +55,11 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
   }, [files, maxItems, t])
 
   const choices = useMemo(() => {
-    return gridChoices.filter((choice) => choice.enabled && choice.opMeta?.kind !== "client_editor")
+    return gridChoices.filter((choice) => (
+      choice.enabled &&
+      choice.opMeta?.kind !== "client_editor" &&
+      !hasUnsupportedBatchParams(choice.opMeta)
+    ))
   }, [gridChoices])
 
   function updateItem(localItemId, patch) {
@@ -62,6 +71,7 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
     setSelected(opMeta)
     setRunning(true)
     const sessionId = getSessionId()
+    const pendingPolls = []
 
     for (const item of items) {
       if (item.status === "failed" || item.status === "done") continue
@@ -83,20 +93,37 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
         await api.uploadToS3(data.upload || data.upload_url, item.file)
         updateItem(item.localId, { status: "processing" })
         await api.triggerProcess(data.job_id)
-
-        const job = await waitForJob(data.job_id, sessionId)
-        if (job.status === "DONE") {
-          updateItem(item.localId, {
-            status: "done",
-            downloadUrl: job.download_url,
-            error: null,
-          })
-          continue
-        }
-        updateItem(item.localId, {
-          status: "failed",
-          error: job.error || t("batch.errors.failed"),
-        })
+        pendingPolls.push(
+          waitForJob(data.job_id, sessionId)
+            .then((job) => {
+              if (job.status === "DONE") {
+                updateItem(item.localId, {
+                  status: "done",
+                  downloadUrl: job.download_url,
+                  error: null,
+                })
+                saveRecentFile({
+                  jobId: data.job_id,
+                  fileName: item.file.name,
+                  downloadUrl: job.download_url,
+                  operation: opMeta.operation,
+                  convertedAt: new Date().toISOString(),
+                  expiresAt: job.expires_at,
+                })
+                return
+              }
+              updateItem(item.localId, {
+                status: "failed",
+                error: job.error || t("batch.errors.failed"),
+              })
+            })
+            .catch((e) => {
+              updateItem(item.localId, {
+                status: "failed",
+                error: e.message || t("batch.errors.failed"),
+              })
+            })
+        )
       } catch (e) {
         updateItem(item.localId, {
           status: "failed",
@@ -105,7 +132,24 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
       }
     }
 
+    await Promise.allSettled(pendingPolls)
     setRunning(false)
+  }
+
+  function handleChoice(opMeta) {
+    if (running) return
+    if (needsInteractiveParams(opMeta)) {
+      setPendingOp(opMeta)
+      return
+    }
+    runBatch(opMeta)
+  }
+
+  function confirmParams(extraParams) {
+    if (!pendingOp) return
+    const merged = { ...pendingOp, params: { ...(pendingOp.params || {}), ...extraParams } }
+    setPendingOp(null)
+    runBatch(merged)
   }
 
   return (
@@ -141,7 +185,7 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
                 key={choice.target}
                 type="button"
                 disabled={running}
-                onClick={() => runBatch(choice.opMeta)}
+                onClick={() => handleChoice(choice.opMeta)}
                 className={`min-h-[74px] rounded-[var(--radius-md)] border p-3 text-left transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${
                   active ? "border-primary bg-primary/15 text-primary ring-2 ring-primary/20" : "border-outline-variant bg-surface-container-low text-on-surface hover:border-primary/70 hover:bg-primary/10"
                 }`}
@@ -156,6 +200,16 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
           })}
         </div>
       </div>
+
+      {pendingOp ? (
+        <div className="mb-7 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-low p-4">
+          <ParamsPanel
+            opMeta={{ ...pendingOp, params_schema: interactiveSchemaFor(pendingOp) }}
+            onConfirm={confirmParams}
+            onCancel={() => setPendingOp(null)}
+          />
+        </div>
+      ) : null}
 
       <ul className="divide-y divide-outline-variant/10 overflow-hidden rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest">
         {items.map((item) => (

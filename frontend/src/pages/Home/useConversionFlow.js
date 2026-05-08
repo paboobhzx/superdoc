@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
 import { useI18n } from "../../context/I18nContext"
 import { api } from "../../lib/api"
+import { needsInteractiveParams } from "../../lib/operationParams"
 import { getSessionId } from "../../lib/session"
 import { dispatchPick } from "./pickerRouting"
 import { buildTargetGridChoices, findClientEditorOperation } from "./targetGrid"
@@ -144,8 +145,7 @@ export function useConversionFlow() {
 
   const handlePick = useCallback((opMeta) => {
     if (!pendingFile || !opMeta || uploading) return
-    const schema = opMeta?.params_schema || {}
-    if (schema.paper_size || schema.high_fidelity) {
+    if (needsInteractiveParams(opMeta)) {
       setErr(null)
       setPendingOp(opMeta)
       return

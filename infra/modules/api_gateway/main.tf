@@ -63,7 +63,7 @@ resource "aws_api_gateway_gateway_response" "throttle" {
   }
 
   response_templates = {
-    "application/json" = "{\"error\":\"Too many requests. Register for higher limits.\",\"register_url\":\"https://superdoc.pablobhz.cloud/register\"}"
+    "application/json" = "{\"error\":\"Too many requests. Register for higher limits.\",\"register_url\":\"https://superdoc.pablobhz.cloud/auth/register\"}"
   }
 }
 
