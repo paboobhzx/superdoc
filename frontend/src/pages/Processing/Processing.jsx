@@ -203,7 +203,7 @@ export function Processing() {
             {isDone && job.download_url ? (
               <>
                 <a href={job.download_url} download
-                  className="group relative w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-primary text-on-primary font-extrabold text-base shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                  className="group relative w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-emerald-500 text-white font-extrabold text-base shadow-lg shadow-emerald-500/30 transition-all hover:bg-emerald-400 hover:shadow-xl hover:shadow-emerald-400/40 hover:-translate-y-0.5 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
                   <span aria-hidden="true" className="material-symbols-outlined text-[22px] transition-transform group-hover:translate-y-1">download</span>
                   {t("common.downloadFile")}
                 </a>

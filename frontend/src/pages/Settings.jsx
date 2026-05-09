@@ -1,14 +1,57 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useI18n } from '../context/I18nContext'
+import { useAuth } from '../context/AuthContext'
+import { api } from '../lib/api'
 
 export function Settings() {
   const { theme, setTheme, themes } = useTheme()
   const { locale, setLocale, locales, t } = useI18n()
+  const auth = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [emailNotif, setEmailNotif] = useState(true)
   const [quotaNotif, setQuotaNotif] = useState(true)
+  const [savingNotif, setSavingNotif] = useState(false)
+
+  // Seed appearance from persisted settings on first load
+  useEffect(() => {
+    if (!auth?.settings) return
+    const s = auth.settings
+    if (s.theme) setTheme(s.theme)
+    if (s.locale) setLocale(s.locale)
+    if (s.notifications) {
+      setEmailNotif(s.notifications.email_ready ?? true)
+      setQuotaNotif(s.notifications.quota_alerts ?? true)
+    }
+  }, [auth?.settings]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleThemeChange(e) {
+    const next = e.target.value
+    setTheme(next)
+    if (auth?.isAuthenticated) {
+      try { await api.updateUserSettings({ theme: next }) } catch { /* toast handled */ }
+    }
+  }
+
+  async function handleLocaleChange(e) {
+    const next = e.target.value
+    setLocale(next)
+    if (auth?.isAuthenticated) {
+      try { await api.updateUserSettings({ locale: next }) } catch { /* toast handled */ }
+    }
+  }
+
+  async function saveNotifications() {
+    if (!auth?.isAuthenticated) return
+    setSavingNotif(true)
+    try {
+      await api.updateUserSettings({ notifications: { email_ready: emailNotif, quota_alerts: quotaNotif } })
+      auth.setSettings((prev) => ({ ...prev, notifications: { email_ready: emailNotif, quota_alerts: quotaNotif } }))
+    } catch { /* toast handled */ } finally {
+      setSavingNotif(false)
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 md:py-10">
@@ -76,9 +119,18 @@ export function Settings() {
             </label>
           ))}
         </div>
+        {auth?.isAuthenticated && (
+          <button
+            onClick={saveNotifications}
+            disabled={savingNotif}
+            className="mt-4 sd-button-primary px-5 py-2.5 text-sm disabled:opacity-60"
+          >
+            {savingNotif ? t('common.saving') : t('settings.saveChanges')}
+          </button>
+        )}
       </section>
 
-      {/* Theme */}
+      {/* Appearance */}
       <section className="sd-panel p-6 mb-6">
         <h2 className="font-bold text-on-surface mb-4 flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px]">contrast</span>
@@ -87,11 +139,7 @@ export function Settings() {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-outline">{t('settings.theme')}</span>
-            <select
-              value={theme}
-              onChange={(e) => setTheme(e.target.value)}
-              className="sd-input px-4 py-3 text-sm"
-            >
+            <select value={theme} onChange={handleThemeChange} className="sd-input px-4 py-3 text-sm">
               {themes.map((item) => (
                 <option key={item.id} value={item.id}>{t(`theme.${item.id}`)}</option>
               ))}
@@ -99,11 +147,7 @@ export function Settings() {
           </label>
           <label className="block">
             <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-outline">{t('settings.language')}</span>
-            <select
-              value={locale}
-              onChange={(e) => setLocale(e.target.value)}
-              className="sd-input px-4 py-3 text-sm"
-            >
+            <select value={locale} onChange={handleLocaleChange} className="sd-input px-4 py-3 text-sm">
               {locales.map((item) => (
                 <option key={item.id} value={item.id}>{item.label}</option>
               ))}

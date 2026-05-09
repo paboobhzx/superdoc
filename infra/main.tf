@@ -95,9 +95,21 @@ module "api_gateway" {
       invoke_arn    = module.lambda_stripe_create_checkout.invoke_arn
       function_name = module.lambda_stripe_create_checkout.function_name
     }
+    billing_create_checkout = {
+      invoke_arn    = module.lambda_billing_create_checkout.invoke_arn
+      function_name = module.lambda_billing_create_checkout.function_name
+    }
     stripe_webhook = {
       invoke_arn    = module.lambda_stripe_webhook.invoke_arn
       function_name = module.lambda_stripe_webhook.function_name
+    }
+    user_credits = {
+      invoke_arn    = module.lambda_user_credits.invoke_arn
+      function_name = module.lambda_user_credits.function_name
+    }
+    user_settings = {
+      invoke_arn    = module.lambda_user_settings.invoke_arn
+      function_name = module.lambda_user_settings.function_name
     }
     presign_download = {
       invoke_arn    = module.lambda_presign_download.invoke_arn
@@ -217,13 +229,22 @@ locals {
     COGNITO_CLIENT_ID   = module.cognito.client_id
     # Prod keeps logs at WARNING to cut CloudWatch noise and spend. Non-prod
     # stays verbose so staging/debug sessions do not require redeploys.
-    LOG_LEVEL                   = var.environment == "prod" ? "WARNING" : "DEBUG"
-    ANON_DAILY_CONVERSION_LIMIT = "3"
-    USER_DAILY_CONVERSION_LIMIT = "10"
-    ANON_PDF_PAGE_LIMIT         = "100"
-    USER_PDF_PAGE_LIMIT         = "300"
-    TTL_SECONDS                 = "43200"
-    USER_TTL_SECONDS            = "64800"
+    LOG_LEVEL                              = var.environment == "prod" ? "WARNING" : "DEBUG"
+    ANON_DAILY_CONVERSION_LIMIT            = "3"
+    USER_DAILY_CONVERSION_LIMIT            = "10"
+    ANON_PDF_PAGE_LIMIT                    = "100"
+    USER_PDF_PAGE_LIMIT                    = "300"
+    TTL_SECONDS                            = "43200"
+    USER_TTL_SECONDS                       = "64800"
+    PAYMENTS_TABLE_NAME                    = aws_dynamodb_table.payments.name
+    CREDITS_LEDGER_TABLE                   = aws_dynamodb_table.credits_ledger.name
+    CREDITS_BALANCES_TABLE                 = aws_dynamodb_table.credits_balances.name
+    CREDITS_TIER_200                       = "2"
+    CREDITS_TIER_500                       = "5"
+    CREDITS_TIER_1000                      = "10"
+    CREDITS_TIER_5000                      = "50"
+    REGISTERED_FREE_MULTIMEDIA_DAILY_LIMIT = "1"
+    USER_SETTINGS_TABLE                    = aws_dynamodb_table.user_settings.name
   }
 
   lambda_layer_arns = [
@@ -253,6 +274,11 @@ locals {
     "${module.dynamodb.incidents_arn}/index/*",
     module.dynamodb.rate_limits_arn,
     module.dynamodb.auth_sessions_arn,
+    aws_dynamodb_table.payments.arn,
+    aws_dynamodb_table.credits_ledger.arn,
+    "${aws_dynamodb_table.credits_ledger.arn}/index/*",
+    aws_dynamodb_table.credits_balances.arn,
+    aws_dynamodb_table.user_settings.arn,
   ]
 }
 
@@ -1086,6 +1112,40 @@ module "lambda_user_complete_file" {
   layer_arns            = local.lambda_layer_arns
 }
 
+module "lambda_user_credits" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "user-credits"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 128
+  timeout               = 10
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/user_credits.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_billing_create_checkout" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "billing-create-checkout"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 128
+  timeout               = 10
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/billing_create_checkout.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
 module "lambda_admin_flags" {
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
@@ -1141,6 +1201,49 @@ resource "aws_dynamodb_table" "payments" {
   tags = local.common_tags
 }
 
+resource "aws_dynamodb_table" "credits_ledger" {
+  name         = "${local.name_prefix}-credits-ledger"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "event_id"
+
+  attribute {
+    name = "event_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "created_at"
+    type = "N"
+  }
+
+  global_secondary_index {
+    name            = "user-created-at-index"
+    hash_key        = "user_id"
+    range_key       = "created_at"
+    projection_type = "ALL"
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_dynamodb_table" "credits_balances" {
+  name         = "${local.name_prefix}-credits-balances"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  tags = local.common_tags
+}
+
 # ── Stripe SSM parameters (placeholders, added by round 3a-2) ───────────────
 # Replace values in the AWS Systems Manager console when ready to go live.
 # The "lifecycle.ignore_changes" on value keeps Terraform from trying to
@@ -1179,4 +1282,46 @@ resource "aws_ssm_parameter" "stripe_price_id_conversion" {
   lifecycle {
     ignore_changes = [value]
   }
+}
+
+resource "aws_ssm_parameter" "stripe_price_id_credits" {
+  name        = "/superdoc/stripe/price_id_credits"
+  description = "Stripe price id for credits pack checkout (price_...)"
+  type        = "String"
+  value       = "REPLACE_ME_STRIPE_CREDITS_PRICE_ID"
+  tags        = local.common_tags
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+# ── User settings table ──────────────────────────────────────────────────────
+resource "aws_dynamodb_table" "user_settings" {
+  name         = "${local.name_prefix}-user-settings"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
+  tags         = local.common_tags
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+}
+
+module "lambda_user_settings" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "user-settings"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 128
+  timeout               = 10
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/user_settings.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.common_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
 }

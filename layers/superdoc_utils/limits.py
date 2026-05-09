@@ -13,6 +13,7 @@ _ANON_PDF_PAGE_LIMIT = int(os.environ.get("ANON_PDF_PAGE_LIMIT", "100"))
 _USER_PDF_PAGE_LIMIT = int(os.environ.get("USER_PDF_PAGE_LIMIT", "300"))
 _ANON_STORAGE_TTL_SECONDS = int(os.environ.get("TTL_SECONDS", "43200"))
 _USER_STORAGE_TTL_SECONDS = int(os.environ.get("USER_TTL_SECONDS", "64800"))
+_REGISTERED_FREE_MULTIMEDIA_DAILY_LIMIT = int(os.environ.get("REGISTERED_FREE_MULTIMEDIA_DAILY_LIMIT", "1"))
 
 
 def tier_for_user_id(user_id: str | None) -> str:
@@ -53,6 +54,17 @@ def record_daily_conversion(*, tier: str, identity: str, now: int | None = None)
     key = quota_key(tier=tier, identity=identity, now=now)
     count = dynamo.rate_limit_increment(key, quota_ttl_seconds(now))
     return count <= daily_conversion_limit(tier)
+
+
+def multimedia_quota_key(*, user_id: str, now: int | None = None) -> str:
+    return f"quota#multimedia#registered#{user_id}#{quota_day_bucket(now)}"
+
+
+def multimedia_free_remaining(user_id: str, now: int | None = None) -> int:
+    if not user_id:
+        return 0
+    used = dynamo.rate_limit_count(multimedia_quota_key(user_id=user_id, now=now))
+    return max(_REGISTERED_FREE_MULTIMEDIA_DAILY_LIMIT - used, 0)
 
 
 def page_limit_for_user(user_id: str | None) -> int:

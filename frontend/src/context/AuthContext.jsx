@@ -45,16 +45,25 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [email, setEmail] = useState(() => readEmail());
+  const [settings, setSettings] = useState(null);
   const configured = isConfigured();
 
   useEffect(() => {
     let cancelled = false;
     api
       .me()
-      .then((data) => {
+      .then(async (data) => {
         if (cancelled) return;
         setUser(data.user || null);
         if (data.user?.email) setEmail(data.user.email);
+        if (data.user) {
+          try {
+            const s = await api.getUserSettings();
+            if (!cancelled) setSettings(s);
+          } catch {
+            // settings unavailable — local defaults apply
+          }
+        }
       })
       .catch(() => {
         if (!cancelled) setUser(null);
@@ -138,13 +147,15 @@ export function AuthProvider({ children }) {
       user,
       email,
       isAuthenticated: Boolean(user),
+      settings,
+      setSettings,
       signIn,
       signUp,
       confirmEmail,
       resendConfirmation,
       signOut,
     };
-  }, [authChecked, configured, email, user]);
+  }, [authChecked, configured, email, settings, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

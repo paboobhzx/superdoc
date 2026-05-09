@@ -18,6 +18,10 @@ const CONVERSIONS_DIR = path.join(REPO_ROOT, "conversions")
 const TEST_RESULT_PATH = path.join(REPO_ROOT, "test-result.md")
 const CASE_TIMEOUT_MS = 3 * 60 * 1000
 const MATRIX_START_MS = Date.now()
+const LOCAL_MOCK_UPLOAD_URL = "https://uploads.example.com"
+const LOCAL_MOCK_DOWNLOADS = new Map()
+const LOCAL_MOCK_STATUS_CALLS = new Map()
+const LOCAL_MOCK_JOBS = new Map()
 
 function matrixLog(phase, outcome, item, extra = {}) {
   if (outcome === "attempted") return
@@ -164,6 +168,184 @@ function createDeadline(timeoutMs) {
       }
     },
   }
+}
+
+function localMockOperations() {
+  return [
+    { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", input_types: ["pdf"], targets: ["docx"] },
+    { operation: "pdf_to_xls", kind: "backend_job", intent: "convert", input_types: ["pdf"], output_type: "xlsx" },
+    { operation: "pdf_to_txt", kind: "backend_job", intent: "convert", input_types: ["pdf"], output_type: "txt" },
+    { operation: "docx_to_pdf", kind: "backend_job", intent: "convert", input_types: ["docx"], output_type: "pdf" },
+    { operation: "docx_to_txt", kind: "backend_job", intent: "convert", input_types: ["docx"], output_type: "txt" },
+    { operation: "xlsx_to_pdf", kind: "backend_job", intent: "convert", input_types: ["xlsx", "xls"], output_type: "pdf" },
+    { operation: "xlsx_to_csv", kind: "backend_job", intent: "convert", input_types: ["xlsx", "xls"], output_type: "csv" },
+    {
+      operation: "markdown_convert",
+      kind: "backend_job",
+      intent: "convert",
+      input_types: ["md", "markdown", "txt"],
+      params_schema: { target_format: { required: true, enum: ["html", "pdf", "docx", "txt"] } },
+    },
+    {
+      operation: "html_convert",
+      kind: "backend_job",
+      intent: "convert",
+      input_types: ["html", "htm"],
+      params_schema: { target_format: { required: true, enum: ["pdf", "docx", "txt", "md"] } },
+    },
+    { operation: "image_to_pdf", kind: "backend_job", intent: "convert", input_types: ["png", "jpg", "jpeg", "webp", "gif", "tiff"], output_type: "pdf" },
+    {
+      operation: "image_convert",
+      kind: "backend_job",
+      intent: "convert",
+      input_types: ["png", "jpg", "jpeg", "webp", "gif", "tiff"],
+      params_schema: { target_format: { required: true, enum: ["png", "jpg", "webp", "gif"] } },
+    },
+  ]
+}
+
+function localMockArtifactBuffer(target) {
+  const normalized = lower(target)
+  if (normalized === "pdf") return fs.readFileSync(samplePath("multi-page.pdf"))
+  if (normalized === "docx") return fs.readFileSync(samplePath("sample.docx"))
+  if (normalized === "xlsx") return fs.readFileSync(samplePath("sample.xlsx"))
+  if (normalized === "png") return fs.readFileSync(samplePath("sample.png"))
+  if (normalized === "jpg" || normalized === "jpeg") return Buffer.from([0xff, 0xd8, 0xff, 0xd9])
+  if (normalized === "webp") return Buffer.concat([Buffer.from("RIFF"), Buffer.from([0x04, 0x00, 0x00, 0x00]), Buffer.from("WEBP")])
+  if (normalized === "gif") return Buffer.from("GIF89a", "utf-8")
+  if (normalized === "tiff") return Buffer.from([0x49, 0x49, 0x2a, 0x00])
+  if (normalized === "csv") return Buffer.from("name,value\nconverted,1\n", "utf-8")
+  if (normalized === "txt") return Buffer.from("Converted document output\n", "utf-8")
+  if (normalized === "md") return Buffer.from("# Converted output\n", "utf-8")
+  if (normalized === "html") return Buffer.from("<!doctype html><html><body><p>Converted output</p></body></html>", "utf-8")
+  throw new Error(`No local mock artifact for target ${target}`)
+}
+
+function localMockDownloadUrl(target) {
+  const buffer = localMockArtifactBuffer(target)
+  const href = `data:application/octet-stream;base64,${buffer.toString("base64")}`
+  LOCAL_MOCK_DOWNLOADS.set(href, buffer)
+  return href
+}
+
+function parseDataUrlBytes(url) {
+  const buffer = LOCAL_MOCK_DOWNLOADS.get(url)
+  if (buffer) {
+    return buffer
+  }
+  const match = String(url || "").match(/^data:.*?;base64,(.+)$/)
+  if (!match) {
+    throw new Error(`Unsupported local mock download URL: ${url}`)
+  }
+  return Buffer.from(match[1], "base64")
+}
+
+async function installLocalBrowserMocks(page) {
+  const operations = localMockOperations()
+  const byOperation = new Map(operations.map((op) => [op.operation, op]))
+  LOCAL_MOCK_DOWNLOADS.clear()
+  LOCAL_MOCK_STATUS_CALLS.clear()
+  LOCAL_MOCK_JOBS.clear()
+
+  await page.route("**/*", async (route) => {
+    const req = route.request()
+    const url = req.url()
+
+    if (url === `${API_BASE}/auth/me` && req.method() === "GET") {
+      await route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Unauthorized" }),
+      })
+      return
+    }
+
+    if (url === `${API_BASE}/operations` && req.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ operations, count: operations.length }),
+      })
+      return
+    }
+
+    if (url.startsWith(`${API_BASE}/operations?input_type=`) && req.method() === "GET") {
+      const inputType = lower(new URL(url).searchParams.get("input_type"))
+      const filtered = operations.filter((op) => (op.input_types || []).map(lower).includes(inputType))
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ operations: filtered, count: filtered.length }),
+      })
+      return
+    }
+
+    if (url === `${API_BASE}/jobs` && req.method() === "POST") {
+      const body = req.postDataJSON()
+      const op = byOperation.get(body.operation)
+      if (!op) {
+        await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: "Unknown operation" }) })
+        return
+      }
+      const target = lower(body?.params?.target_format || normalizeTargets(op)[0])
+      const jobId = randomUUID()
+      LOCAL_MOCK_JOBS.set(jobId, {
+        jobId,
+        operation: op.operation,
+        target,
+        fileName: body.file_name,
+        downloadUrl: localMockDownloadUrl(target),
+      })
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          job_id: jobId,
+          file_key: `uploads/${jobId}/${body.file_name}`,
+          upload: { url: LOCAL_MOCK_UPLOAD_URL, fields: { key: `uploads/${jobId}/${body.file_name}` } },
+        }),
+      })
+      return
+    }
+
+    if (url.match(new RegExp(`^${escapeRegex(API_BASE)}/jobs/[^/]+/process$`)) && req.method() === "POST") {
+      await route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, estimated_seconds: 1 }),
+      })
+      return
+    }
+
+    if (url.match(new RegExp(`^${escapeRegex(API_BASE)}/jobs/[^?]+(?:\\?.*)?$`)) && req.method() === "GET") {
+      const jobId = new URL(url).pathname.split("/").pop()
+      const job = LOCAL_MOCK_JOBS.get(jobId)
+      const calls = (LOCAL_MOCK_STATUS_CALLS.get(jobId) || 0) + 1
+      LOCAL_MOCK_STATUS_CALLS.set(jobId, calls)
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          job_id: jobId,
+          status: calls < 2 ? "QUEUED" : "DONE",
+          operation: job?.operation || "unknown",
+          file_name: job?.fileName || "output",
+          file_size_bytes: 1024,
+          estimated_seconds: 1,
+          actual_seconds: 1,
+          download_url: job?.downloadUrl,
+        }),
+      })
+      return
+    }
+
+    if (url.startsWith(LOCAL_MOCK_UPLOAD_URL) && req.method() === "POST") {
+      await route.fulfill({ status: 204, body: "" })
+      return
+    }
+
+    await route.fallback()
+  })
 }
 
 function caseArtifactPath(phase, item) {
@@ -493,6 +675,9 @@ async function validateBuffer(buffer, { inputType, operation, target, sourceToke
 }
 
 function assertRequiredCatalogCoverage(operations, catalog) {
+  if (!LIVE_MODE) {
+    return
+  }
   const operationIds = new Set(operations.map((op) => op?.operation))
   for (const op of ["pdf_to_docx", "pdf_to_xls"]) {
     if (!operationIds.has(op)) {
@@ -587,10 +772,16 @@ async function runBrowserCase({ inputType, sample, choice, page, request, testIn
     if (!href) {
       throw new Error(`Download link missing for ${caseIdFor(item)}`)
     }
-    const downloadUrl = href.startsWith("http") ? href : new URL(href, UI_BASE).toString()
-    const response = await request.get(downloadUrl, { timeout: deadline.remainingMs() })
-    expect(response.ok(), `Download HTTP status for ${caseIdFor(item)}: ${response.status()}`).toBeTruthy()
-    const buffer = await response.body()
+    const downloadUrl = href.startsWith("data:")
+      ? href
+      : (href.startsWith("http") ? href : new URL(href, UI_BASE).toString())
+    const buffer = href.startsWith("data:")
+      ? parseDataUrlBytes(href)
+      : await (async () => {
+          const response = await request.get(downloadUrl, { timeout: deadline.remainingMs() })
+          expect(response.ok(), `Download HTTP status for ${caseIdFor(item)}: ${response.status()}`).toBeTruthy()
+          return await response.body()
+        })()
     const { artifactPath } = persistArtifact({ phase, item, buffer })
     await validateBuffer(buffer, {
       inputType,
@@ -734,6 +925,9 @@ async function uploadViaCurl(upload, filePath, timeoutMs = 60_000) {
 }
 
 async function fetchCatalog() {
+  if (!LIVE_MODE) {
+    return localMockOperations()
+  }
   const { json } = await curlJson("GET", `${API_BASE}/operations`)
   return json?.operations || []
 }
@@ -789,6 +983,12 @@ async function createAndProcessJob({ inputType, sample, operation, target, param
 
 async function runApiPhase(cases, report, previousPassed) {
   const phase = "api"
+  if (!LIVE_MODE) {
+    for (const item of cases) {
+      recordOutcome(report, phase, "skipped", item, { reason: "live-only backend matrix" })
+    }
+    return
+  }
   for (const item of cases) {
     const caseKey = `${phase}:${caseIdFor(item)}`
     if (previousPassed.has(caseKey)) {
@@ -817,6 +1017,9 @@ async function runApiPhase(cases, report, previousPassed) {
 
 async function runBrowserPhase(catalog, page, request, testInfo, report, previousPassed) {
   const phase = "browser"
+  if (!LIVE_MODE) {
+    await installLocalBrowserMocks(page)
+  }
 
   for (const inputType of catalog.inputTypes) {
     const sample = fixtureFor(inputType)

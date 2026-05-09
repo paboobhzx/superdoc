@@ -2,18 +2,15 @@
 #
 # Receives events from Stripe. We ONLY care about checkout.session.completed.
 # When one fires, we:
-#   1. Verify the signature using webhook_secret (Stripe requires this).
-#   2. Extract client_reference_id (our payment_id).
-#   3. Mark the payment as PAID in DynamoDB.
-#   4. Push the job to SQS so workers process it.
+#   1. Verify the signature using webhook_secret.
+#   2. Route credits purchases into the credits ledger/balance tables.
+#   3. Preserve the older per-conversion checkout path for any legacy flows.
 #
 # Signature verification is CRITICAL: without it, anyone who knows the
 # endpoint URL could claim a payment happened. stripe.Webhook.construct_event
 # raises on any mismatch (timestamp too old, bad signature, malformed body).
 
-import json as _json
 import os
-import time
 
 import dynamo
 import response
@@ -23,7 +20,6 @@ from logger import get_logger
 log = get_logger(__name__)
 
 _PAYMENTS_TABLE = os.environ.get("PAYMENTS_TABLE_NAME", "superdoc-dev-payments")
-_STRIPE_SECRET_PARAM = "/superdoc/stripe/secret_key"
 _WEBHOOK_SECRET_PARAM = "/superdoc/stripe/webhook_secret"
 
 
@@ -42,8 +38,46 @@ def _extract_signature(event):
     return ""
 
 
-def _process_completed_session(session):
+def _apply_credit_checkout(session, stripe_event_id: str):
+    metadata = session.get("metadata") or {}
+    user_id = metadata.get("user_id") or session.get("client_reference_id") or ""
+    if not user_id:
+        log.warning("credits checkout completed without user_id")
+        return
+    credits_delta = int(metadata.get("credits_delta") or 0)
+    if credits_delta <= 0:
+        log.warning("credits checkout completed without valid credits_delta")
+        return
+    applied = dynamo.apply_credit_event_once(
+        event_id=stripe_event_id,
+        user_id=user_id,
+        credits_delta=credits_delta,
+        event_type="purchase",
+        source="stripe",
+        checkout_session_id=session.get("id") or "",
+        stripe_event_id=stripe_event_id,
+        metadata={
+            "amount_total": session.get("amount_total"),
+            "currency": session.get("currency"),
+            "payment_status": session.get("payment_status"),
+        },
+    )
+    if applied:
+        log.info(
+            "Credits applied",
+            extra={"user_id": user_id, "credits_delta": credits_delta, "event_id": stripe_event_id},
+        )
+    else:
+        log.info("Duplicate credits webhook ignored", extra={"event_id": stripe_event_id, "user_id": user_id})
+
+
+def _process_completed_session(session, stripe_event_id: str):
     """Handle checkout.session.completed - the only event we act on."""
+    metadata = session.get("metadata") or {}
+    if metadata.get("checkout_type") == "credits":
+        _apply_credit_checkout(session, stripe_event_id)
+        return
+
     payment_id = session.get("client_reference_id")
     if not payment_id:
         log.warning("checkout.session.completed without client_reference_id")
@@ -114,7 +148,7 @@ def handler(event, context):
 
         if event_type == "checkout.session.completed":
             session = stripe_event["data"]["object"]
-            _process_completed_session(session)
+            _process_completed_session(session, stripe_event.get("id") or "")
         else:
             # Not an error - Stripe sends lots of events we don\'t subscribe
             # to. Log and ack so Stripe doesn\'t retry.

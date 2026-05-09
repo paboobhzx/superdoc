@@ -21,6 +21,15 @@ test.describe("Save to Files (registered)", () => {
       const req = route.request();
       const url = req.url();
 
+      if (url === `${apiBase}/auth/me` && req.method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ user: { id: "user-1", email: "test@example.com" } }),
+        });
+        return;
+      }
+
       if (url === `${apiBase}/users/me/files` && req.method() === "POST") {
         await route.fulfill({
           status: 200,
@@ -86,9 +95,9 @@ test.describe("Save to Files (registered)", () => {
       buffer: Buffer.from(pdfBytes),
     });
 
+    await expect(page.getByRole("button", { name: "Save to Files" })).toBeVisible();
     await page.getByRole("button", { name: "Save to Files" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByText(savedName)).toBeVisible();
   });
 });
-

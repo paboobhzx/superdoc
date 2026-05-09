@@ -72,7 +72,7 @@ const FRIENDLY_BY_STATUS = {
 }
 
 
-async function request(method, path, body = null) {
+async function request(method, path, body = null, { suppressStatuses = [] } = {}) {
   if (!API_URL) throw new Error("Backend not configured. Set VITE_API_URL.");
 
   const opts = {
@@ -87,17 +87,13 @@ async function request(method, path, body = null) {
   if (!parsed.ok) {
     const technical = parsed.data.error || `${method} ${path} -> HTTP ${parsed.status}`;
     const friendly = FRIENDLY_BY_STATUS[parsed.status] || technical;
-    // Fire a toast so every API consumer gets feedback without plumbing.
-    // Callers can still try/catch to suppress if they want custom handling.
-    try {
-      // Dynamic import keeps this file safe to load in environments without
-      // the DOM (tests, SSR in theory). If the toast module is unavailable,
-      // we swallow the failure — the thrown Error below is still the source
-      // of truth for callers.
-      const mod = await import("./toast");
-      mod.notify.error({ message: friendly, httpCode: parsed.status, technical });
-    } catch {
-      // Toast unavailable — fall through to throwing.
+    if (!suppressStatuses.includes(parsed.status)) {
+      try {
+        const mod = await import("./toast");
+        mod.notify.error({ message: friendly, httpCode: parsed.status, technical });
+      } catch {
+        // Toast unavailable — fall through to throwing.
+      }
     }
     const err = new Error(friendly);
     err.status = parsed.status;
@@ -115,7 +111,9 @@ function sessionQuery(path, sessionId) {
 
 export const api = {
   login: (payload) => request("POST", "/auth/login", payload),
-  me: () => request("GET", "/auth/me"),
+  me: () => request("GET", "/auth/me", null, { suppressStatuses: [401] }),
+  getUserSettings: () => request("GET", "/users/me/settings", null, { suppressStatuses: [401, 404] }),
+  updateUserSettings: (payload) => request("PUT", "/users/me/settings", payload),
   logout: () => request("POST", "/auth/logout"),
 
   // Create a job and get a presigned upload URL
@@ -177,6 +175,9 @@ export const api = {
   // { payment_id, job_id, checkout_url }. The frontend redirects the user
   // to checkout_url. Fails with 503 if Stripe isn't configured yet.
   createCheckout: (payload) => request("POST", "/checkout", payload),
+
+  createCreditsCheckout: (payload) => request("POST", "/billing/checkout/credits", payload),
+  getUserCredits: () => request("GET", "/users/me/credits"),
 
 
   // Fetch the catalog of supported operations. The optional input_type

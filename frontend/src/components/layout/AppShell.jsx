@@ -27,21 +27,19 @@ function LogoMark({ small = false }) {
 }
 
 function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, themes } = useTheme()
   const { t } = useI18n()
-  const next = theme === 'dark' ? 'azure' : 'dark'
-  const nextLabel = t(`theme.${next}`)
+  const idx = themes.findIndex((th) => th.id === theme)
+  const next = themes[(idx + 1) % themes.length]
   return (
     <button
       type="button"
-      onClick={() => setTheme(next)}
+      onClick={() => setTheme(next.id)}
       className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-outline-variant bg-surface-container-lowest text-on-surface-variant transition-colors hover:border-primary/60 hover:text-primary"
-      aria-label={t('theme.switchTo', { theme: nextLabel })}
-      title={t('theme.switchTo', { theme: nextLabel })}
+      aria-label={t('theme.switchTo', { theme: next.label })}
+      title={t('theme.switchTo', { theme: next.label })}
     >
-      <span className="material-symbols-outlined text-[18px]">
-        {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-      </span>
+      <span className="material-symbols-outlined text-[18px]">palette</span>
     </button>
   )
 }

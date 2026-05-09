@@ -52,7 +52,7 @@ async function mockProcessingFlow(page, { jobId, fileName, operation }) {
       return;
     }
 
-    if (url === `${apiBase}/jobs/${jobId}` && req.method() === "GET") {
+    if (url.startsWith(`${apiBase}/jobs/${jobId}`) && req.method() === "GET") {
       const n = (statusCalls.get(jobId) || 0) + 1;
       statusCalls.set(jobId, n);
 
@@ -133,6 +133,10 @@ async function clickActionHeading(page, name) {
   await page.locator("button").filter({ has: page.locator("h3", { hasText: name }) }).click();
 }
 
+async function clickTarget(page, label) {
+  await page.getByRole("button", { name: new RegExp(`^${label}\\b`, "i") }).click();
+}
+
 test.describe("Upload flow (mocked API + S3)", () => {
   test("chooses Convert, creates a job, and reaches processing", async ({ page }) => {
     const jobId = "11111111-1111-1111-1111-111111111111";
@@ -145,8 +149,7 @@ test.describe("Upload flow (mocked API + S3)", () => {
       buffer: Buffer.from("%PDF-1.4\n%mock\n"),
     });
 
-    await clickActionHeading(page, "Convert");
-    await clickActionHeading(page, "PDF to Word (.docx)");
+    await clickTarget(page, "DOCX");
 
     await expect(page).toHaveURL(new RegExp(`/processing/${jobId}$`));
     await expect(page.getByRole("link", { name: "Download file" })).toBeVisible({
@@ -154,7 +157,7 @@ test.describe("Upload flow (mocked API + S3)", () => {
     });
   });
 
-  test("Edit PDF opens the PDF editor", async ({ page }) => {
+  test("PDF home flow keeps the edit shortcut unavailable", async ({ page }) => {
     await mockCatalogOnly(page, {
       pdf: [
         { operation: "pdf_edit", kind: "client_editor", intent: "edit", label: "Edit PDF", category: "edit", editor_route: "/editor/pdf" },
@@ -169,12 +172,10 @@ test.describe("Upload flow (mocked API + S3)", () => {
       buffer: Buffer.from("%PDF-1.4\n%mock\n"),
     });
 
-    await clickActionHeading(page, "Edit");
-    await clickActionHeading(page, "Edit PDF");
-    await expect(page).toHaveURL(/\/editor\/pdf\?key=/);
+    await expect(page.getByRole("button", { name: /Edit unavailable/i })).toBeDisabled();
   });
 
-  test("Edit image opens the image editor", async ({ page }) => {
+  test("image home flow keeps the edit shortcut unavailable", async ({ page }) => {
     await mockCatalogOnly(page, {
       png: [
         { operation: "image_edit", kind: "client_editor", intent: "edit", label: "Edit image", category: "edit", editor_route: "/editor/image" },
@@ -189,9 +190,7 @@ test.describe("Upload flow (mocked API + S3)", () => {
       buffer: Buffer.from("png"),
     });
 
-    await clickActionHeading(page, "Edit");
-    await clickActionHeading(page, "Edit image");
-    await expect(page).toHaveURL(/\/editor\/image\?key=/);
+    await expect(page.getByRole("button", { name: /Edit unavailable/i })).toBeDisabled();
   });
 
   test("Convert image to PDF creates a backend job", async ({ page }) => {
@@ -209,8 +208,7 @@ test.describe("Upload flow (mocked API + S3)", () => {
       buffer: Buffer.from("png"),
     });
 
-    await clickActionHeading(page, "Convert");
-    await clickActionHeading(page, "Image to PDF");
+    await clickTarget(page, "PDF");
     await expect(page).toHaveURL(/\/processing\/22222222-2222-2222-2222-222222222222$/);
   });
 
@@ -224,6 +222,6 @@ test.describe("Upload flow (mocked API + S3)", () => {
       buffer: Buffer.from("tiff"),
     });
 
-    await expect(page.getByText(/no actions available/i)).toBeVisible();
+    await expect(page.getByText(/Actions are temporarily unavailable/i)).toBeVisible();
   });
 });

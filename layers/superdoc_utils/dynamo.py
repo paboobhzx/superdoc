@@ -1,16 +1,22 @@
+import json
 import os
 import time
 from datetime import datetime, timezone
 
 import boto3
+from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 
 _dynamodb = boto3.resource("dynamodb")
+_ddb_client = boto3.client("dynamodb")
 
 JOBS_TABLE = os.environ.get("JOBS_TABLE", "superdoc-jobs")
 INCIDENTS_TABLE = os.environ.get("INCIDENTS_TABLE", "superdoc-incidents")
 RATE_LIMITS_TABLE = os.environ.get("RATE_LIMITS_TABLE", "superdoc-rate-limits")
 AUTH_SESSIONS_TABLE = os.environ.get("AUTH_SESSIONS_TABLE", "superdoc-auth-sessions")
+PAYMENTS_TABLE = os.environ.get("PAYMENTS_TABLE_NAME", "superdoc-dev-payments")
+CREDITS_LEDGER_TABLE = os.environ.get("CREDITS_LEDGER_TABLE", "superdoc-credits-ledger")
+CREDITS_BALANCES_TABLE = os.environ.get("CREDITS_BALANCES_TABLE", "superdoc-credits-balances")
 TTL_SECONDS = int(os.environ.get("TTL_SECONDS", "43200"))
 
 
@@ -28,6 +34,18 @@ def _rate_limits():
 
 def _auth_sessions():
     return _dynamodb.Table(AUTH_SESSIONS_TABLE)
+
+
+def _credits_ledger():
+    return _dynamodb.Table(CREDITS_LEDGER_TABLE)
+
+
+def _credits_balances():
+    return _dynamodb.Table(CREDITS_BALANCES_TABLE)
+
+
+def _client():
+    return _ddb_client
 
 
 def create_job(
@@ -184,6 +202,12 @@ def rate_limit_increment(key: str, ttl: int) -> int:
     return int(resp["Attributes"]["count"])
 
 
+def rate_limit_count(key: str) -> int:
+    resp = _rate_limits().get_item(Key={"key": key})
+    item = resp.get("Item") or {}
+    return int(item.get("count") or 0)
+
+
 def put_auth_session(
     session_id_hash: str,
     user_id: str,
@@ -210,6 +234,79 @@ def get_auth_session(session_id_hash: str) -> dict:
 
 def delete_auth_session(session_id_hash: str) -> None:
     _auth_sessions().delete_item(Key={"session_id_hash": session_id_hash})
+
+
+def get_credit_balance(user_id: str) -> dict:
+    resp = _credits_balances().get_item(Key={"user_id": user_id})
+    item = resp.get("Item") or {}
+    return {
+        "user_id": user_id,
+        "balance": int(item.get("balance") or 0),
+        "updated_at": int(item.get("updated_at") or 0),
+    }
+
+
+def list_credit_events(user_id: str, limit: int = 10) -> list:
+    resp = _credits_ledger().query(
+        IndexName="user-created-at-index",
+        KeyConditionExpression=Key("user_id").eq(user_id),
+        ScanIndexForward=False,
+        Limit=int(limit),
+    )
+    return resp.get("Items", [])
+
+
+def apply_credit_event_once(
+    *,
+    event_id: str,
+    user_id: str,
+    credits_delta: int,
+    event_type: str,
+    source: str,
+    checkout_session_id: str = "",
+    stripe_event_id: str = "",
+    metadata: dict | None = None,
+) -> bool:
+    now = int(time.time())
+    item = {
+        "event_id": {"S": event_id},
+        "user_id": {"S": user_id},
+        "created_at": {"N": str(now)},
+        "credits_delta": {"N": str(int(credits_delta))},
+        "event_type": {"S": event_type},
+        "source": {"S": source},
+        "checkout_session_id": {"S": checkout_session_id or ""},
+        "stripe_event_id": {"S": stripe_event_id or ""},
+        "metadata": {"S": json.dumps(metadata or {}, sort_keys=True)},
+    }
+    try:
+        _client().transact_write_items(
+            TransactItems=[
+                {
+                    "Put": {
+                        "TableName": CREDITS_LEDGER_TABLE,
+                        "Item": item,
+                        "ConditionExpression": "attribute_not_exists(event_id)",
+                    }
+                },
+                {
+                    "Update": {
+                        "TableName": CREDITS_BALANCES_TABLE,
+                        "Key": {"user_id": {"S": user_id}},
+                        "UpdateExpression": "ADD balance :delta SET updated_at = :now",
+                        "ExpressionAttributeValues": {
+                            ":delta": {"N": str(int(credits_delta))},
+                            ":now": {"N": str(now)},
+                        },
+                    }
+                },
+            ]
+        )
+        return True
+    except ClientError as exc:
+        if exc.response.get("Error", {}).get("Code") == "TransactionCanceledException":
+            return False
+        raise
 
 # ── Payments table helpers (added in round 3a-2) ────────────────────────────
 # The payments table is used for Stripe-backed conversions. Schema:
