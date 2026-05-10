@@ -14,6 +14,7 @@ import { PdfEditor } from "./pages/PdfEditor"
 import { DocxEditor } from "./pages/DocxEditor"
 import { MarkdownEditor } from "./pages/MarkdownEditor"
 import { XlsxEditor } from "./pages/XlsxEditor"
+import { VideoWizard } from "./pages/Video/VideoWizard"
 import "./index.css"
 import { AuthProvider } from "./context/AuthContext"
 
@@ -48,6 +49,7 @@ function AppRoutes() {
       <Route path="/editor/xlsx" element={<XlsxEditor />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/support" element={<Support />} />
+      <Route path="/video" element={<VideoWizard />} />
       <Route path="/processing/:jobId" element={<Processing />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/auth/login" element={<Login />} />

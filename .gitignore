@@ -59,7 +59,7 @@ round*.plan.log
 ut=fix.tfplan
 full_dump.sh
 conversion-matrix.sh
-instructions-general.md
+# instructions-general.md is now tracked in history/
 
 # Reference materials (not project code)
 Aux/

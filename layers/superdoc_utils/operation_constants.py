@@ -1,3 +1,8 @@
+VIDEO_INPUT_TYPES = ["mp4", "mov", "avi", "mkv", "webm", "m4v"]
+VIDEO_OUTPUT_FORMATS = ["mp4", "mov", "webm", "mkv", "avi"]
+TRANSCRIPT_SOURCE_LANGUAGES = ["auto", "en-US", "pt-BR", "es-ES", "fr-FR", "de-DE", "it-IT", "ja-JP", "zh-CN", "ko-KR"]
+TRANSLATE_TARGET_LANGUAGES = ["en", "pt", "es", "fr", "de", "it", "ja", "zh", "ko"]
+
 IMAGE_TYPES = ["png", "jpg", "jpeg", "webp", "gif", "tiff"]
 IMAGE_TARGETS = ["png", "jpg", "jpeg", "webp", "gif", "tiff"]
 MARKDOWN_TARGETS = ["pdf", "docx", "png", "jpg", "jpeg", "tiff", "md", "txt", "html"]

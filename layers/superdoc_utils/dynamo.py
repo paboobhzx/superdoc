@@ -110,6 +110,18 @@ def update_job(job_id: str, **kwargs) -> None:
     )
 
 
+def mark_done_multi(job_id: str, output_keys: dict) -> None:
+    """Mark a multi-output job DONE. output_keys is a dict of label → S3 key."""
+    completed_at = int(time.time())
+    job = get_job(job_id)
+    fields: dict = {"status": "DONE", "output_keys": output_keys, "completed_at": completed_at}
+    if job:
+        started_at = job.get("started_at")
+        if isinstance(started_at, (int, float)):
+            fields["actual_seconds"] = max(int(completed_at - started_at), 0)
+    update_job(job_id, **fields)
+
+
 def mark_done(job_id: str, output_key: str) -> None:
     completed_at = int(time.time())
     job = get_job(job_id)

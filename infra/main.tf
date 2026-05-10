@@ -880,7 +880,27 @@ module "lambda_video_process" {
   dynamodb_table_arns            = local.dynamodb_arns
   media_bucket_arn               = module.s3.bucket_arn
   layer_arns                     = local.lambda_layer_arns
-  reserved_concurrent_executions = 0
+  reserved_concurrent_executions = -1  # unlimited — was 0 (blocked)
+  extra_iam_statements = [
+    {
+      Effect = "Allow"
+      Action = [
+        "transcribe:StartTranscriptionJob",
+        "transcribe:GetTranscriptionJob",
+      ]
+      Resource = ["*"]
+    },
+    {
+      Effect = "Allow"
+      Action = ["translate:TranslateText"]
+      Resource = ["*"]
+    },
+    {
+      Effect   = "Allow"
+      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+      Resource = ["${module.s3.bucket_arn}/transcribe-tmp/*"]
+    },
+  ]
 }
 
 # ── SQS dispatcher ───────────────────────────────────────────────────────────

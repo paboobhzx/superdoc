@@ -10,21 +10,17 @@ from operation_constants import (
     MARKDOWN_TARGETS,
     OCR_DOCUMENT_TARGETS,
     PDF_IMAGE_TARGETS,
+    VIDEO_INPUT_TYPES,
+    VIDEO_OUTPUT_FORMATS,
 )
 from operation_validation import ValidationResult, validate_params
 
 
-# Canonical public capability catalog for the first SuperDoc flow:
-# upload -> choose Edit or Convert -> open a client editor or run a backend job.
-#
+# Canonical public capability catalog.
 # Operations intentionally not exposed here:
 # - PDF merge/split/rotate/compress/annotate backend edits
 # - PPT/PPTX -> PDF
-# - OCR, PPT/PPTX, video processing, paid jobs
-# - multi-file flows
-#
-# Those handlers/infrastructure can exist in the repo, but the public catalog
-# should only advertise routes the current UI can execute correctly.
+# - OCR, paid jobs, multi-file flows
 OPERATIONS: dict[str, dict] = {
     "pdf_edit": {
         "intent": "edit",
@@ -540,6 +536,19 @@ OPERATIONS: dict[str, dict] = {
         "category": "convert",
         "label": "Convert HTML",
         "lambda_suffix": "html-convert",
+    },
+    "video_process": {
+        "intent": "convert",
+        "kind": "backend_job",
+        "input_types": VIDEO_INPUT_TYPES,
+        "output_type": "multi",
+        "targets": VIDEO_OUTPUT_FORMATS,
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {},
+        "category": "video",
+        "label": "Process video",
+        "lambda_suffix": "video-process",
     },
 }
 

@@ -30,8 +30,15 @@ def handler(event, context):
         if _is_anonymous_job(job) and job.get("session_id") != _query_session(event):
             return response.error("Forbidden", 403)
 
-        if job.get("status") == "DONE" and job.get("output_key"):
-            job["download_url"] = s3.presign_download(job["output_key"])
+        if job.get("status") == "DONE":
+            if job.get("output_keys"):
+                job["download_urls"] = {
+                    k: s3.presign_download(v)
+                    for k, v in job["output_keys"].items()
+                    if v
+                }
+            elif job.get("output_key"):
+                job["download_url"] = s3.presign_download(job["output_key"])
 
         # Remove internal fields
         job.pop("expires_at", None)

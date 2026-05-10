@@ -26,6 +26,9 @@
     "unknown": "Unknown",
     "conversion": "Conversion",
     "back": "Back",
+    "next": "Next",
+    "submitting": "Submitting...",
+    "errorGeneric": "Something went wrong. Please try again.",
     "learnMore": "Learn more"
   },
   "paramsPanel": {
@@ -292,5 +295,50 @@
     "fileTooLarge100": "File too large. Max 100MB.",
     "fileTooLarge10": "File too large. Max 10MB.",
     "savedFilesNote": "Saved files are kept for 18 hours and expire automatically."
+  },
+  "video": {
+    "title": "Video tools",
+    "headline": "Process your video",
+    "stepUpload": "Upload",
+    "stepOperations": "Operations",
+    "stepAudio": "Audio & Transcript",
+    "stepReview": "Review",
+    "dropHere": "Drop your video here or click to browse",
+    "acceptedFormats": "MP4, MOV, AVI, MKV, WEBM, M4V",
+    "errorNotVideo": "Please select a supported video file.",
+    "opsHint": "Choose one or more operations to apply (optional — skip to pass through unchanged).",
+    "ops": {
+      "trim": "Trim",
+      "resize": "Resize",
+      "speed": "Change speed",
+      "format": "Convert format",
+      "frame": "Extract frame"
+    },
+    "trimStart": "Start (seconds)",
+    "trimEnd": "End (seconds)",
+    "trimEndHint": "leave blank for end",
+    "frameTimestamp": "Timestamp (seconds)",
+    "audioHint": "Extract audio, transcribe speech, or translate the transcript.",
+    "extractAudio": "Extract audio track",
+    "extractAudioHint": "Save the audio as a separate MP3 download.",
+    "transcribe": "Transcribe audio",
+    "transcribeHint": "Transcribe speech to text using Amazon Transcribe (SRT + plain text).",
+    "translate": "Translate transcript",
+    "burnSubs": "Burn subtitles into video",
+    "burnSubsHint": "Permanently embed the subtitles into the video.",
+    "sourceLang": "Source language",
+    "targetLang": "Target language",
+    "reviewFile": "File",
+    "reviewOps": "Operations",
+    "reviewNoOps": "No operations selected — video will be re-encoded as-is.",
+    "startProcessing": "Start processing",
+    "output": {
+      "video": "Processed video",
+      "video_burned": "Video with subtitles",
+      "audio": "Audio track (MP3)",
+      "transcript_srt": "Transcript (SRT)",
+      "transcript_txt": "Transcript (text)",
+      "translation_txt": "Translation (text)"
+    }
   }
 }

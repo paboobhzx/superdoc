@@ -26,6 +26,9 @@
     "unknown": "Desconhecido",
     "conversion": "Conversao",
     "back": "Voltar",
+    "next": "Próximo",
+    "submitting": "Enviando...",
+    "errorGeneric": "Algo deu errado. Tente novamente.",
     "learnMore": "Saiba mais"
   },
   "paramsPanel": {
@@ -292,5 +295,50 @@
     "fileTooLarge100": "Arquivo muito grande. Maximo de 100MB.",
     "fileTooLarge10": "Arquivo muito grande. Maximo de 10MB.",
     "savedFilesNote": "Arquivos salvos ficam por 18 horas e expiram automaticamente."
+  },
+  "video": {
+    "title": "Ferramentas de vídeo",
+    "headline": "Processar seu vídeo",
+    "stepUpload": "Upload",
+    "stepOperations": "Operações",
+    "stepAudio": "Áudio e Transcrição",
+    "stepReview": "Revisão",
+    "dropHere": "Solte seu vídeo aqui ou clique para navegar",
+    "acceptedFormats": "MP4, MOV, AVI, MKV, WEBM, M4V",
+    "errorNotVideo": "Por favor selecione um arquivo de vídeo suportado.",
+    "opsHint": "Escolha uma ou mais operações (opcional — pule para manter o vídeo original).",
+    "ops": {
+      "trim": "Cortar",
+      "resize": "Redimensionar",
+      "speed": "Alterar velocidade",
+      "format": "Converter formato",
+      "frame": "Extrair quadro"
+    },
+    "trimStart": "Início (segundos)",
+    "trimEnd": "Fim (segundos)",
+    "trimEndHint": "deixe em branco para o final",
+    "frameTimestamp": "Timestamp (segundos)",
+    "audioHint": "Extraia o áudio, transcreva a fala ou traduza a transcrição.",
+    "extractAudio": "Extrair faixa de áudio",
+    "extractAudioHint": "Salvar o áudio como um arquivo MP3 separado.",
+    "transcribe": "Transcrever áudio",
+    "transcribeHint": "Transcreve a fala em texto usando Amazon Transcribe (SRT + texto).",
+    "translate": "Traduzir transcrição",
+    "burnSubs": "Gravar legendas no vídeo",
+    "burnSubsHint": "Incorporar permanentemente as legendas no vídeo.",
+    "sourceLang": "Idioma de origem",
+    "targetLang": "Idioma de destino",
+    "reviewFile": "Arquivo",
+    "reviewOps": "Operações",
+    "reviewNoOps": "Nenhuma operação selecionada — o vídeo será recodificado como está.",
+    "startProcessing": "Iniciar processamento",
+    "output": {
+      "video": "Vídeo processado",
+      "video_burned": "Vídeo com legendas",
+      "audio": "Faixa de áudio (MP3)",
+      "transcript_srt": "Transcrição (SRT)",
+      "transcript_txt": "Transcrição (texto)",
+      "translation_txt": "Tradução (texto)"
+    }
   }
 }

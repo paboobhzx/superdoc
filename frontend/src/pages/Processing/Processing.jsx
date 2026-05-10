@@ -194,13 +194,24 @@ export function Processing() {
           <aside className="rounded-xl bg-surface-container-low border border-outline-variant/40 p-4 h-fit">
             <p className="text-sm font-bold text-on-surface mb-1">{t("processing.download")}</p>
             <p className="text-sm text-on-surface-variant mb-4">
-              {isDone && job.download_url
+              {isDone && (job.download_url || job.download_urls)
                 ? (downloadFeedback || t("processing.downloadReady"))
                 : isFailed
                   ? t("processing.noOutput")
                   : t("processing.unlock")}
             </p>
-            {isDone && job.download_url ? (
+            {isDone && job.download_urls ? (
+              // Multi-output: video pipeline produces several files
+              <div className="space-y-2">
+                {Object.entries(job.download_urls).map(([key, url]) => (
+                  <a key={key} href={url} download
+                    className="group w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500 text-white font-semibold text-sm shadow shadow-emerald-500/30 transition-all hover:bg-emerald-400 hover:-translate-y-0.5 active:scale-[0.97]">
+                    <span className="material-symbols-outlined text-[18px] transition-transform group-hover:translate-y-0.5">download</span>
+                    {t(`video.output.${key}`) !== `video.output.${key}` ? t(`video.output.${key}`) : key}
+                  </a>
+                ))}
+              </div>
+            ) : isDone && job.download_url ? (
               <>
                 <a href={job.download_url} download
                   className="group relative w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-emerald-500 text-white font-extrabold text-base shadow-lg shadow-emerald-500/30 transition-all hover:bg-emerald-400 hover:shadow-xl hover:shadow-emerald-400/40 hover:-translate-y-0.5 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
