@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../../context/ThemeContext'
 import { useI18n } from '../../context/I18nContext'
+import { useAuth } from '../../context/AuthContext'
 
 function LogoMark({ small = false }) {
   const size = small ? 22 : 30
@@ -47,6 +48,7 @@ function ThemeToggle() {
 export default function AppShell({ children }) {
   const { pathname } = useLocation()
   const { t } = useI18n()
+  const { isAuthenticated, authChecked } = useAuth()
   const isHome = pathname === '/'
   const sectionHref = (hash) => isHome ? hash : `/${hash}`
 
@@ -86,6 +88,22 @@ export default function AppShell({ children }) {
           </nav>
 
           <div className="flex items-center gap-2">
+            {authChecked && !isAuthenticated && (
+              <>
+                <Link
+                  to="/auth/login"
+                  className="hidden md:inline-flex rounded-[8px] px-3 py-1.5 text-sm text-on-surface-variant no-underline transition-colors hover:bg-surface-container-lowest hover:text-on-surface"
+                >
+                  {t('auth.signIn')}
+                </Link>
+                <Link
+                  to="/auth/register"
+                  className="hidden md:inline-flex rounded-[8px] border border-primary/50 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary no-underline transition-colors hover:bg-primary/20"
+                >
+                  {t('auth.createFreeAccount')}
+                </Link>
+              </>
+            )}
             <ThemeToggle />
           </div>
         </div>

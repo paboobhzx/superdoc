@@ -1,18 +1,52 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { useI18n } from "../../context/I18nContext"
 import { TARGET_GRID } from "./targetGrid"
 import { ACCEPT, SUPPORTED_FORMATS, formatFileSize, useConversionFlow } from "./useConversionFlow"
 import { ParamsPanel } from "../../components/ParamsPanel"
 import { BatchUploader } from "../../components/BatchUploader"
+import { api } from "../../lib/api"
 
-const FORMAT_CARDS = [
-  { from: "PDF", to: "DOCX", key: "pdfWord" },
-  { from: "DOCX", to: "PDF", key: "wordPdf" },
-  { from: "MD", to: "DOCX", key: "mdWord" },
-  { from: "HTML", to: "DOCX", key: "htmlWord" },
-  { from: "IMG", to: "PDF", key: "imgPdf" },
-  { from: "PDF", to: "PNG", key: "pdfImage" },
+const FALLBACK_CARDS = [
+  { from: "PDF", to: "DOCX" },
+  { from: "DOCX", to: "PDF" },
+  { from: "MD", to: "DOCX" },
+  { from: "HTML", to: "DOCX" },
+  { from: "PNG", to: "PDF" },
+  { from: "PDF", to: "PNG" },
 ]
+
+const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "webp", "gif", "tiff", "bmp"])
+const VIDEO_EXTS = new Set(["mp4", "mov", "avi", "mkv", "webm", "m4v"])
+
+function categoryOf(target) {
+  const t = (target || "").toLowerCase()
+  if (VIDEO_EXTS.has(t)) return "video"
+  if (IMAGE_EXTS.has(t)) return "image"
+  return "document"
+}
+
+function deriveCards(operations) {
+  const seen = new Set()
+  const cards = []
+  for (const op of operations) {
+    if (op.kind === "client_editor" || op.intent === "edit") continue
+    const inputTypes = op.input_types || []
+    const targets = Array.isArray(op.targets) && op.targets.length > 0
+      ? op.targets
+      : op.output_type && op.output_type !== "multi" ? [op.output_type] : []
+    for (const inputType of inputTypes) {
+      for (const target of targets) {
+        const from = inputType.toUpperCase()
+        const to = target.toUpperCase()
+        const key = `${from}-${to}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        cards.push({ from, to, category: categoryOf(target), label: op.label || `${from} to ${to}` })
+      }
+    }
+  }
+  return cards
+}
 
 const HOW_STEPS = [
   { icon: "upload_file", n: "01", key: "drop" },
@@ -38,7 +72,25 @@ export function Home() {
   const { t } = useI18n()
   const [dragging, setDragging] = useState(false)
   const [openFaq, setOpenFaq] = useState(null)
+  const [allOps, setAllOps] = useState([])
+  const [cardCategory, setCardCategory] = useState("document")
+  const [visibleCount, setVisibleCount] = useState(6)
   const inputRef = useRef(null)
+
+  useEffect(() => {
+    api.getOperations()
+      .then(d => setAllOps(d?.operations || []))
+      .catch(() => {})
+  }, [])
+
+  const derivedCards = useMemo(() => deriveCards(allOps), [allOps])
+  const filteredCards = useMemo(
+    () => derivedCards.filter(c => c.category === cardCategory),
+    [derivedCards, cardCategory]
+  )
+  const useDynamic = derivedCards.length > 0
+  const cardsToShow = useDynamic ? filteredCards.slice(0, visibleCount) : FALLBACK_CARDS
+  const showLoadMore = useDynamic && filteredCards.length > visibleCount
   const {
     pendingFile,
     batchFiles,
@@ -271,19 +323,58 @@ export function Home() {
             {t("home.formatsBody")}
           </p>
         </div>
+
+        {useDynamic && (
+          <div className="mb-5 flex gap-2 flex-wrap">
+            {[
+              { id: "document", label: t("home.categoryDocument") },
+              { id: "image",    label: t("home.categoryImage") },
+              { id: "video",    label: t("home.categoryVideo") },
+            ].map(cat => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => { setCardCategory(cat.id); setVisibleCount(6) }}
+                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors border ${
+                  cardCategory === cat.id
+                    ? "bg-primary text-on-primary border-primary"
+                    : "border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-primary/50 hover:text-on-surface"
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {FORMAT_CARDS.map((card) => (
-            <div key={card.key} className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-5 transition-all hover:border-primary/50 hover:bg-primary/5">
+          {cardsToShow.length > 0 ? cardsToShow.map((card, i) => (
+            <div key={`${card.from}-${card.to}-${i}`} className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-5 transition-all hover:border-primary/50 hover:bg-primary/5">
               <div className="mb-3 flex items-center gap-2">
                 <span className="rounded-[6px] bg-primary/10 px-2.5 py-1 font-headline text-xs font-extrabold text-primary">{card.from}</span>
                 <span className="material-symbols-outlined text-[16px] text-outline">arrow_forward</span>
                 <span className="rounded-[6px] bg-primary/10 px-2.5 py-1 font-headline text-xs font-extrabold text-primary">{card.to}</span>
               </div>
-              <h3 className="font-headline font-semibold text-on-surface">{t(`home.formatCards.${card.key}.label`)}</h3>
-              <p className="mt-1 text-sm leading-6 text-on-surface-variant">{t(`home.formatCards.${card.key}.desc`)}</p>
+              {card.label && (
+                <p className="text-sm leading-6 text-on-surface-variant">{card.label}</p>
+              )}
             </div>
-          ))}
+          )) : useDynamic ? (
+            <p className="col-span-3 py-8 text-center text-sm text-on-surface-variant">{t("home.noConversions")}</p>
+          ) : null}
         </div>
+
+        {showLoadMore && (
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setVisibleCount(v => v + 6)}
+              className="rounded-full border border-outline-variant bg-surface-container-lowest px-6 py-2 text-sm font-semibold text-on-surface-variant transition-colors hover:border-primary/50 hover:text-on-surface"
+            >
+              {t("home.loadMore")}
+            </button>
+          </div>
+        )}
       </section>
 
       <section id="how" className="mx-auto w-full max-w-5xl px-4 py-14">

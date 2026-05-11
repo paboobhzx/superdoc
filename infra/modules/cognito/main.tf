@@ -18,7 +18,15 @@ resource "aws_cognito_user_pool" "superdoc" {
   auto_verified_attributes = ["email"]
 
   email_configuration {
-    email_sending_account = "COGNITO_DEFAULT"
+    email_sending_account  = "DEVELOPER"
+    from_email_address     = "SuperDoc <noreply@pablobhz.cloud>"
+    source_arn             = var.ses_source_arn
+  }
+
+  verification_message_template {
+    default_email_option = "CONFIRM_WITH_CODE"
+    email_subject        = "Your SuperDoc verification code"
+    email_message        = "Hi,<br><br>Your SuperDoc verification code is <strong>{####}</strong>.<br><br>This code expires in 24 hours.<br><br>— The SuperDoc team"
   }
 
   account_recovery_setting {

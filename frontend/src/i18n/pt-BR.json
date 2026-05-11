@@ -111,14 +111,11 @@
       "site": "http://pablobhz.cloud",
       "linkedin": "LinkedIn"
     },
-    "formatCards": {
-      "pdfWord": { "label": "PDF para Word", "desc": "Documento Word editavel a partir de um PDF." },
-      "wordPdf": { "label": "Word para PDF", "desc": "Um PDF limpo e facil de compartilhar a partir de arquivos Word." },
-      "mdWord": { "label": "Markdown para Word", "desc": ".docx formatado a partir de Markdown." },
-      "htmlWord": { "label": "HTML para Word", "desc": "Documentos Word a partir de trechos HTML." },
-      "imgPdf": { "label": "Imagens para PDF", "desc": "Coloca imagens em PDFs prontos para documento." },
-      "pdfImage": { "label": "PDF para Imagem", "desc": "Renderiza paginas como imagens em alta resolucao." }
-    },
+    "categoryDocument": "Conversão de documentos",
+    "categoryImage": "Conversão de imagens",
+    "categoryVideo": "Conversão de vídeo",
+    "loadMore": "Carregar mais",
+    "noConversions": "Nenhuma conversão disponível nesta categoria.",
     "steps": {
       "drop": { "title": "Solte seu arquivo", "body": "Arraste um arquivo para o conversor ou procure no seu dispositivo." },
       "choose": { "title": "Escolha o formato", "body": "O SuperDoc detecta a entrada e habilita os formatos que o backend suporta." },
