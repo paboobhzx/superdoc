@@ -19,3 +19,12 @@ export function saveRecentFile(entry) {
     // sessionStorage unavailable
   }
 }
+
+export function removeRecentFile(jobId) {
+  try {
+    const updated = loadRecentFiles().filter((item) => item.jobId !== jobId)
+    sessionStorage.setItem(RECENT_FILES_KEY, JSON.stringify(updated))
+  } catch {
+    // sessionStorage unavailable
+  }
+}

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useI18n } from "../context/I18nContext";
 import { api } from "../lib/api";
-import { loadRecentFiles } from "../lib/recentFiles";
+import { loadRecentFiles, removeRecentFile } from "../lib/recentFiles";
 
 const PLAN_KEY = "superdoc_plan_active";
 
@@ -221,6 +221,7 @@ export function Dashboard() {
             download_url: f.downloadUrl,
             created_at: f.convertedAt,
             expires_at: f.expiresAt,
+            _local: true,
           }));
         setJobs([...apiJobs, ...localOnly]);
       } catch (e) {
@@ -243,9 +244,14 @@ export function Dashboard() {
     const ok = confirm(t("dashboard.confirmDelete"));
     if (!ok) return;
 
+    const job = jobs.find((j) => j.job_id === jobId);
     setDeletingId(jobId);
     try {
-      await api.deleteUserFile(jobId);
+      if (job?._local) {
+        removeRecentFile(jobId);
+      } else {
+        await api.deleteUserFile(jobId);
+      }
       setJobs((prev) => prev.filter((j) => j.job_id !== jobId));
     } catch (e) {
       setErr(e.message || t("dashboard.deleteFailed"));
