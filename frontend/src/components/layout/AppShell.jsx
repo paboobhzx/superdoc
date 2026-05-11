@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../../context/ThemeContext'
 import { useI18n } from '../../context/I18nContext'
@@ -45,10 +46,62 @@ function ThemeToggle() {
   )
 }
 
+function AvatarMenu({ initials, email, t, signOut }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-outline-variant bg-surface-container-lowest text-on-surface-variant text-xs font-bold transition-colors hover:border-primary/60 hover:text-primary"
+        title={email || ''}
+        aria-label={t('shell.nav.account')}
+        aria-expanded={open}
+      >
+        {initials}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[160px] rounded-[10px] border border-outline-variant/30 bg-surface-container-lowest shadow-lg py-1">
+          <div className="px-3 py-2 border-b border-outline-variant/10 mb-1">
+            <p className="text-xs text-on-surface-variant truncate max-w-[140px]">{email}</p>
+          </div>
+          <Link
+            to="/settings"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-on-surface no-underline hover:bg-surface-container transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">person</span>
+            {t('shell.nav.profile')}
+          </Link>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); signOut() }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">logout</span>
+            {t('dashboard.signOut')}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AppShell({ children }) {
   const { pathname } = useLocation()
   const { t } = useI18n()
-  const { isAuthenticated, authChecked, user, settings } = useAuth()
+  const { isAuthenticated, authChecked, user, settings, signOut } = useAuth()
   const isHome = pathname === '/'
 
   const displayName = settings?.name || user?.email || ''
@@ -110,14 +163,12 @@ export default function AppShell({ children }) {
               </>
             )}
             {authChecked && isAuthenticated && (
-              <Link
-                to="/settings"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-outline-variant bg-surface-container-lowest text-on-surface-variant text-xs font-bold transition-colors hover:border-primary/60 hover:text-primary"
-                title={user?.email || ''}
-                aria-label={t('shell.nav.account')}
-              >
-                {initials}
-              </Link>
+              <AvatarMenu
+                initials={initials}
+                email={user?.email || ''}
+                t={t}
+                signOut={signOut}
+              />
             )}
             <ThemeToggle />
           </div>
