@@ -175,7 +175,17 @@
     "expired": "Expirado",
     "lessThanHour": "< 1 hora",
     "hoursRemaining": "{{count}}h",
-    "daysRemaining": "{{count}}d"
+    "daysRemaining": "{{count}}d",
+    "quotaLabel": "Conversões hoje",
+    "creditsPack": "créditos de conversão restantes",
+    "nearLimit": "Limite próximo.",
+    "upgradeHint": "Upgrade para 100/dia por R$2 →",
+    "limitReached": "Limite diário atingido",
+    "planDesc": "Plano Básico · $2/mês · 100 conversões de documentos por dia",
+    "planFeature1": "100 conversões de documentos / dia",
+    "planFeature2": "Sem multimídia (vídeo/áudio)",
+    "activatePlan": "Ativar — $2 / mês",
+    "planActive": "Plano Básico ativo · 100 conversões/dia"
   },
   "auth": {
     "loginTitle": "Entrar",

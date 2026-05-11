@@ -175,7 +175,17 @@
     "expired": "Expired",
     "lessThanHour": "< 1 hour",
     "hoursRemaining": "{{count}}h",
-    "daysRemaining": "{{count}}d"
+    "daysRemaining": "{{count}}d",
+    "quotaLabel": "Conversions today",
+    "creditsPack": "conversion credits remaining",
+    "nearLimit": "Running low.",
+    "upgradeHint": "Upgrade to 100/day for $2 →",
+    "limitReached": "Daily limit reached",
+    "planDesc": "Basic Plan · $2/mo · 100 document conversions per day",
+    "planFeature1": "100 document conversions / day",
+    "planFeature2": "No multimedia (video/audio)",
+    "activatePlan": "Activate — $2 / mo",
+    "planActive": "Basic Plan active · 100 conversions/day"
   },
   "auth": {
     "loginTitle": "Sign in",

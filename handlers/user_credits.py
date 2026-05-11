@@ -1,3 +1,5 @@
+import os
+
 import auth_session
 import dynamo
 import limits
@@ -5,6 +7,8 @@ import response
 from logger import get_logger
 
 log = get_logger(__name__)
+
+_DAILY_LIMIT = int(os.environ.get("USER_DAILY_CONVERSION_LIMIT", "10"))
 
 
 def handler(event, context):
@@ -19,10 +23,15 @@ def handler(event, context):
 
         balance = dynamo.get_credit_balance(user_id)
         events = dynamo.list_credit_events(user_id, limit=10)
+        used_today = dynamo.rate_limit_count(
+            limits.quota_key(tier="registered", identity=user_id)
+        )
         return response.ok(
             {
                 "balance": balance.get("balance", 0),
                 "free_multimedia_remaining_today": limits.multimedia_free_remaining(user_id),
+                "conversions_used_today": used_today,
+                "daily_conversion_limit": _DAILY_LIMIT,
                 "recent_events": events,
             }
         )

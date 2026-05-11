@@ -5,6 +5,116 @@ import { useI18n } from "../context/I18nContext";
 import { api } from "../lib/api";
 import { loadRecentFiles } from "../lib/recentFiles";
 
+const PLAN_KEY = "superdoc_plan_active";
+
+function readPlan() {
+  try { return localStorage.getItem(PLAN_KEY) === "true"; } catch { return false; }
+}
+function writePlan(v) {
+  try { localStorage.setItem(PLAN_KEY, v ? "true" : "false"); } catch {}
+}
+
+function QuotaBar({ t }) {
+  const [quota, setQuota] = useState(null);
+  const [planActive, setPlanActive] = useState(() => readPlan());
+  const [activating, setActivating] = useState(false);
+
+  useEffect(() => {
+    api.getUserCredits()
+      .then((d) => setQuota(d))
+      .catch(() => {});
+  }, []);
+
+  const used = quota?.conversions_used_today ?? 0;
+  const baseLimit = quota?.daily_conversion_limit ?? 10;
+  const credits = quota?.balance ?? 0;
+  const effectiveLimit = planActive ? 100 : baseLimit;
+  const pct = Math.min(100, Math.round((used / effectiveLimit) * 100));
+  const atLimit = used >= effectiveLimit && credits === 0;
+  const nearLimit = !atLimit && used >= Math.floor(effectiveLimit * 0.8);
+
+  function activate() {
+    setActivating(true);
+    setTimeout(() => {
+      writePlan(true);
+      setPlanActive(true);
+      setActivating(false);
+    }, 600);
+  }
+
+  return (
+    <div className="mb-6">
+      <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+            {t("dashboard.quotaLabel")}
+          </span>
+          <span className={`text-xs font-bold tabular-nums ${atLimit ? "text-error" : "text-on-surface"}`}>
+            {quota === null ? "…" : `${used} / ${effectiveLimit}`}
+          </span>
+        </div>
+        <div className="h-1.5 rounded-full bg-outline-variant/20 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${atLimit ? "bg-error" : nearLimit ? "bg-amber-500" : "bg-primary"}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        {credits > 0 && (
+          <p className="mt-1.5 text-xs text-on-surface-variant">
+            + {credits} {t("dashboard.creditsPack")}
+          </p>
+        )}
+        {nearLimit && !atLimit && !planActive && (
+          <p className="mt-1.5 text-xs text-on-surface-variant">
+            {t("dashboard.nearLimit")}{" "}
+            <button type="button" onClick={activate} className="font-semibold text-primary hover:underline">
+              {t("dashboard.upgradeHint")}
+            </button>
+          </p>
+        )}
+      </div>
+
+      {atLimit && !planActive && (
+        <div className="mt-3 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="material-symbols-outlined text-primary text-[20px]">lock</span>
+            <p className="text-sm font-bold text-on-surface">{t("dashboard.limitReached")}</p>
+          </div>
+          <p className="text-xs text-on-surface-variant mb-4">{t("dashboard.planDesc")}</p>
+          <ul className="space-y-1 mb-4">
+            {[t("dashboard.planFeature1"), t("dashboard.planFeature2")].map((f) => (
+              <li key={f} className="flex items-center gap-2 text-xs text-on-surface">
+                <span className="material-symbols-outlined text-primary text-[14px]">check_circle</span>
+                {f}
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={activate}
+              disabled={activating}
+              className="sd-button-primary px-5 py-2.5 text-sm disabled:opacity-60"
+            >
+              {activating ? "…" : t("dashboard.activatePlan")}
+            </button>
+            <Link to="/support" className="inline-flex items-center px-4 py-2.5 rounded-[var(--radius-md)] border border-outline-variant/30 text-sm text-on-surface-variant font-semibold no-underline hover:bg-surface-container transition-colors">
+              {t("common.learnMore")}
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {planActive && (
+        <p className="mt-2 text-xs text-on-surface-variant">
+          <span className="material-symbols-outlined text-[13px] align-text-bottom text-primary">verified</span>{" "}
+          {t("dashboard.planActive")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function formatBytes(bytes) {
   if (!bytes || bytes <= 0) return "";
   const mb = bytes / 1024 / 1024;
@@ -189,6 +299,8 @@ export function Dashboard() {
           <span className="text-sm font-medium">{err}</span>
         </div>
       )}
+
+      <QuotaBar t={t} />
 
       <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant/10 overflow-hidden">
         <div className="px-5 py-4 border-b border-outline-variant/10 flex items-center justify-between">
