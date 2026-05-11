@@ -17,13 +17,15 @@ _ddb = None
 _DEFAULTS = {
     "theme": "azure",
     "locale": "en-US",
+    "name": "",
+    "country": "",
     "notifications": {
         "email_ready": True,
         "quota_alerts": True,
     },
 }
 
-_ALLOWED_FIELDS = {"theme", "locale", "notifications"}
+_ALLOWED_FIELDS = {"theme", "locale", "notifications", "name", "country"}
 
 
 def _table():

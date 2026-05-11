@@ -9,22 +9,36 @@ export function Settings() {
   const { locale, setLocale, locales, t } = useI18n()
   const auth = useAuth()
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [country, setCountry] = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
   const [emailNotif, setEmailNotif] = useState(true)
   const [quotaNotif, setQuotaNotif] = useState(true)
   const [savingNotif, setSavingNotif] = useState(false)
 
-  // Seed appearance from persisted settings on first load
+  // Seed all settings on first load
   useEffect(() => {
     if (!auth?.settings) return
     const s = auth.settings
     if (s.theme) setTheme(s.theme)
     if (s.locale) setLocale(s.locale)
+    if (s.name !== undefined) setName(s.name)
+    if (s.country !== undefined) setCountry(s.country)
     if (s.notifications) {
       setEmailNotif(s.notifications.email_ready ?? true)
       setQuotaNotif(s.notifications.quota_alerts ?? true)
     }
   }, [auth?.settings]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function saveProfile() {
+    if (!auth?.isAuthenticated) return
+    setSavingProfile(true)
+    try {
+      await api.updateUserSettings({ name, country })
+      auth.setSettings((prev) => ({ ...prev, name, country }))
+    } catch { /* toast handled */ } finally {
+      setSavingProfile(false)
+    }
+  }
 
   async function handleThemeChange(e) {
     const next = e.target.value
@@ -68,8 +82,8 @@ export function Settings() {
         </h2>
         <div className="flex items-center gap-4 mb-6">
           <div className="relative w-16 h-16 rounded-[18px] bg-primary-container flex items-center justify-center text-on-primary-container text-xl font-bold font-headline">
-            SD
-            <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center">
+            {(name || auth?.user?.email || 'SD').split('@')[0].slice(0, 2).toUpperCase()}
+            <button type="button" className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center">
               <span className="material-symbols-outlined text-[14px]">photo_camera</span>
             </button>
           </div>
@@ -77,10 +91,74 @@ export function Settings() {
         <div className="space-y-4">
           <input type="text" placeholder={t('settings.fullName')} value={name} onChange={(e) => setName(e.target.value)}
             className="sd-input px-4 py-3 text-sm" />
-          <input type="email" placeholder={t('settings.email')} value={email} onChange={(e) => setEmail(e.target.value)}
-            className="sd-input px-4 py-3 text-sm" />
-          <button className="sd-button-primary px-5 py-2.5 text-sm">
-            {t('settings.saveChanges')}
+          <select value={country} onChange={(e) => setCountry(e.target.value)} className="sd-input px-4 py-3 text-sm">
+            <option value="">{t('settings.country')}</option>
+            <option value="US">United States</option>
+            <option value="BR">Brazil</option>
+            <option value="GB">United Kingdom</option>
+            <option value="CA">Canada</option>
+            <option value="AU">Australia</option>
+            <option value="DE">Germany</option>
+            <option value="FR">France</option>
+            <option value="ES">Spain</option>
+            <option value="IT">Italy</option>
+            <option value="PT">Portugal</option>
+            <option value="MX">Mexico</option>
+            <option value="AR">Argentina</option>
+            <option value="CL">Chile</option>
+            <option value="CO">Colombia</option>
+            <option value="NL">Netherlands</option>
+            <option value="SE">Sweden</option>
+            <option value="NO">Norway</option>
+            <option value="DK">Denmark</option>
+            <option value="FI">Finland</option>
+            <option value="PL">Poland</option>
+            <option value="JP">Japan</option>
+            <option value="KR">South Korea</option>
+            <option value="CN">China</option>
+            <option value="IN">India</option>
+            <option value="SG">Singapore</option>
+            <option value="NZ">New Zealand</option>
+            <option value="ZA">South Africa</option>
+            <option value="NG">Nigeria</option>
+            <option value="EG">Egypt</option>
+            <option value="TR">Turkey</option>
+            <option value="RU">Russia</option>
+            <option value="UA">Ukraine</option>
+            <option value="CH">Switzerland</option>
+            <option value="AT">Austria</option>
+            <option value="BE">Belgium</option>
+            <option value="IE">Ireland</option>
+            <option value="CZ">Czech Republic</option>
+            <option value="HU">Hungary</option>
+            <option value="RO">Romania</option>
+            <option value="IL">Israel</option>
+            <option value="AE">United Arab Emirates</option>
+            <option value="SA">Saudi Arabia</option>
+            <option value="PH">Philippines</option>
+            <option value="ID">Indonesia</option>
+            <option value="MY">Malaysia</option>
+            <option value="TH">Thailand</option>
+            <option value="VN">Vietnam</option>
+            <option value="PK">Pakistan</option>
+            <option value="BD">Bangladesh</option>
+            <option value="PE">Peru</option>
+            <option value="VE">Venezuela</option>
+          </select>
+          <input
+            type="email"
+            value={auth?.user?.email || ''}
+            readOnly
+            disabled
+            className="sd-input px-4 py-3 text-sm opacity-60 cursor-not-allowed"
+          />
+          <button
+            type="button"
+            onClick={saveProfile}
+            disabled={savingProfile || !auth?.isAuthenticated}
+            className="sd-button-primary px-5 py-2.5 text-sm disabled:opacity-60"
+          >
+            {savingProfile ? t('common.saving') : t('settings.saveChanges')}
           </button>
         </div>
       </section>

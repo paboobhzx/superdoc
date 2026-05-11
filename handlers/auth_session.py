@@ -26,7 +26,7 @@ def _route(event: dict) -> str:
 def _cookie(value: str, *, max_age: int) -> str:
     return (
         f"{COOKIE_NAME}={value}; Path=/; Max-Age={max_age}; "
-        "HttpOnly; Secure; SameSite=Lax"
+        "HttpOnly; Secure; SameSite=None"
     )
 
 

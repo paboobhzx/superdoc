@@ -75,6 +75,12 @@ class OperationsSchemaTests(unittest.TestCase):
         schema = self.ops.OPERATIONS["pdf_to_docx"]["params_schema"]
         self.assertIn("high_fidelity", schema)
 
+    def test_page_range_in_schema_for_pdf_to_docx(self):
+        schema = self.ops.OPERATIONS["pdf_to_docx"]["params_schema"]
+        self.assertIn("page_range", schema)
+        self.assertEqual(schema["page_range"]["type"], "string")
+        self.assertFalse(schema["page_range"]["required"])
+
     def test_high_fidelity_not_in_schema_for_pdf_to_image(self):
         schema = self.ops.OPERATIONS["pdf_to_image"]["params_schema"]
         self.assertNotIn("high_fidelity", schema)
@@ -108,6 +114,21 @@ class ParamsValidationTests(unittest.TestCase):
         result = self.validation.validate_params("xlsx_to_pdf", {"high_fidelity": "maybe"})
         self.assertFalse(result.ok)
         self.assertIn("high_fidelity must be a boolean", result.error)
+
+    def test_accepts_valid_page_range(self):
+        result = self.validation.validate_params("pdf_to_docx", {"page_range": "1-5,8,10-12"})
+        self.assertTrue(result.ok)
+        self.assertEqual(result.params.get("page_range"), "1-5,8,10-12")
+
+    def test_page_range_not_included_when_empty(self):
+        result = self.validation.validate_params("pdf_to_docx", {"page_range": ""})
+        self.assertTrue(result.ok)
+        self.assertNotIn("page_range", result.params)
+
+    def test_rejects_page_range_exceeding_max_length(self):
+        result = self.validation.validate_params("pdf_to_docx", {"page_range": "1" * 201})
+        self.assertFalse(result.ok)
+        self.assertIn("page_range is too long", result.error)
 
 
 def _make_dispatch_module(invocations: list) -> types.ModuleType:

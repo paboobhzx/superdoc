@@ -129,6 +129,21 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
 
+    --skip-docker|-skip-docker|--SKIP_DOCKER|-SKIP_DOCKER)
+      export SKIP_DOCKER=1
+      shift
+      ;;
+
+    --skip-docker=1|-skip-docker=1|--SKIP_DOCKER=1|-SKIP_DOCKER=1)
+      export SKIP_DOCKER=1
+      shift
+      ;;
+
+    SKIP_DOCKER=1)
+      export SKIP_DOCKER=1
+      shift
+      ;;
+
     CF_CONFIG_FILE=*)
       CF_CONFIG_FILE="${1#CF_CONFIG_FILE=}"
       shift
@@ -282,8 +297,13 @@ if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
     "s3://${LAMBDA_ZIPS_BUCKET}/layers/" \
     --no-progress
 
-  if [[ "${OFFICE_CONVERTER_PACKAGE_TYPE:-}" == "Image" ]]; then
+  if [[ "${OFFICE_CONVERTER_PACKAGE_TYPE:-}" == "Image" ]] && [[ "${SKIP_DOCKER:-0}" != "1" ]]; then
     print_header "Building office converter images"
+
+    # Generate a timestamp tag so Terraform detects a new image_uri and forces Lambda redeployment.
+    OFFICE_CONVERTER_IMAGE_TAG="$(date +%Y%m%d%H%M%S)"
+    export TF_VAR_office_converter_image_tag="${OFFICE_CONVERTER_IMAGE_TAG}"
+    echo "Using image tag: ${OFFICE_CONVERTER_IMAGE_TAG}"
 
     AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
     echo "Pushing office images to ECR repository:"
@@ -298,6 +318,10 @@ if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
       PUSH=true \
       bash "${REPO_ROOT}/scripts/build_office_images.sh"
     )
+  fi
+
+  if [[ "${SKIP_DOCKER:-0}" == "1" ]] && [[ "${OFFICE_CONVERTER_PACKAGE_TYPE:-}" == "Image" ]]; then
+    echo "SKIP_DOCKER=1 detected. Skipping office converter Docker image build."
   fi
 
   echo "Backend build/sync completed."

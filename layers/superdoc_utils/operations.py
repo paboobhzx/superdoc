@@ -95,8 +95,14 @@ OPERATIONS: dict[str, dict] = {
                 "type": "boolean",
                 "required": False,
                 "default": True,
-                "label": "High fidelity (LibreOffice)",
-            }
+                "label": "High fidelity",
+            },
+            "page_range": {
+                "type": "string",
+                "required": False,
+                "default": "",
+                "label": "Page range (e.g. 1-10, 3, 5-8)",
+            },
         },
         "category": "convert",
         "label": "PDF to Word (.docx)",

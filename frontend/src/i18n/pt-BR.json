@@ -71,7 +71,8 @@
       "how": "Como funciona",
       "faq": "FAQ",
       "files": "Arquivos",
-      "support": "Apoiar"
+      "support": "Apoiar",
+      "account": "Conta"
     }
   },
   "home": {
@@ -152,6 +153,8 @@
     "appearance": "Aparencia",
     "theme": "Tema",
     "language": "Idioma",
+    "country": "País",
+    "profileSaved": "Perfil salvo",
     "dangerZone": "Zona de risco",
     "dangerBody": "Depois de excluida, sua conta nao podera ser recuperada.",
     "deleteAccount": "Excluir conta"

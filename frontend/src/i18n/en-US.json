@@ -71,7 +71,8 @@
       "how": "How it works",
       "faq": "FAQ",
       "files": "Files",
-      "support": "Support"
+      "support": "Support",
+      "account": "Account"
     }
   },
   "home": {
@@ -152,6 +153,8 @@
     "appearance": "Appearance",
     "theme": "Theme",
     "language": "Language",
+    "country": "Country",
+    "profileSaved": "Profile saved",
     "dangerZone": "Danger Zone",
     "dangerBody": "Once deleted, your account cannot be recovered.",
     "deleteAccount": "Delete Account"

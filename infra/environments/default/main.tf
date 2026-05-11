@@ -24,7 +24,7 @@ module "superdoc" {
   enable_media_customer_managed_kms    = var.enable_media_customer_managed_kms
   enable_dynamodb_customer_managed_kms = var.enable_dynamodb_customer_managed_kms
   office_converter_package_type        = "Image"
-  office_converter_image_tag           = "latest"
+  office_converter_image_tag           = var.office_converter_image_tag
   amplify_app_name                     = "superdoc"
   amplify_repository                   = "https://github.com/paboobhzx/superdoc"
   amplify_oauth_token                  = var.amplify_oauth_token
@@ -54,9 +54,33 @@ variable "amplify_oauth_token" {
   sensitive   = true
 }
 
+variable "office_converter_image_tag" {
+  description = "Docker image tag for office converter Lambda. Set to a timestamp by apply.sh on each Docker build to force Lambda redeployment."
+  type        = string
+  default     = "latest"
+}
+
 # The previous hotfix attempt created these IAM resources through AWS CLI before
 # the deployment was stopped. Import them so the next Terraform apply adopts and
 # reconciles them instead of failing on already-existing names.
+# ── SES DKIM CNAME records — already exist in Route53, import on first apply ──
+# These were created outside Terraform (manually or from a prior state).
+# Import blocks are safe to keep; they become no-ops once the resource is in state.
+import {
+  to = module.superdoc.aws_route53_record.ses_dkim["coeczbhc76at5nald6v7ivf3mlqbrvwj"]
+  id = "Z00715662A3EPIVLR1LS_coeczbhc76at5nald6v7ivf3mlqbrvwj._domainkey.pablobhz.cloud_CNAME"
+}
+
+import {
+  to = module.superdoc.aws_route53_record.ses_dkim["roinmheddkv5joopihufptgulmj5umxs"]
+  id = "Z00715662A3EPIVLR1LS_roinmheddkv5joopihufptgulmj5umxs._domainkey.pablobhz.cloud_CNAME"
+}
+
+import {
+  to = module.superdoc.aws_route53_record.ses_dkim["7dtr3gk4wl5j7nonqzafy25n2jptehje"]
+  id = "Z00715662A3EPIVLR1LS_7dtr3gk4wl5j7nonqzafy25n2jptehje._domainkey.pablobhz.cloud_CNAME"
+}
+
 import {
   to = module.superdoc.module.lambda_markdown_convert.aws_iam_role.lambda
   id = "superdoc-prod-markdown-convert-role"

@@ -133,4 +133,12 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
         if parsed_hf is not None:
             cleaned["high_fidelity"] = parsed_hf
 
+    if operation == "pdf_to_docx":
+        raw_pr = params.get("page_range")
+        ok_flag, err_msg = _limit_str(raw_pr, name="page_range", max_len=200)
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if raw_pr and raw_pr.strip():
+            cleaned["page_range"] = raw_pr.strip()
+
     return ValidationResult(ok=True, params=cleaned)

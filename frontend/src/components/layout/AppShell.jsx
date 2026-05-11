@@ -48,8 +48,13 @@ function ThemeToggle() {
 export default function AppShell({ children }) {
   const { pathname } = useLocation()
   const { t } = useI18n()
-  const { isAuthenticated, authChecked } = useAuth()
+  const { isAuthenticated, authChecked, user, settings } = useAuth()
   const isHome = pathname === '/'
+
+  const displayName = settings?.name || user?.email || ''
+  const initials = displayName
+    ? displayName.split('@')[0].slice(0, 2).toUpperCase()
+    : 'SD'
   const sectionHref = (hash) => isHome ? hash : `/${hash}`
 
   return (
@@ -103,6 +108,16 @@ export default function AppShell({ children }) {
                   {t('auth.createFreeAccount')}
                 </Link>
               </>
+            )}
+            {authChecked && isAuthenticated && (
+              <Link
+                to="/settings"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-outline-variant bg-surface-container-lowest text-on-surface-variant text-xs font-bold transition-colors hover:border-primary/60 hover:text-primary"
+                title={user?.email || ''}
+                aria-label={t('shell.nav.account')}
+              >
+                {initials}
+              </Link>
             )}
             <ThemeToggle />
           </div>

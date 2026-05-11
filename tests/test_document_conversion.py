@@ -1,5 +1,6 @@
 import importlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -43,12 +44,21 @@ def _install_handler_stubs():
 
 
 def _minimal_docx_bytes(text):
-    import io
-
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w") as zf:
         zf.writestr("[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"/>")
         zf.writestr("word/document.xml", f"<w:document>{text}</w:document>")
+    return out.getvalue()
+
+
+def _minimal_pdf_bytes(n_pages: int = 1) -> bytes:
+    """Create a minimal valid PDF with n blank pages using pypdf."""
+    from pypdf import PdfWriter
+    writer = PdfWriter()
+    for _ in range(n_pages):
+        writer.add_blank_page(width=612, height=792)
+    out = io.BytesIO()
+    writer.write(out)
     return out.getvalue()
 
 
@@ -87,7 +97,7 @@ class PdfToDocxTests(unittest.TestCase):
             def __init__(self, input_path):
                 self.input_path = input_path
 
-            def convert(self, output_path):
+            def convert(self, output_path, **kwargs):
                 with open(output_path, "wb") as fh:
                     fh.write(_minimal_docx_bytes("Styled sample content"))
 
@@ -99,10 +109,10 @@ class PdfToDocxTests(unittest.TestCase):
         self.mod = importlib.import_module("handlers.pdf_to_docx")
 
     def test_pdf_to_docx_uses_valid_docx_without_generated_label(self):
-        result = self.mod._process(b"%PDF-1.7 sample", {"file_name": "sample.pdf"})
+        result = self.mod._process(_minimal_pdf_bytes(), {"file_name": "sample.pdf"})
 
-        self.assertTrue(zipfile.is_zipfile(__import__("io").BytesIO(result)))
-        with zipfile.ZipFile(__import__("io").BytesIO(result)) as zf:
+        self.assertTrue(zipfile.is_zipfile(io.BytesIO(result)))
+        with zipfile.ZipFile(io.BytesIO(result)) as zf:
             content = "\n".join(zf.read(name).decode("utf-8", errors="ignore") for name in zf.namelist())
         self.assertIn("Styled sample content", content)
         self.assertNotIn("Converted Document", content)
@@ -113,13 +123,75 @@ class PdfToDocxTests(unittest.TestCase):
             "quarterly-report.docx",
         )
 
-    def test_pdf_to_docx_falls_back_when_pdf2docx_is_unavailable(self):
+    def test_pdf_to_docx_falls_back_to_text_when_all_converters_fail(self):
         sys.modules["pdf2docx"] = None
+        self.mod._pdf_to_docx_libreoffice = lambda data: (_ for _ in ()).throw(RuntimeError("not found"))
         self.mod._extract_text_docx = lambda data: b"fallback-docx"
         try:
-            self.assertEqual(self.mod._process(b"%PDF-1.7 sample", {}), b"fallback-docx")
+            self.assertEqual(self.mod._process(_minimal_pdf_bytes(), {}), b"fallback-docx")
         finally:
             sys.modules.pop("pdf2docx", None)
+
+    def test_page_range_filters_pages(self):
+        """Only the requested pages are extracted before conversion."""
+        converted_page_counts = []
+
+        class CountingConverter:
+            def __init__(self, input_path):
+                from pypdf import PdfReader
+                self.n = len(PdfReader(input_path).pages)
+
+            def convert(self, output_path, **kwargs):
+                converted_page_counts.append(self.n)
+                with open(output_path, "wb") as fh:
+                    fh.write(_minimal_docx_bytes("pages"))
+
+            def close(self):
+                pass
+
+        sys.modules["pdf2docx"] = types.SimpleNamespace(Converter=CountingConverter)
+        pdf = _minimal_pdf_bytes(n_pages=10)
+        self.mod._process(pdf, {"file_name": "doc.pdf", "params": {"page_range": "1-3"}})
+        self.assertEqual(converted_page_counts, [3])
+
+    def test_large_pdf_is_split_into_chunks_and_merged(self):
+        """A PDF exceeding _CHUNK_SIZE pages is converted in chunks and merged."""
+        chunk_page_counts = []
+
+        def _real_docx_bytes(text):
+            from docx import Document as DocxDocument
+            doc = DocxDocument()
+            doc.add_paragraph(text)
+            buf = io.BytesIO()
+            doc.save(buf)
+            return buf.getvalue()
+
+        class CountingConverter:
+            def __init__(self, input_path):
+                from pypdf import PdfReader
+                self.n = len(PdfReader(input_path).pages)
+
+            def convert(self, output_path, **kwargs):
+                chunk_page_counts.append(self.n)
+                with open(output_path, "wb") as fh:
+                    fh.write(_real_docx_bytes(f"chunk-{self.n}"))
+
+            def close(self):
+                pass
+
+        sys.modules["pdf2docx"] = types.SimpleNamespace(Converter=CountingConverter)
+
+        chunk_size = self.mod._CHUNK_SIZE
+        total = chunk_size + 5
+        pdf = _minimal_pdf_bytes(n_pages=total)
+        result = self.mod._process(pdf, {"file_name": "big.pdf"})
+
+        # Should have split into exactly 2 chunks
+        self.assertEqual(len(chunk_page_counts), 2)
+        self.assertEqual(chunk_page_counts[0], chunk_size)
+        self.assertEqual(chunk_page_counts[1], 5)
+        # Result must be a valid zip (DOCX)
+        self.assertTrue(zipfile.is_zipfile(io.BytesIO(result)))
 
 
 class OfficeToPdfTests(unittest.TestCase):
