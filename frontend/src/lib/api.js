@@ -111,7 +111,7 @@ function sessionQuery(path, sessionId) {
 
 export const api = {
   login: (payload) => request("POST", "/auth/login", payload),
-  me: () => request("GET", "/auth/me", null, { suppressStatuses: [401] }),
+  me: () => request("GET", "/auth/me", null, { suppressStatuses: [401, 403] }),
   getUserSettings: () => request("GET", "/users/me/settings", null, { suppressStatuses: [401, 404] }),
   updateUserSettings: (payload) => request("PUT", "/users/me/settings", payload),
   logout: () => request("POST", "/auth/logout"),
@@ -184,7 +184,7 @@ export const api = {
   createCheckout: (payload) => request("POST", "/checkout", payload),
 
   createCreditsCheckout: (payload) => request("POST", "/billing/checkout/credits", payload),
-  getUserCredits: () => request("GET", "/users/me/credits"),
+  getUserCredits: () => request("GET", "/users/me/credits", null, { suppressStatuses: [401, 403] }),
 
 
   // Fetch the catalog of supported operations. The optional input_type
