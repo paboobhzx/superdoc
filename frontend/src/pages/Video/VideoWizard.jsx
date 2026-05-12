@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../../context/I18nContext'
 import { useAuth } from '../../context/AuthContext'
 import { api } from '../../lib/api'
+import { getSessionId } from '../../lib/session'
 import { StepBreadcrumb } from '../../components/VideoWizard/StepBreadcrumb'
 import { UploadStep } from './steps/UploadStep'
 import { OperationsStep } from './steps/OperationsStep'
@@ -61,11 +62,13 @@ export function VideoWizard() {
       }
 
       const createFn = auth?.isAuthenticated ? api.createUserJob : api.createJob
+      const sessionId = getSessionId()
       const jobResp = await createFn({
         operation: 'video_process',
         file_name: file.name,
         file_size_bytes: file.size,
         params,
+        session_id: sessionId,
       })
 
       const jobId = jobResp.job_id

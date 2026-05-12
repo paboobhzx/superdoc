@@ -33,4 +33,26 @@ describe("cookie session API", () => {
     );
     expect(fetch.mock.calls[0][1].headers.Authorization).toBeUndefined();
   });
+
+  it("threads anonymous session IDs through file-history helpers", async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      json: async () => ({ ok: true }),
+    }));
+
+    const { api } = await import("../lib/api");
+    await api.getUserFiles("session-123");
+    await api.deleteUserFile("job-1", "session-123");
+    await api.createUserFile({ file_name: "a.pdf", file_size_bytes: 1 }, "session-123");
+    await api.completeUserFile("job-1", "session-123");
+
+    expect(fetch.mock.calls.map((call) => call[0])).toEqual([
+      "https://api.example.com/users/me/files?session_id=session-123",
+      "https://api.example.com/users/me/files/job-1?session_id=session-123",
+      "https://api.example.com/users/me/files?session_id=session-123",
+      "https://api.example.com/users/me/files/job-1/complete?session_id=session-123",
+    ]);
+  });
 });

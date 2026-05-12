@@ -26,6 +26,13 @@ async function mockAnonymousSession(page) {
       body: JSON.stringify({ error: "Unauthorized" }),
     });
   });
+  await page.route(`${apiBase}/users/me/files**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ jobs: [] }),
+    });
+  });
 }
 
 test.describe("Home", () => {

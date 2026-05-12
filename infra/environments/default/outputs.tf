@@ -12,6 +12,6 @@ output "cloudfront_distribution_id" {
 }
 
 output "api_gateway_invoke_url" {
-  description = "API Gateway invoke URL (VITE_API_URL in Amplify)"
+  description = "Direct API Gateway invoke URL. Production Amplify uses /api through CloudFront."
   value       = module.superdoc.api_gateway_invoke_url
 }

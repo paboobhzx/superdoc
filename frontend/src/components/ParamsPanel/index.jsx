@@ -90,9 +90,15 @@ export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analys
   const hasPaperSize = Boolean(schema.paper_size)
   const hasHighFidelity = Boolean(schema.high_fidelity)
   const isPdfToDocx = opMeta?.operation === "pdf_to_docx"
+  const defaultHighFidelity = isPdfToDocx ? false : schema.high_fidelity?.default === true
 
   const [paperSize, setPaperSize] = useState("A4")
-  const [highFidelity, setHighFidelity] = useState(true)
+  const [highFidelity, setHighFidelity] = useState(defaultHighFidelity)
+
+  useEffect(() => {
+    setPaperSize(schema.paper_size?.default || "A4")
+    setHighFidelity(defaultHighFidelity)
+  }, [opMeta?.operation, schema.paper_size?.default, defaultHighFidelity])
 
   // When analysis arrives, auto-set checkbox to match the recommendation
   useEffect(() => {
@@ -152,7 +158,9 @@ export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analys
             />
             <div>
               <span className="text-sm font-semibold text-on-surface">{t("params.highFidelity")}</span>
-              <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">{t("params.highFidelityHint")}</p>
+              <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">
+                {t(isPdfToDocx ? "params.highFidelityPdfHint" : "params.highFidelityHint")}
+              </p>
             </div>
           </label>
         </div>

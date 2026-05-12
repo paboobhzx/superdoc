@@ -86,7 +86,7 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
           payload.params = opMeta.params
         }
         const data = auth?.isAuthenticated
-          ? await api.createUserJob(payload)
+          ? await api.createUserJob({ ...payload, session_id: sessionId })
           : await api.createJob({ ...payload, session_id: sessionId })
 
         updateItem(item.localId, { status: "uploading", jobId: data.job_id })

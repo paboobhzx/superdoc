@@ -38,6 +38,7 @@
   "params": {
     "highFidelity": "Alta fidelidade",
     "highFidelityHint": "Usa LibreOffice para documentos complexos. Desmarque para arquivos de texto simples — mais rapido, mas apenas formatacao basica.",
+    "highFidelityPdfHint": "Coloca cada pagina do PDF no Word como imagem. Use apenas quando o layout for mais importante que texto editavel.",
     "pdfAnalyze": {
       "waitingTitle": "Analisando seu PDF…",
       "waitingHint": "Para um resultado melhor, aguarde enquanto analisamos o PDF. Voce pode converter agora se preferir.",

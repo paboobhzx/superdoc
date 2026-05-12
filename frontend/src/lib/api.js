@@ -156,11 +156,16 @@ export const api = {
   triggerProcess: (jobId, params = null) =>
     request("POST", `/jobs/${jobId}/process`, params ? { params } : null),
 
-  // User files (requires auth)
-  getUserFiles: () => request("GET", "/users/me/files"),
-  deleteUserFile: (jobId) => request("DELETE", `/users/me/files/${jobId}`),
-  createUserFile: (payload) => request("POST", "/users/me/files", payload),
-  completeUserFile: (jobId) => request("POST", `/users/me/files/${jobId}/complete`),
+  // User files. Authenticated users are identified by cookie; sessionId is
+  // only a fallback for anonymous history and is ignored when the cookie wins.
+  getUserFiles: (sessionId = "", options = {}) =>
+    request("GET", sessionQuery("/users/me/files", sessionId), null, options),
+  deleteUserFile: (jobId, sessionId = "") =>
+    request("DELETE", sessionQuery(`/users/me/files/${jobId}`, sessionId)),
+  createUserFile: (payload, sessionId = "") =>
+    request("POST", sessionQuery("/users/me/files", sessionId), payload),
+  completeUserFile: (jobId, sessionId = "") =>
+    request("POST", sessionQuery(`/users/me/files/${jobId}/complete`, sessionId)),
 
   // Health check
   health: () => request("GET", "/health"),

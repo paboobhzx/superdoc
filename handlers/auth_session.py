@@ -16,6 +16,7 @@ _cognito = boto3.client("cognito-idp")
 CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID", "")
 SESSION_TTL_SECONDS = int(os.environ.get("AUTH_SESSION_TTL_SECONDS", str(7 * 24 * 3600)))
 COOKIE_NAME = os.environ.get("AUTH_SESSION_COOKIE_NAME", auth_session.SESSION_COOKIE_NAME)
+COOKIE_SAMESITE = "None"  # Cross-site CloudFront/API Gateway auth requires SameSite=None; Secure.
 
 
 def _route(event: dict) -> str:
@@ -26,7 +27,7 @@ def _route(event: dict) -> str:
 def _cookie(value: str, *, max_age: int) -> str:
     return (
         f"{COOKIE_NAME}={value}; Path=/; Max-Age={max_age}; "
-        "HttpOnly; Secure; SameSite=None"
+        f"HttpOnly; Secure; SameSite={COOKIE_SAMESITE}"
     )
 
 

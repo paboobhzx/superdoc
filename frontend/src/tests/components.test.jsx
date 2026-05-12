@@ -1,14 +1,17 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { renderHook } from "@testing-library/react";
 import { BrowserRouter, MemoryRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import { I18nProvider, useI18n } from "../context/I18nContext";
+import { AuthProvider } from "../context/AuthContext";
 
 function Providers({ children }) {
   return (
     <I18nProvider>
-      <ThemeProvider>{children}</ThemeProvider>
+      <ThemeProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </ThemeProvider>
     </I18nProvider>
   );
 }
@@ -29,7 +32,7 @@ describe("ThemeContext", () => {
     const { result } = renderHook(() => useTheme(), {
       wrapper: Providers,
     });
-    expect(result.current.themes.map((theme) => theme.id)).toEqual(["azure", "dark"]);
+    expect(result.current.themes.map((theme) => theme.id)).toEqual(["azure", "orange", "gray", "brown", "dark"]);
   });
 
   it("migrates stored light preference to Azure Blue", () => {
@@ -56,6 +59,66 @@ describe("I18nContext", () => {
     const { result } = renderHook(() => useI18n(), { wrapper: Providers });
     expect(result.current.locale).toBe("pt-BR");
     expect(result.current.t("settings.title")).toBe("Configuracoes");
+  });
+});
+
+// ── ParamsPanel ────────────────────────────────────────────────────────────
+
+describe("ParamsPanel", () => {
+  it("opens pdf_to_docx with high fidelity unchecked by default", async () => {
+    const { ParamsPanel } = await import("../components/ParamsPanel");
+    const onConfirm = vi.fn();
+    render(
+      <Providers>
+        <ParamsPanel
+          opMeta={{
+            operation: "pdf_to_docx",
+            params_schema: { high_fidelity: { type: "boolean", default: true } },
+          }}
+          onConfirm={onConfirm}
+          onCancel={() => {}}
+        />
+      </Providers>
+    );
+
+    expect(screen.getByRole("checkbox", { name: /high fidelity/i })).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: /convert/i }));
+    expect(onConfirm).toHaveBeenCalledWith({ high_fidelity: false });
+  });
+
+  it("applies ready PDF analysis recommendations to the high fidelity checkbox", async () => {
+    const { ParamsPanel } = await import("../components/ParamsPanel");
+    const opMeta = {
+      operation: "pdf_to_docx",
+      params_schema: { high_fidelity: { type: "boolean", default: false } },
+    };
+    const { rerender } = render(
+      <Providers>
+        <ParamsPanel
+          opMeta={opMeta}
+          onConfirm={() => {}}
+          onCancel={() => {}}
+          analysisState="ready"
+          analysisResult={{ recommendation: "image" }}
+        />
+      </Providers>
+    );
+
+    expect(screen.getByRole("checkbox", { name: /high fidelity/i })).toBeChecked();
+
+    rerender(
+      <Providers>
+        <ParamsPanel
+          opMeta={opMeta}
+          onConfirm={() => {}}
+          onCancel={() => {}}
+          analysisState="ready"
+          analysisResult={{ recommendation: "text" }}
+        />
+      </Providers>
+    );
+
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /high fidelity/i })).not.toBeChecked());
   });
 });
 
@@ -109,7 +172,11 @@ describe("Home page", () => {
 // ── useJob hook ────────────────────────────────────────────────────────────
 
 vi.mock("../lib/api", () => ({
-  api: { getStatus: vi.fn() },
+  api: {
+    getStatus: vi.fn(),
+    getOperations: vi.fn(() => Promise.resolve({ operations: [] })),
+    me: vi.fn(() => Promise.resolve({ user: null })),
+  },
 }));
 
 import { api } from "../lib/api";
@@ -280,7 +347,7 @@ describe("AppShell", () => {
         </Providers>
       </BrowserRouter>
     );
-    expect(screen.getByRole("button", { name: /Switch to Dark mode/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Switch to Warm Orange mode/i })).toBeTruthy();
   });
 
   it("renders design navigation links", async () => {

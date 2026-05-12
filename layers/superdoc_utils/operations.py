@@ -94,7 +94,7 @@ OPERATIONS: dict[str, dict] = {
             "high_fidelity": {
                 "type": "boolean",
                 "required": False,
-                "default": True,
+                "default": False,
                 "label": "High fidelity",
             },
             "fallback_strategy": {

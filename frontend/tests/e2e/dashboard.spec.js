@@ -40,7 +40,7 @@ test.describe("Dashboard (mocked authenticated)", () => {
         return;
       }
 
-      if (url === `${apiBase}/users/me/files` && req.method() === "GET") {
+      if (url.startsWith(`${apiBase}/users/me/files?`) && req.method() === "GET") {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -49,7 +49,7 @@ test.describe("Dashboard (mocked authenticated)", () => {
         return;
       }
 
-      if (url === `${apiBase}/users/me/files/${jobA.job_id}` && req.method() === "DELETE") {
+      if (url.startsWith(`${apiBase}/users/me/files/${jobA.job_id}?`) && req.method() === "DELETE") {
         jobs = jobs.filter((j) => j.job_id !== jobA.job_id);
         await route.fulfill({
           status: 200,

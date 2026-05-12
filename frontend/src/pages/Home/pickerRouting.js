@@ -50,7 +50,7 @@ export async function handleBackendJob({ file, operation, params, auth, sessionI
   }
   let data
   if (auth && auth.isAuthenticated) {
-    data = await api.createUserJob(payload)
+    data = await api.createUserJob({ ...payload, session_id: sessionId })
   } else {
     data = await api.createJob({ ...payload, session_id: sessionId })
   }
@@ -74,7 +74,7 @@ export async function createAndUploadOnly({ file, operation, auth, sessionId }) 
   }
   let data
   if (auth && auth.isAuthenticated) {
-    data = await api.createUserJob(payload)
+    data = await api.createUserJob({ ...payload, session_id: sessionId })
   } else {
     data = await api.createJob({ ...payload, session_id: sessionId })
   }

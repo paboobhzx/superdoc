@@ -156,8 +156,13 @@ export function useConversionFlow() {
 
       const result = await api.analyzePdf(job_id, getSessionId())
       if (analysisCancelRef.current) return
-      setAnalysisResult(result)
-      setAnalysisState("ready")
+      if (result?.recommendation) {
+        setAnalysisResult(result)
+        setAnalysisState("ready")
+      } else {
+        setAnalysisResult(null)
+        setAnalysisState("error")
+      }
     } catch {
       if (analysisCancelRef.current) return
       // Non-fatal: user can still convert with manually selected params

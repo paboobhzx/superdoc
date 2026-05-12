@@ -38,6 +38,7 @@
   "params": {
     "highFidelity": "High fidelity",
     "highFidelityHint": "Uses LibreOffice for complex documents. Uncheck for simple text files — faster but basic formatting only.",
+    "highFidelityPdfHint": "Places each PDF page into Word as an image. Use only when layout matters more than editable text.",
     "pdfAnalyze": {
       "waitingTitle": "Analyzing your PDF…",
       "waitingHint": "For a better result, please wait until we analyze your PDF. You can convert now if you prefer.",

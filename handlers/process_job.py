@@ -89,6 +89,7 @@ def handler(event, context):
             "file_name": job.get("file_name", "file"),
             "session_id": job.get("session_id", ""),
             "user_id": user_id,
+            "params": params if isinstance(params, dict) else {},
         }
         if isinstance(params, dict):
             payload.update(params)

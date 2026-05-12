@@ -90,6 +90,9 @@ test-results/
 # Backend tests live in the private repo (handlers/ + layers/ + tests/)
 /tests/
 
+# Local test files (sample PDFs, converted outputs)
+/test/
+
 # Playwright CI output (not source)
 frontend/test-results/
 frontend/playwright-report/

@@ -130,7 +130,7 @@ resource "aws_cloudfront_distribution" "superdoc" {
         "Access-Control-Request-Headers",
         "X-Api-Key",
       ]
-      cookies { forward = "none" }
+      cookies { forward = "all" }
     }
 
     min_ttl     = 0

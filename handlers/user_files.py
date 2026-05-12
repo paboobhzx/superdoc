@@ -24,10 +24,18 @@ def handler(event, context):
         user_id = auth_session.current_user_id(event)
         session_id = user_id or (event.get("queryStringParameters") or {}).get("session_id", "")
 
-        if not session_id:
-            return response.error("session_id required", 400)
-        if not user_id and not _valid_anon_session(session_id):
-            return response.error("valid session_id required", 400)
+        if method == "DELETE":
+            # DELETE requires a valid identity for ownership verification.
+            if not session_id:
+                return response.error("session_id required", 400)
+            if not user_id and not _valid_anon_session(session_id):
+                return response.error("valid session_id required", 400)
+        else:
+            # GET: if we can't identify the session, return an empty list.
+            # Safe (no data leakage) and avoids spurious 400 toasts during
+            # the migration window after VITE_API_URL was changed to /api.
+            if not session_id or (not user_id and not _valid_anon_session(session_id)):
+                return response.ok({"jobs": []})
 
         if method == "DELETE":
             job_id = (event.get("pathParameters") or {}).get("jobId", "")

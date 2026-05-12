@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useI18n } from "../context/I18nContext";
 import { api } from "../lib/api";
 import { loadRecentFiles, removeRecentFile } from "../lib/recentFiles";
+import { getSessionId } from "../lib/session";
 
 const PLAN_KEY = "superdoc_plan_active";
 
@@ -139,8 +140,47 @@ function expiryMeta(expiresAt) {
   return { key: "dashboard.expiresIn", params: { time: { unit: "days", value: Math.floor(hours / 24) } }, urgent: false };
 }
 
-function RecentFilesView({ t }) {
+function mergeLocalRecent(apiJobs) {
   const recent = loadRecentFiles();
+  const apiIds = new Set(apiJobs.map((j) => j.job_id));
+  const localOnly = recent
+    .filter((f) => !apiIds.has(f.jobId))
+    .map((f) => ({
+      job_id: f.jobId,
+      file_name: f.fileName,
+      status: "DONE",
+      operation: f.operation,
+      download_url: f.downloadUrl,
+      created_at: f.convertedAt,
+      expires_at: f.expiresAt,
+      _local: true,
+    }));
+  return [...apiJobs, ...localOnly];
+}
+
+function RecentFilesView({ t, locale }) {
+  const [loading, setLoading] = useState(false);
+  const [jobs, setJobs] = useState(() => mergeLocalRecent([]));
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      setLoading(true);
+      try {
+        const data = await api.getUserFiles(getSessionId(), { suppressStatuses: [400, 401] });
+        if (active) setJobs(mergeLocalRecent(data.jobs || []));
+      } catch {
+        if (active) setJobs(mergeLocalRecent([]));
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -150,27 +190,31 @@ function RecentFilesView({ t }) {
         <div className="px-5 py-4 border-b border-outline-variant/10">
           <span className="font-bold text-on-surface">{t("dashboard.recent")}</span>
         </div>
-        {recent.length === 0 ? (
+        {loading && jobs.length === 0 ? (
+          <div className="p-6 text-on-surface-variant text-sm">{t("common.loading")}…</div>
+        ) : jobs.length === 0 ? (
           <div className="p-6 text-on-surface-variant text-sm">
             {t("dashboard.noFiles")} <Link to="/" className="text-primary font-semibold no-underline hover:underline">{t("common.home")}</Link>.
           </div>
         ) : (
           <ul className="divide-y divide-outline-variant/10">
-            {recent.map((f) => (
-              <li key={f.jobId} className="p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+            {jobs.map((f) => (
+              <li key={f.job_id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <span className="font-bold text-on-surface truncate block">{f.fileName}</span>
+                  <span className="font-bold text-on-surface truncate block">{f.file_name || f.job_id?.slice(0, 8)}</span>
                   <div className="text-xs text-on-surface-variant mt-1">
                     {f.operation?.replace(/_/g, " ")}
-                    {f.convertedAt ? ` · ${new Date(f.convertedAt).toLocaleString()}` : ""}
+                    {f.created_at ? ` · ${formatWhen(f.created_at, locale)}` : ""}
                   </div>
                 </div>
-                <a
-                  href={f.downloadUrl}
-                  className="px-4 py-2 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity no-underline"
-                >
-                  {t("common.download")}
-                </a>
+                {f.download_url ? (
+                  <a
+                    href={f.download_url}
+                    className="px-4 py-2 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity no-underline"
+                  >
+                    {t("common.download")}
+                  </a>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -206,24 +250,9 @@ export function Dashboard() {
       setErr("");
       setLoading(true);
       try {
-        const data = await api.getUserFiles();
+        const data = await api.getUserFiles(getSessionId(), { suppressStatuses: [400] });
         if (!active) return;
-        const apiJobs = data.jobs || [];
-        const recent = loadRecentFiles();
-        const apiIds = new Set(apiJobs.map((j) => j.job_id));
-        const localOnly = recent
-          .filter((f) => !apiIds.has(f.jobId))
-          .map((f) => ({
-            job_id: f.jobId,
-            file_name: f.fileName,
-            status: "DONE",
-            operation: f.operation,
-            download_url: f.downloadUrl,
-            created_at: f.convertedAt,
-            expires_at: f.expiresAt,
-            _local: true,
-          }));
-        setJobs([...apiJobs, ...localOnly]);
+        setJobs(mergeLocalRecent(data.jobs || []));
       } catch (e) {
         if (!active) return;
         setErr(e.message || t("dashboard.loadFailed"));
@@ -250,7 +279,7 @@ export function Dashboard() {
       if (job?._local) {
         removeRecentFile(jobId);
       } else {
-        await api.deleteUserFile(jobId);
+        await api.deleteUserFile(jobId, getSessionId());
       }
       setJobs((prev) => prev.filter((j) => j.job_id !== jobId));
     } catch (e) {
@@ -281,7 +310,7 @@ export function Dashboard() {
   }
 
   if (!auth.isAuthenticated) {
-    return <RecentFilesView t={t} />;
+    return <RecentFilesView t={t} locale={locale} />;
   }
 
   return (

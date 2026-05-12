@@ -52,26 +52,13 @@ def _score_producer(producer: str) -> float:
 
 
 def _mean_xobjects_per_page(doc) -> float:
-    """Average number of Form XObjects referenced per page."""
-    import pymupdf
+    """Average number of images referenced per page."""
 
     total = 0
     for page_num in range(doc.page_count):
         try:
             page = doc.load_page(page_num)
-            res = page.get_resources()
-            xobj = res.get("XObject") or {}
-            # Count Form XObjects (subtype=Form)
-            form_count = 0
-            for xref in (xobj.get(k) for k in xobj):
-                if isinstance(xref, int):
-                    try:
-                        obj_type = doc.xref_get_key(xref, "Subtype")
-                        if obj_type and "Form" in str(obj_type):
-                            form_count += 1
-                    except Exception:
-                        pass
-            total += form_count
+            total += len(page.get_images(full=True))
         except Exception:
             pass
     return total / max(doc.page_count, 1)

@@ -27,8 +27,11 @@ def handler(event, context):
             log.error("Unknown operation, skipping", extra={"operation": operation, "job_id": body.get("job_id")})
             continue
 
-        params = body.get("params") or {}
-        if params.get("high_fidelity") is False and operation in operations.HAS_FAST_VARIANT:
+        params = body.get("params") if isinstance(body.get("params"), dict) else {}
+        high_fidelity = params.get("high_fidelity")
+        if high_fidelity is None:
+            high_fidelity = body.get("high_fidelity")
+        if high_fidelity is False and operation in operations.HAS_FAST_VARIANT:
             fn_suffix = fn_suffix + "-fast"
 
         function_name = f"{NAME_PREFIX}-{fn_suffix}"

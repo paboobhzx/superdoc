@@ -14,6 +14,7 @@ log = get_logger(__name__)
 
 _LIBREOFFICE_BIN = os.environ.get("LIBREOFFICE_BIN", "libreoffice")
 _QA_THRESHOLD = float(os.environ.get("PDF_TO_DOCX_QA_THRESHOLD", "0.7"))
+_CHUNK_SIZE = 40  # pages per chunk for large document splits
 
 
 def _pdf_to_docx_libreoffice(pdf_bytes: bytes) -> bytes:
@@ -104,7 +105,13 @@ def _parse_page_range(page_range: str, total: int) -> list[int]:
 
 
 def _merge_docx(docx_bytes_list: list[bytes]) -> bytes:
-    """Merge DOCX chunks into one document, remapping image relationships."""
+    """Merge DOCX chunks into one document.
+
+    Uses lxml addprevious() to insert all chunk content BEFORE the master's
+    sectPr, which must remain the final child of <w:body> per OOXML spec.
+    Using body.append() would place content after sectPr and produce the
+    'unreadable content' error in Word.
+    """
     from docx import Document
     from docx.oxml.ns import qn
 
@@ -113,26 +120,41 @@ def _merge_docx(docx_bytes_list: list[bytes]) -> bytes:
 
     _IMAGE_RTYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
     _R_EMBED = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
+    _SECT_PR = qn("w:sectPr")
 
     master = Document(io.BytesIO(docx_bytes_list[0]))
 
     for chunk_bytes in docx_bytes_list[1:]:
         chunk = Document(io.BytesIO(chunk_bytes))
-        master.add_page_break()
 
         children = list(chunk.element.body)
-        if children and children[-1].tag == qn("w:sectPr"):
+        if children and children[-1].tag == _SECT_PR:
             children = children[:-1]
+
+        if not children:
+            continue
+
+        # Add a page break before the new chunk's content.
+        # Document.add_page_break() inserts before sectPr via python-docx internals.
+        master.add_page_break()
+
+        # Locate the master sectPr — chunk content must be inserted BEFORE it,
+        # never appended after it.
+        master_sect_pr = master.element.body.find(_SECT_PR)
 
         for elem in children:
             clone = copy.deepcopy(elem)
+            # Remap embedded image relationship IDs to the master document
             for blip in clone.findall(".//" + qn("a:blip")):
                 old_rid = blip.get(_R_EMBED)
                 if old_rid and old_rid in chunk.part.rels:
                     image_part = chunk.part.rels[old_rid].target_part
                     new_rid = master.part.relate_to(image_part, _IMAGE_RTYPE)
                     blip.set(_R_EMBED, new_rid)
-            master.element.body.append(clone)
+            if master_sect_pr is not None:
+                master_sect_pr.addprevious(clone)  # insert before sectPr
+            else:
+                master.element.body.append(clone)
 
     out = io.BytesIO()
     master.save(out)
@@ -140,7 +162,7 @@ def _merge_docx(docx_bytes_list: list[bytes]) -> bytes:
 
 
 def _render_page_as_image_docx(page_bytes: bytes) -> bytes:
-    """Render a single-page PDF as a full-page image in a DOCX."""
+    """Render a single-page PDF as a full-page image embedded in a DOCX."""
     import pymupdf
     from docx import Document
     from docx.shared import Inches
@@ -165,7 +187,7 @@ def _render_page_as_image_docx(page_bytes: bytes) -> bytes:
         pix = page.get_pixmap(matrix=matrix, alpha=False)
         pix_w, pix_h = pix.width, pix.height
         png_bytes = pix.tobytes("png")
-        pix = None
+        pix = None  # explicit release for memory safety
 
         img_stream = io.BytesIO(png_bytes)
         png_bytes = None
@@ -180,27 +202,6 @@ def _render_page_as_image_docx(page_bytes: bytes) -> bytes:
         else:
             docx_doc.add_picture(img_stream, width=usable_w)
 
-        out = io.BytesIO()
-        docx_doc.save(out)
-        return out.getvalue()
-    finally:
-        doc.close()
-
-
-def _extract_page_text_docx(page_bytes: bytes) -> bytes:
-    """Extract text from a single-page PDF into a plain DOCX."""
-    import pymupdf
-    from docx import Document
-
-    doc = pymupdf.open(stream=page_bytes, filetype="pdf")
-    try:
-        docx_doc = Document()
-        page = doc.load_page(0)
-        text = page.get_text("text") or ""
-        if text.strip():
-            for para in text.split("\n"):
-                if para.strip():
-                    docx_doc.add_paragraph(para.strip())
         out = io.BytesIO()
         docx_doc.save(out)
         return out.getvalue()
@@ -226,95 +227,129 @@ def _count_words_docx(docx_bytes: bytes) -> int:
     return total
 
 
-def _pdf2docx_single_page(page_bytes: bytes) -> bytes:
-    """Try converting a single-page PDF with pdf2docx. Returns DOCX bytes or raises."""
-    from pdf2docx import Converter
-
-    with tempfile.TemporaryDirectory(prefix="pdf2docx-") as workdir:
-        src = os.path.join(workdir, "input.pdf")
-        dst = os.path.join(workdir, "output.docx")
-        with open(src, "wb") as fh:
-            fh.write(page_bytes)
-        cv = Converter(src)
-        try:
-            cv.convert(dst)
-        finally:
-            cv.close()
-        with open(dst, "rb") as fh:
-            return fh.read()
-
-
-def _process_page(
-    page_bytes: bytes,
-    page_num: int,
-    page_words_pdf: int,
-    high_fidelity: bool,
-    fallback_strategy: str,
-    job_id: str,
-) -> tuple[bytes, str]:
-    """Process a single page and return (docx_bytes, mode_used).
-
-    Modes:
-      - 'image'   — PyMuPDF page-as-image (always layout-faithful, never editable)
-      - 'pdf2docx' — pdf2docx reconstruction (editable when it works)
-      - 'text'    — plain-text extraction fallback (always editable, no layout)
-    """
-    # high_fidelity=True: always render as image, skip reconstruction entirely
-    if high_fidelity:
-        return _render_page_as_image_docx(page_bytes), "image"
-
-    # Attempt pdf2docx reconstruction
-    docx_bytes = None
+def _pdf2docx_convert(pdf_bytes: bytes, body: dict) -> bytes:
+    """Convert a PDF to DOCX using pdf2docx → LibreOffice → text fallback."""
     try:
-        docx_bytes = _pdf2docx_single_page(page_bytes)
-    except Exception as exc:
-        log.warning(
-            "pdf2docx failed on page %d: %s, applying fallback=%s",
-            page_num + 1, exc, fallback_strategy,
-            extra={"job_id": job_id},
-        )
+        from pdf2docx import Converter
 
-    # QA gate: if pdf2docx succeeded, check word retention
-    if docx_bytes is not None and page_words_pdf > 0:
-        docx_words = _count_words_docx(docx_bytes)
-        ratio = docx_words / page_words_pdf
-        if ratio < _QA_THRESHOLD:
-            log.warning(
-                "qa_gate page %d: ratio %.3f < %.2f, applying fallback=%s",
-                page_num + 1, ratio, _QA_THRESHOLD, fallback_strategy,
-                extra={"job_id": job_id},
-            )
-            docx_bytes = None  # trigger fallback below
+        with tempfile.TemporaryDirectory(prefix="pdf2docx-") as workdir:
+            src = os.path.join(workdir, "input.pdf")
+            stem, _ = os.path.splitext(os.path.basename(body.get("file_name") or "doc.pdf"))
+            dst = os.path.join(workdir, f"{stem or 'document'}.docx")
+            with open(src, "wb") as fh:
+                fh.write(pdf_bytes)
+            cv = Converter(src)
+            try:
+                cv.convert(dst)
+            finally:
+                cv.close()
+            with open(dst, "rb") as fh:
+                return fh.read()
+    except Exception:
+        pass
 
-    if docx_bytes is not None:
-        return docx_bytes, "pdf2docx"
+    try:
+        return _pdf_to_docx_libreoffice(pdf_bytes)
+    except Exception:
+        return _extract_text_docx(pdf_bytes)
 
-    # Apply fallback strategy
-    if fallback_strategy == "image":
-        return _render_page_as_image_docx(page_bytes), "image"
 
-    # fallback_strategy == "text" (default)
-    return _extract_page_text_docx(page_bytes), "text"
+def _build_text_fallback_docx(pdf_bytes: bytes) -> bytes:
+    """Build a plain-text DOCX from the full PDF using PyMuPDF."""
+    import pymupdf
+    from docx import Document
+
+    docx_doc = Document()
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        for page_num in range(doc.page_count):
+            if page_num > 0:
+                docx_doc.add_page_break()
+            page = doc.load_page(page_num)
+            text = page.get_text("text") or ""
+            for line in text.split("\n"):
+                if line.strip():
+                    docx_doc.add_paragraph(line.strip())
+    finally:
+        doc.close()
+    out = io.BytesIO()
+    docx_doc.save(out)
+    return out.getvalue()
+
+
+def _build_image_fallback_docx(pdf_bytes: bytes) -> bytes:
+    """Render every page of the PDF as a full-page image in a DOCX."""
+    import pymupdf
+    from docx import Document
+    from docx.shared import Inches
+
+    usable_w = Inches(7.27)
+    usable_h = Inches(10.69)
+    zoom = 150 / 72.0
+    matrix = pymupdf.Matrix(zoom, zoom)
+
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        docx_doc = Document()
+        section = docx_doc.sections[0]
+        section.page_width = Inches(8.27)
+        section.page_height = Inches(11.69)
+        section.top_margin = Inches(0.5)
+        section.bottom_margin = Inches(0.5)
+        section.left_margin = Inches(0.5)
+        section.right_margin = Inches(0.5)
+
+        for page_num in range(doc.page_count):
+            if page_num > 0:
+                docx_doc.add_page_break()
+            page = doc.load_page(page_num)
+            pix = page.get_pixmap(matrix=matrix, alpha=False)
+            pix_w, pix_h = pix.width, pix.height
+            png_bytes = pix.tobytes("png")
+            pix = None
+
+            img_stream = io.BytesIO(png_bytes)
+            png_bytes = None
+
+            if pix_h > 0:
+                aspect = pix_w / pix_h
+                height_if_fit_w = usable_w / aspect
+                if height_if_fit_w > usable_h:
+                    docx_doc.add_picture(img_stream, height=usable_h)
+                else:
+                    docx_doc.add_picture(img_stream, width=usable_w)
+            else:
+                docx_doc.add_picture(img_stream, width=usable_w)
+
+        out = io.BytesIO()
+        docx_doc.save(out)
+        return out.getvalue()
+    finally:
+        doc.close()
 
 
 def _process(pdf_bytes: bytes, body: dict) -> bytes:
-    import pymupdf
     from pypdf import PdfReader, PdfWriter
 
-    params = body.get("params") or {}
+    params = body.get("params") if isinstance(body.get("params"), dict) else {}
+    if not params:
+        params = {
+            key: body[key]
+            for key in ("page_range", "high_fidelity", "fallback_strategy")
+            if key in body
+        }
     page_range_str = (params.get("page_range") or "").strip()
-    high_fidelity = bool(params.get("high_fidelity", True))
+    high_fidelity = bool(params.get("high_fidelity", False))
     fallback_strategy = (params.get("fallback_strategy") or "text").lower()
     job_id = body.get("job_id", "unknown")
 
-    # Determine pages to convert
     reader = PdfReader(io.BytesIO(pdf_bytes))
     total_pages = len(reader.pages)
     page_indices = _parse_page_range(page_range_str, total_pages)
     n_pages = len(page_indices)
 
     log.info(
-        "pdf_to_docx per-page conversion planned",
+        "pdf_to_docx conversion planned",
         extra={
             "job_id": job_id,
             "total_pages": total_pages,
@@ -324,53 +359,98 @@ def _process(pdf_bytes: bytes, body: dict) -> bytes:
         },
     )
 
-    # Pre-extract word counts via PyMuPDF for QA gate (cheap, < 1s for 300 pages)
-    page_word_counts: list[int] = []
-    if not high_fidelity:
-        fitz_doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    # Extract page subset if a range was specified
+    if page_range_str and n_pages < total_pages:
+        writer = PdfWriter()
+        for idx in page_indices:
+            writer.add_page(reader.pages[idx])
+        buf = io.BytesIO()
+        writer.write(buf)
+        pdf_bytes = buf.getvalue()
+
+    # ── Mode 1: every page rendered as image ──────────────────────────────────
+    if high_fidelity:
+        log.info("mode1 (page-as-image)", extra={"job_id": job_id})
         try:
-            for idx in page_indices:
-                page = fitz_doc.load_page(idx)
-                text = page.get_text("text") or ""
-                page_word_counts.append(_count_words_in_text(text))
-        finally:
-            fitz_doc.close()
-    else:
-        page_word_counts = [0] * n_pages
-
-    # Process each page individually
-    docx_pages: list[bytes] = []
-    for i, page_idx in enumerate(page_indices):
-        # Extract the single page as a fresh PDF
-        page_writer = PdfWriter()
-        page_writer.add_page(reader.pages[page_idx])
-        page_buf = io.BytesIO()
-        page_writer.write(page_buf)
-        page_bytes_single = page_buf.getvalue()
-
-        page_docx, mode_used = _process_page(
-            page_bytes=page_bytes_single,
-            page_num=page_idx,
-            page_words_pdf=page_word_counts[i],
-            high_fidelity=high_fidelity,
-            fallback_strategy=fallback_strategy,
-            job_id=job_id,
-        )
-        docx_pages.append(page_docx)
-
-        # Record per-page mode to DynamoDB (best-effort, never crash the conversion)
-        try:
-            dynamo.record_page_result(job_id, page=page_idx + 1, mode_used=mode_used)
+            dynamo.record_page_result(job_id, page=0, mode_used="image")
         except Exception:
             pass
+        return _build_image_fallback_docx(pdf_bytes)
 
-        log.info(
-            "pdf_to_docx page %d/%d mode=%s",
-            i + 1, n_pages, mode_used,
-            extra={"job_id": job_id},
-        )
+    # ── Mode 0: pdf2docx on the full document, QA gate, fallback ─────────────
+    #
+    # We run pdf2docx on the whole document (not per-page) because:
+    # 1. pdf2docx is designed for full documents — it resolves cross-page layout
+    # 2. Per-page extraction + merge produced "unreadable content" errors in Word
+    # 3. The QA gate can still detect catastrophic failures and fall back
+    #
+    # For large PDFs that exceed CHUNK_SIZE, split by page range, convert each
+    # chunk as a whole, then merge. This preserves whole-chunk layout continuity.
 
-    return _merge_docx(docx_pages)
+    # Count total extractable words for QA gate
+    total_pdf_words = 0
+    try:
+        import pymupdf
+        fitz_doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            for page_num in range(fitz_doc.page_count):
+                page = fitz_doc.load_page(page_num)
+                total_pdf_words += _count_words_in_text(page.get_text("text") or "")
+        finally:
+            fitz_doc.close()
+    except Exception:
+        pass
+
+    if n_pages <= _CHUNK_SIZE:
+        docx_result = _pdf2docx_convert(pdf_bytes, body)
+    else:
+        # Split into sequential chunks, convert each, then merge
+        docx_chunks: list[bytes] = []
+        reader2 = PdfReader(io.BytesIO(pdf_bytes))
+        for chunk_start in range(0, n_pages, _CHUNK_SIZE):
+            chunk_end = min(chunk_start + _CHUNK_SIZE, n_pages)
+            chunk_writer = PdfWriter()
+            for i in range(chunk_start, chunk_end):
+                chunk_writer.add_page(reader2.pages[i])
+            chunk_buf = io.BytesIO()
+            chunk_writer.write(chunk_buf)
+            log.info(
+                "pdf_to_docx chunk",
+                extra={"job_id": job_id, "chunk_start": chunk_start + 1, "chunk_end": chunk_end},
+            )
+            docx_chunks.append(_pdf2docx_convert(chunk_buf.getvalue(), body))
+        docx_result = _merge_docx(docx_chunks)
+
+    # QA gate: check word retention. If pdf has no text (scanned), skip.
+    if total_pdf_words > 0:
+        try:
+            docx_words = _count_words_docx(docx_result)
+            ratio = docx_words / total_pdf_words
+            log.info(
+                "qa_gate ratio=%.3f (%d pdf / %d docx)",
+                ratio, total_pdf_words, docx_words,
+                extra={"job_id": job_id},
+            )
+            if ratio < _QA_THRESHOLD:
+                log.warning(
+                    "qa_gate triggered ratio=%.3f < %.2f, fallback=%s",
+                    ratio, _QA_THRESHOLD, fallback_strategy,
+                    extra={"job_id": job_id},
+                )
+                if fallback_strategy == "image":
+                    docx_result = _build_image_fallback_docx(pdf_bytes)
+                else:
+                    docx_result = _build_text_fallback_docx(pdf_bytes)
+        except Exception:
+            log.exception("qa_gate error, returning pdf2docx result", extra={"job_id": job_id})
+
+    try:
+        mode = "pdf2docx"
+        dynamo.record_page_result(job_id, page=0, mode_used=mode)
+    except Exception:
+        pass
+
+    return docx_result
 
 
 def _output_filename(body: dict, file_key: str) -> str:

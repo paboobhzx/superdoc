@@ -84,10 +84,19 @@ export function AuthProvider({ children }) {
     async function signIn(nextEmail, password) {
       if (!nextEmail || !password) throw new Error("Email and password are required.");
 
-      const result = await api.login({ email: nextEmail, password });
-      setUser(result.user || null);
+      await api.login({ email: nextEmail, password });
+      let verified;
+      try {
+        verified = await api.me();
+      } catch {
+        throw new Error("Sign in succeeded, but the browser did not receive the session cookie. Please try again.");
+      }
+      if (!verified?.user) {
+        throw new Error("Sign in succeeded, but the browser did not receive the session cookie. Please try again.");
+      }
+      setUser(verified.user);
       setEmail(nextEmail);
-      return result.user || null;
+      return verified.user;
     }
 
     async function signUp(nextEmail, password) {

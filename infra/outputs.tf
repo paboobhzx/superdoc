@@ -1,5 +1,5 @@
 output "api_gateway_invoke_url" {
-  description = "Direct API Gateway stage URL — this is VITE_API_URL in Amplify"
+  description = "Direct API Gateway stage URL. Production Amplify uses /api through CloudFront."
   value       = module.api_gateway.invoke_url
 }
 
