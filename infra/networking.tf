@@ -84,6 +84,10 @@ module "api_gateway" {
       invoke_arn    = module.lambda_presign_download.invoke_arn
       function_name = module.lambda_presign_download.function_name
     }
+    pdf_analyze = {
+      invoke_arn    = module.lambda_pdf_analyze.invoke_arn
+      function_name = module.lambda_pdf_analyze.function_name
+    }
   }
 }
 

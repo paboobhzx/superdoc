@@ -49,6 +49,7 @@ def handler(event, context):
         file_size_bytes = int(body.get("file_size_bytes", 0))
         session_id = (body.get("session_id") or "").strip()
         params = body.get("params") or {}
+        analysis_result = body.get("analysis_result") or None
 
         user_id = auth_session.current_user_id(event)
         is_registered = bool(user_id)
@@ -111,7 +112,7 @@ def handler(event, context):
             file_key = f"uploads/{job_id}/{file_name}"
             ttl_seconds = limits.storage_ttl_for_user(None)
 
-        dynamo.create_job(
+        job_item = dynamo.create_job(
             job_id=job_id,
             operation=operation,
             session_id=session_id,
@@ -122,6 +123,9 @@ def handler(event, context):
             params=params,
             ttl_seconds=ttl_seconds,
         )
+        # Persist analysis_result alongside the job for diagnostic purposes
+        if analysis_result and isinstance(analysis_result, dict):
+            dynamo.update_job(job_id, analysis_result=analysis_result)
 
         upload = s3.presign_post_upload(file_key, max_bytes=_MAX_ITERATION_BYTES)
 

@@ -37,7 +37,24 @@
   },
   "params": {
     "highFidelity": "Alta fidelidade",
-    "highFidelityHint": "Usa LibreOffice para documentos complexos. Desmarque para arquivos de texto simples — mais rapido, mas apenas formatacao basica."
+    "highFidelityHint": "Usa LibreOffice para documentos complexos. Desmarque para arquivos de texto simples — mais rapido, mas apenas formatacao basica.",
+    "pdfAnalyze": {
+      "waitingTitle": "Analisando seu PDF…",
+      "waitingHint": "Para um resultado melhor, aguarde enquanto analisamos o PDF. Voce pode converter agora se preferir.",
+      "seconds": "s",
+      "recommendation": "Recomendacao",
+      "recommendImage": "Manter layout (imagem)",
+      "recommendText": "Texto editavel",
+      "estimate": "~{{seconds}}s estimado",
+      "rationale": {
+        "multi_column_layout": "Seu PDF tem um layout multi-colunas — manter o layout preserva a aparencia; texto editavel da um Word sem formatacao mas com conteudo.",
+        "fpdf_producer": "Este PDF foi gerado por uma ferramenta de layout (FPDF/InDesign) — a reconstrucao de texto e pouco confiavel. Manter o layout e recomendado.",
+        "high_xobjects_per_page": "O PDF contem muitos blocos pre-renderizados por pagina — manter o layout produz um resultado mais fiel.",
+        "no_extractable_text": "Nenhum texto extraivel encontrado — este parece ser um PDF digitalizado. Manter o layout e a unica opcao.",
+        "high_image_coverage": "Grande parte das paginas e coberta por imagens — preservar o layout ficara melhor.",
+        "simple_layout": "Este PDF tem um layout simples — Texto Editavel deve reconstruir bem e gerar um Word totalmente editavel."
+      }
+    }
   },
   "batch": {
     "title": "Conversao em lote",

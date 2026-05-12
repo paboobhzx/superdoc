@@ -451,6 +451,91 @@ resource "aws_api_gateway_integration_response" "job_process_options_200" {
   ]
 }
 
+# ── /jobs/{jobId}/analyze ─────────────────────────────────────────────────────
+
+resource "aws_api_gateway_resource" "job_analyze" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  parent_id   = aws_api_gateway_resource.job_id.id
+  path_part   = "analyze"
+}
+
+resource "aws_api_gateway_method" "job_analyze_post" {
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.job_analyze.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "job_analyze_post" {
+  rest_api_id             = aws_api_gateway_rest_api.superdoc.id
+  resource_id             = aws_api_gateway_resource.job_analyze.id
+  http_method             = aws_api_gateway_method.job_analyze_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_integrations["pdf_analyze"].invoke_arn
+}
+
+resource "aws_lambda_permission" "pdf_analyze" {
+  statement_id  = "AllowAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_integrations["pdf_analyze"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.api_execution_arn}/*/*"
+}
+
+resource "aws_api_gateway_method_response" "job_analyze_post_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.job_analyze.id
+  http_method = aws_api_gateway_method.job_analyze_post.http_method
+  status_code = "200"
+}
+
+resource "aws_api_gateway_method" "job_analyze_options" {
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.job_analyze.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "job_analyze_options" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.job_analyze.id
+  http_method = aws_api_gateway_method.job_analyze_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "job_analyze_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.job_analyze.id
+  http_method = aws_api_gateway_method.job_analyze_options.http_method
+  status_code = "200"
+
+  response_parameters = local.cors_response_parameters
+}
+
+resource "aws_api_gateway_integration_response" "job_analyze_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.job_analyze.id
+  http_method = aws_api_gateway_method.job_analyze_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"      = local.cors_allow_origin_header
+    "method.response.header.Access-Control-Allow-Headers"     = "'Content-Type,Authorization,X-Api-Key'"
+    "method.response.header.Access-Control-Allow-Methods"     = "'GET,POST,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Credentials" = "'true'"
+  }
+
+  depends_on = [
+    aws_api_gateway_integration.job_analyze_options,
+    aws_api_gateway_method_response.job_analyze_options_200,
+  ]
+}
+
 # ── /users/me/files ───────────────────────────────────────────────────────────
 
 resource "aws_api_gateway_resource" "users" {

@@ -97,6 +97,13 @@ OPERATIONS: dict[str, dict] = {
                 "default": True,
                 "label": "High fidelity",
             },
+            "fallback_strategy": {
+                "type": "enum",
+                "required": False,
+                "default": "text",
+                "values": ["text", "image"],
+                "label": "Fallback strategy",
+            },
             "page_range": {
                 "type": "string",
                 "required": False,

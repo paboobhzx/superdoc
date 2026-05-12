@@ -61,6 +61,29 @@ export async function handleBackendJob({ file, operation, params, auth, sessionI
 
 
 /**
+ * Create a job and upload the file WITHOUT triggering processing.
+ * Used by the pre-analysis flow: the job_id can later be used for
+ * /analyze and then triggered with final params via triggerProcess.
+ * Returns { job_id, file_key }.
+ */
+export async function createAndUploadOnly({ file, operation, auth, sessionId }) {
+  const payload = {
+    operation,
+    file_size_bytes: file.size,
+    file_name: file.name,
+  }
+  let data
+  if (auth && auth.isAuthenticated) {
+    data = await api.createUserJob(payload)
+  } else {
+    data = await api.createJob({ ...payload, session_id: sessionId })
+  }
+  await api.uploadToS3(data.upload || data.upload_url, file)
+  return { job_id: data.job_id, file_key: data.file_key }
+}
+
+
+/**
  * Handle a client_editor selection - upload the file, then redirect to the
  * correct editor page with ?key=<s3_key> so it can auto-load. Uses the
  * authenticated "store" flow if logged in, anonymous uploads otherwise.

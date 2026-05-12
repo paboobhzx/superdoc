@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useI18n } from "../../context/I18nContext"
 
 const PAPER_SIZES = [
@@ -9,14 +9,97 @@ const PAPER_SIZES = [
   { id: "A5", label: "A5", sub: "148×210 mm" },
 ]
 
-export function ParamsPanel({ opMeta, onConfirm, onCancel }) {
+function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt }) {
+  const { t } = useI18n()
+  const [elapsed, setElapsed] = useState(0)
+  const intervalRef = useRef(null)
+
+  useEffect(() => {
+    if (analysisState === "uploading" || analysisState === "analyzing") {
+      setElapsed(0)
+      intervalRef.current = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - (analysisStartedAt || Date.now())) / 1000))
+      }, 100)
+    } else {
+      clearInterval(intervalRef.current)
+    }
+    return () => clearInterval(intervalRef.current)
+  }, [analysisState, analysisStartedAt])
+
+  if (!analysisState || analysisState === "idle" || analysisState === "error") return null
+
+  if (analysisState === "uploading" || analysisState === "analyzing") {
+    return (
+      <div className="mb-4 rounded-xl border border-outline-variant/20 bg-surface-container px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent shrink-0" />
+          <span className="text-sm font-semibold text-on-surface">
+            {t("params.pdfAnalyze.waitingTitle")}
+          </span>
+          <span className="ml-auto text-xs tabular-nums text-on-surface-variant">
+            {elapsed}{t("params.pdfAnalyze.seconds")}
+          </span>
+        </div>
+        <p className="mt-1.5 text-xs text-on-surface-variant leading-relaxed">
+          {t("params.pdfAnalyze.waitingHint")}
+        </p>
+      </div>
+    )
+  }
+
+  if (analysisState === "ready" && analysisResult) {
+    const isImage = analysisResult.recommendation === "image"
+    const recLabel = isImage
+      ? t("params.pdfAnalyze.recommendImage")
+      : t("params.pdfAnalyze.recommendText")
+    const estimatedSecs = isImage
+      ? analysisResult.estimated_seconds?.image
+      : analysisResult.estimated_seconds?.text
+    const rationaleKey = (analysisResult.rationale_keys || [])[0]
+    const rationaleText = rationaleKey
+      ? t(`params.pdfAnalyze.rationale.${rationaleKey}`, { defaultValue: "" })
+      : ""
+
+    return (
+      <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+          <span className="material-symbols-outlined text-primary text-[16px]">auto_awesome</span>
+          <span className="text-sm font-semibold text-on-surface">
+            {t("params.pdfAnalyze.recommendation")}{": "}
+            <span className="text-primary">{recLabel}</span>
+          </span>
+          {estimatedSecs && (
+            <span className="ml-auto text-xs text-on-surface-variant tabular-nums">
+              {t("params.pdfAnalyze.estimate", { seconds: estimatedSecs })}
+            </span>
+          )}
+        </div>
+        {rationaleText && (
+          <p className="text-xs text-on-surface-variant leading-relaxed">{rationaleText}</p>
+        )}
+      </div>
+    )
+  }
+
+  return null
+}
+
+export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analysisResult, analysisStartedAt }) {
   const { t } = useI18n()
   const schema = opMeta?.params_schema || {}
   const hasPaperSize = Boolean(schema.paper_size)
   const hasHighFidelity = Boolean(schema.high_fidelity)
+  const isPdfToDocx = opMeta?.operation === "pdf_to_docx"
 
   const [paperSize, setPaperSize] = useState("A4")
   const [highFidelity, setHighFidelity] = useState(true)
+
+  // When analysis arrives, auto-set checkbox to match the recommendation
+  useEffect(() => {
+    if (analysisState === "ready" && analysisResult?.recommendation) {
+      setHighFidelity(analysisResult.recommendation === "image")
+    }
+  }, [analysisState, analysisResult])
 
   function handleConfirm() {
     const params = {}
@@ -27,6 +110,14 @@ export function ParamsPanel({ opMeta, onConfirm, onCancel }) {
 
   return (
     <div className="animate-[fade-in_0.2s_ease]">
+      {isPdfToDocx && (
+        <AnalysisStrip
+          analysisState={analysisState}
+          analysisResult={analysisResult}
+          analysisStartedAt={analysisStartedAt}
+        />
+      )}
+
       {hasPaperSize && (
         <>
           <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-outline">{t("paramsPanel.pageSize")}</div>

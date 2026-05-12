@@ -141,4 +141,15 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
         if raw_pr and raw_pr.strip():
             cleaned["page_range"] = raw_pr.strip()
 
+        raw_fs = params.get("fallback_strategy")
+        ok_flag, err_msg = _one_of(
+            raw_fs,
+            name="fallback_strategy",
+            allowed={"text", "image"},
+        )
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if raw_fs:
+            cleaned["fallback_strategy"] = raw_fs.lower()
+
     return ValidationResult(ok=True, params=cleaned)

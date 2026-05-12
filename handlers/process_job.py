@@ -50,6 +50,20 @@ def handler(event, context):
         params = _json_safe(job.get("params") or {})
         user_id = job.get("user_id") or ""
 
+        # Allow the caller to supply final params at trigger time (used by the
+        # pre-analysis upload flow where the job is created with defaults and
+        # the user's actual choices arrive with the trigger call).
+        body_json = {}
+        if event.get("body"):
+            try:
+                body_json = json.loads(event["body"])
+            except Exception:
+                pass
+        params_override = body_json.get("params") or {}
+        if params_override and isinstance(params_override, dict):
+            params = {**params, **params_override}
+            dynamo.update_job(job_id, params=params)
+
         job_meta = operations.OPERATIONS.get(job.get("operation"), {})
         input_types = {str(item).lower().lstrip(".") for item in job_meta.get("input_types", [])}
         if "pdf" in input_types:

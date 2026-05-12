@@ -151,8 +151,10 @@ export const api = {
     if (!res.ok) throw new Error(`S3 upload failed: ${res.status}`);
   },
 
-  // Trigger processing after upload
-  triggerProcess: (jobId) => request("POST", `/jobs/${jobId}/process`),
+  // Trigger processing after upload. Pass params to override the job's stored
+  // params (used by the pre-analysis upload flow).
+  triggerProcess: (jobId, params = null) =>
+    request("POST", `/jobs/${jobId}/process`, params ? { params } : null),
 
   // User files (requires auth)
   getUserFiles: () => request("GET", "/users/me/files"),
@@ -186,4 +188,11 @@ export const api = {
     const qs = inputType ? `?input_type=${encodeURIComponent(inputType)}` : ""
     return request("GET", `/operations${qs}`)
   },
+
+  // Analyze a PDF that has already been uploaded (job must exist in S3).
+  // Returns complexity_score, recommendation, estimated_seconds, page_count, etc.
+  analyzePdf: (jobId, sessionId = "") =>
+    request("POST", sessionQuery(`/jobs/${jobId}/analyze`, sessionId), null, {
+      suppressStatuses: [404, 422],
+    }),
 };

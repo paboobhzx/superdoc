@@ -162,6 +162,26 @@ def mark_failed(job_id: str, error: str) -> None:
     update_job(job_id, status="FAILED", error=error, completed_at=int(time.time()))
 
 
+def record_page_result(job_id: str, page: int, mode_used: str) -> None:
+    """Append a per-page conversion mode entry to the job item.
+
+    Uses DynamoDB list_append so callers can call this once per page without
+    needing to know the full list. Idempotent for the same (job_id, page) pair
+    only if the item hasn't been written yet (append-only, no dedup).
+    """
+    _jobs().update_item(
+        Key={"job_id": job_id},
+        UpdateExpression=(
+            "SET #pr = list_append(if_not_exists(#pr, :empty), :entry)"
+        ),
+        ExpressionAttributeNames={"#pr": "page_results"},
+        ExpressionAttributeValues={
+            ":entry": [{"page": page, "mode_used": mode_used}],
+            ":empty": [],
+        },
+    )
+
+
 def query_by_session(session_id: str) -> list:
     resp = _jobs().query(
         IndexName="session-index",

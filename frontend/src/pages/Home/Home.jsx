@@ -103,6 +103,9 @@ export function Home() {
     gridChoices,
     editOperation,
     pendingOp,
+    analysisState,
+    analysisResult,
+    analysisStartedAt,
     resetToDrop,
     refreshOperations,
     handleFiles,
@@ -238,7 +241,14 @@ export function Home() {
               ) : null}
 
               {pendingOp ? (
-                <ParamsPanel opMeta={pendingOp} onConfirm={confirmConvert} onCancel={cancelPending} />
+                <ParamsPanel
+                  opMeta={pendingOp}
+                  onConfirm={confirmConvert}
+                  onCancel={cancelPending}
+                  analysisState={analysisState}
+                  analysisResult={analysisResult}
+                  analysisStartedAt={analysisStartedAt}
+                />
               ) : (
                 <>
                   <div className="mb-7">

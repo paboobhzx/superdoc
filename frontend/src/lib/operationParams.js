@@ -1,4 +1,4 @@
-const SUPPORTED_INTERACTIVE_PARAMS = new Set(["paper_size", "high_fidelity"])
+const SUPPORTED_INTERACTIVE_PARAMS = new Set(["paper_size", "high_fidelity", "fallback_strategy"])
 
 export function interactiveSchemaFor(opMeta) {
   const schema = opMeta?.params_schema || {}
