@@ -57,6 +57,7 @@ locals {
     USER_DAILY_CONVERSION_LIMIT            = "10"
     ANON_PDF_PAGE_LIMIT                    = "100"
     USER_PDF_PAGE_LIMIT                    = "300"
+    DEFAULT_TTL_SECONDS                    = "900"
     TTL_SECONDS                            = "43200"
     USER_TTL_SECONDS                       = "64800"
     PAYMENTS_TABLE_NAME                    = aws_dynamodb_table.payments.name
@@ -727,16 +728,16 @@ module "lambda_dispatch_job" {
 
 # ── Scheduled + abuse-protection handlers ────────────────────────────────────
 
-module "lambda_kb_cleanup" {
+module "lambda_sweeper_expired_files" {
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
-  function_name         = "kb-cleanup"
+  function_name         = "sweeper-expired-files"
   handler               = "handler.handler"
   runtime               = var.lambda_runtime
   memory_size           = 128
   timeout               = 300
   s3_bucket             = var.lambda_handler_s3_bucket
-  s3_key                = "handlers/kb_cleanup.zip"
+  s3_key                = "handlers/sweeper_expired_files.zip"
   environment_variables = local.lambda_common_env
   common_tags           = local.common_tags
   dynamodb_table_arns   = local.dynamodb_arns

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../../context/ThemeContext'
 import { useI18n } from '../../context/I18nContext'
 import { useAuth } from '../../context/AuthContext'
+import { LocaleSelector } from '../LocaleSelector'
 
 function LogoMark({ small = false }) {
   const size = small ? 22 : 30
@@ -143,6 +144,9 @@ export default function AppShell({ children }) {
                 {t('shell.nav.support')}
               </span>
             </Link>
+            <Link className="rounded-[8px] px-3 py-1.5 text-sm text-on-surface-variant no-underline transition-colors hover:bg-surface-container-lowest hover:text-on-surface" to="/privacy">
+              {t('shell.nav.privacy')}
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -170,6 +174,7 @@ export default function AppShell({ children }) {
                 signOut={signOut}
               />
             )}
+            <LocaleSelector compact />
             <ThemeToggle />
           </div>
         </div>

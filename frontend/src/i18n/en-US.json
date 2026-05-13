@@ -22,6 +22,7 @@
     "deleting": "Deleting...",
     "download": "Download",
     "downloadFile": "Download file",
+    "privacy": "Privacy",
     "view": "View",
     "unknown": "Unknown",
     "conversion": "Conversion",
@@ -109,12 +110,14 @@
     "switchTo": "Switch to {{theme}} mode"
   },
   "shell": {
+    "localeLabel": "Change language",
     "nav": {
       "formats": "Formats",
       "how": "How it works",
       "faq": "FAQ",
       "files": "Files",
       "support": "Support",
+      "privacy": "Privacy",
       "account": "Account",
       "profile": "Profile"
     }
@@ -146,6 +149,8 @@
     "processEyebrow": "Process",
     "threeSteps": "Three steps, done.",
     "faqTitle": "Common questions",
+    "retentionExtendedLabel": "Keep files for up to {{time}}",
+    "retentionDefaultHint": "Unchecked jobs are deleted after {{time}}.",
     "errors": {
       "loadActions": "Could not load available actions",
       "multipleFiles": "Multiple-file workflows are not available yet. Upload one file at a time.",
@@ -330,12 +335,36 @@
     "downloadStarted": "Download started",
     "receipt": "Conversion receipt",
     "estimated": "Estimated: ~{{seconds}}s remaining",
+    "retentionDefault": "15 minutes",
     "retentionRegistered": "18 hours",
     "retentionAnonymous": "12 hours",
     "noOutput": "No output file was created.",
     "unlock": "The download button will unlock when processing finishes.",
     "soon": "Download ready soon",
     "heavyOpHint": "First conversion might take a few seconds, please wait."
+  },
+  "privacy": {
+    "eyebrow": "Privacy",
+    "title": "How SuperDoc handles your files",
+    "intro": "SuperDoc keeps conversion flows short-lived by default. This page summarizes what is stored, how long it lasts, and when account settings change that behavior.",
+    "sections": [
+      {
+        "title": "Temporary conversion jobs",
+        "body": "Anonymous and standard conversion jobs now default to a 15 minute retention window. If you choose extended retention, anonymous jobs can last up to 12 hours and signed-in jobs can last up to 18 hours."
+      },
+      {
+        "title": "Saved files and editors",
+        "body": "Authenticated saved-file and editor flows follow the account-file policy instead of the short conversion retention window. Those uploads live under your user workspace so you can reopen them from the dashboard."
+      },
+      {
+        "title": "Automatic cleanup",
+        "body": "Expired conversion inputs and outputs are swept from storage automatically. Job rows can remain briefly for operational reasons, then DynamoDB TTL removes them afterward."
+      },
+      {
+        "title": "Settings and locale",
+        "body": "Theme and language preferences are stored in your browser. If you are signed in and change your locale or theme, SuperDoc also saves that preference to your account settings."
+      }
+    ]
   },
   "editor": {
     "loadFromLink": "Loading file from link...",

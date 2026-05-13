@@ -69,6 +69,7 @@ export function VideoWizard() {
         file_size_bytes: file.size,
         params,
         session_id: sessionId,
+        retention_choice: 'default',
       })
 
       const jobId = jobResp.job_id

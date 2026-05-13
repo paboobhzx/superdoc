@@ -3,10 +3,11 @@ import { useTheme } from '../context/ThemeContext'
 import { useI18n } from '../context/I18nContext'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
+import { LocaleSelector } from '../components/LocaleSelector'
 
 export function Settings() {
   const { theme, setTheme, themes } = useTheme()
-  const { locale, setLocale, locales, t } = useI18n()
+  const { t } = useI18n()
   const auth = useAuth()
   const [name, setName] = useState('')
   const [country, setCountry] = useState('')
@@ -20,7 +21,6 @@ export function Settings() {
     if (!auth?.settings) return
     const s = auth.settings
     if (s.theme) setTheme(s.theme)
-    if (s.locale) setLocale(s.locale)
     if (s.name !== undefined) setName(s.name)
     if (s.country !== undefined) setCountry(s.country)
     if (s.notifications) {
@@ -45,14 +45,6 @@ export function Settings() {
     setTheme(next)
     if (auth?.isAuthenticated) {
       try { await api.updateUserSettings({ theme: next }) } catch { /* toast handled */ }
-    }
-  }
-
-  async function handleLocaleChange(e) {
-    const next = e.target.value
-    setLocale(next)
-    if (auth?.isAuthenticated) {
-      try { await api.updateUserSettings({ locale: next }) } catch { /* toast handled */ }
     }
   }
 
@@ -225,11 +217,7 @@ export function Settings() {
           </label>
           <label className="block">
             <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-outline">{t('settings.language')}</span>
-            <select value={locale} onChange={handleLocaleChange} className="sd-input px-4 py-3 text-sm">
-              {locales.map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
-              ))}
-            </select>
+            <LocaleSelector className="flex" />
           </label>
         </div>
       </section>

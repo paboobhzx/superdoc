@@ -92,4 +92,84 @@ describe("Processing page", () => {
     expect(screen.getByText("Completed in 8s")).toBeTruthy()
     expect(screen.getByRole("link", { name: "Download file" })).toBeTruthy()
   })
+
+  it("shows 15 minute retention for default jobs", async () => {
+    jobStates.current = {
+      job_id: "abc",
+      status: "PROCESSING",
+      operation: "pdf_to_txt",
+      file_size_bytes: 1024,
+      retention_choice: "default",
+    }
+
+    const { Processing } = await import("../pages/Processing/Processing")
+
+    render(
+      <MemoryRouter initialEntries={["/processing/abc"]}>
+        <I18nProvider>
+          <ThemeProvider>
+            <Routes>
+              <Route path="/processing/:jobId" element={<Processing />} />
+            </Routes>
+          </ThemeProvider>
+        </I18nProvider>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText("15 minutes")).toBeTruthy()
+  })
+
+  it("shows 12 hour retention for anonymous extended jobs", async () => {
+    jobStates.current = {
+      job_id: "abc",
+      status: "PROCESSING",
+      operation: "pdf_to_txt",
+      file_size_bytes: 1024,
+      retention_choice: "extended",
+      file_key: "uploads/abc/sample.pdf",
+    }
+
+    const { Processing } = await import("../pages/Processing/Processing")
+
+    render(
+      <MemoryRouter initialEntries={["/processing/abc"]}>
+        <I18nProvider>
+          <ThemeProvider>
+            <Routes>
+              <Route path="/processing/:jobId" element={<Processing />} />
+            </Routes>
+          </ThemeProvider>
+        </I18nProvider>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText("12 hours")).toBeTruthy()
+  })
+
+  it("shows 18 hour retention for registered extended jobs", async () => {
+    jobStates.current = {
+      job_id: "abc",
+      status: "PROCESSING",
+      operation: "pdf_to_txt",
+      file_size_bytes: 1024,
+      retention_choice: "extended",
+      user_id: "user-1",
+    }
+
+    const { Processing } = await import("../pages/Processing/Processing")
+
+    render(
+      <MemoryRouter initialEntries={["/processing/abc"]}>
+        <I18nProvider>
+          <ThemeProvider>
+            <Routes>
+              <Route path="/processing/:jobId" element={<Processing />} />
+            </Routes>
+          </ThemeProvider>
+        </I18nProvider>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText("18 hours")).toBeTruthy()
+  })
 })

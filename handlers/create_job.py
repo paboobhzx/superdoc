@@ -19,6 +19,11 @@ _MAX_ITERATION_BYTES = 100 * 1024 * 1024  # 100MB
 _ANON_MAX_ACTIVE_DOCS = int(os.environ.get("ANON_MAX_ACTIVE_DOCS", "4"))
 
 
+def _normalize_retention_choice(value) -> str:
+    choice = str(value or "default").strip().lower()
+    return "extended" if choice == "extended" else "default"
+
+
 def _rate_limit_enabled() -> bool:
     """Read RATE_LIMIT_ENABLED env var for the anonymous active-jobs cap.
 
@@ -50,6 +55,7 @@ def handler(event, context):
         session_id = (body.get("session_id") or "").strip()
         params = body.get("params") or {}
         analysis_result = body.get("analysis_result") or None
+        retention_choice = _normalize_retention_choice(body.get("retention_choice"))
 
         user_id = auth_session.current_user_id(event)
         is_registered = bool(user_id)
@@ -100,7 +106,6 @@ def handler(event, context):
         job_id = str(uuid.uuid4())
         if is_registered:
             file_key = f"users/{session_id}/uploads/{job_id}/{file_name}"
-            ttl_seconds = limits.storage_ttl_for_user(user_id)
         else:
             existing = dynamo.query_by_session(session_id)
             active = [j for j in existing if j.get("status") not in ("DONE", "FAILED")]
@@ -110,7 +115,8 @@ def handler(event, context):
             if _rate_limit_enabled() and len(active) >= _ANON_MAX_ACTIVE_DOCS:
                 return response.error("Too many active jobs. Please wait for current conversions to finish.", 429)
             file_key = f"uploads/{job_id}/{file_name}"
-            ttl_seconds = limits.storage_ttl_for_user(None)
+
+        ttl_seconds = limits.storage_ttl_for_retention(is_registered, retention_choice)
 
         job_item = dynamo.create_job(
             job_id=job_id,
@@ -122,12 +128,13 @@ def handler(event, context):
             file_key=file_key,
             params=params,
             ttl_seconds=ttl_seconds,
+            retention_choice=retention_choice,
         )
         # Persist analysis_result alongside the job for diagnostic purposes
         if analysis_result and isinstance(analysis_result, dict):
             dynamo.update_job(job_id, analysis_result=analysis_result)
 
-        upload = s3.presign_post_upload(file_key, max_bytes=_MAX_ITERATION_BYTES)
+        upload = s3.presign_post_upload(file_key, max_bytes=_MAX_ITERATION_BYTES, expiry=ttl_seconds)
 
         log.info("Job created", extra={"job_id": job_id, "operation": operation})
         return response.ok({"job_id": job_id, "upload": upload, "file_key": file_key})

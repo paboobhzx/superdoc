@@ -22,6 +22,7 @@
     "deleting": "Excluindo...",
     "download": "Baixar",
     "downloadFile": "Baixar arquivo",
+    "privacy": "Privacidade",
     "view": "Ver",
     "unknown": "Desconhecido",
     "conversion": "Conversao",
@@ -109,12 +110,14 @@
     "switchTo": "Alternar para modo {{theme}}"
   },
   "shell": {
+    "localeLabel": "Mudar idioma",
     "nav": {
       "formats": "Formatos",
       "how": "Como funciona",
       "faq": "FAQ",
       "files": "Arquivos",
       "support": "Apoiar",
+      "privacy": "Privacidade",
       "account": "Conta",
       "profile": "Perfil"
     }
@@ -146,6 +149,8 @@
     "processEyebrow": "Processo",
     "threeSteps": "Tres passos, pronto.",
     "faqTitle": "Perguntas comuns",
+    "retentionExtendedLabel": "Manter arquivos por ate {{time}}",
+    "retentionDefaultHint": "Jobs sem essa opcao sao excluidos apos {{time}}.",
     "errors": {
       "loadActions": "Nao foi possivel carregar as acoes disponiveis",
       "multipleFiles": "Fluxos com varios arquivos ainda nao estao disponiveis. Envie um arquivo por vez.",
@@ -330,12 +335,36 @@
     "downloadStarted": "Download iniciado",
     "receipt": "Recibo da conversao",
     "estimated": "Estimado: ~{{seconds}}s restantes",
+    "retentionDefault": "15 minutos",
     "retentionRegistered": "18 horas",
     "retentionAnonymous": "12 horas",
     "noOutput": "Nenhum arquivo de saida foi criado.",
     "unlock": "O botao de download sera liberado quando o processamento terminar.",
     "soon": "Download disponivel em breve",
     "heavyOpHint": "A primeira conversão pode levar alguns segundos, por favor aguarde."
+  },
+  "privacy": {
+    "eyebrow": "Privacidade",
+    "title": "Como o SuperDoc trata seus arquivos",
+    "intro": "O SuperDoc mantem os fluxos de conversao curtos por padrao. Esta pagina resume o que e armazenado, por quanto tempo, e quando as configuracoes da conta mudam esse comportamento.",
+    "sections": [
+      {
+        "title": "Jobs temporarios de conversao",
+        "body": "Jobs anonimos e conversoes padrao agora usam retencao de 15 minutos por padrao. Se voce escolher retencao estendida, jobs anonimos podem durar ate 12 horas e jobs autenticados ate 18 horas."
+      },
+      {
+        "title": "Arquivos salvos e editores",
+        "body": "Fluxos autenticados de arquivos salvos e editores seguem a politica de arquivos da conta, nao a janela curta de retencao da conversao. Esses uploads ficam no seu espaco de usuario para reabertura pelo painel."
+      },
+      {
+        "title": "Limpeza automatica",
+        "body": "Entradas e saidas expiradas de conversao sao removidas automaticamente do armazenamento. As linhas do job podem ficar por pouco tempo por motivos operacionais, e depois o TTL do DynamoDB as remove."
+      },
+      {
+        "title": "Configuracoes e idioma",
+        "body": "Preferencias de tema e idioma ficam salvas no navegador. Se voce estiver autenticado e mudar tema ou idioma, o SuperDoc tambem salva essa preferencia nas configuracoes da conta."
+      }
+    ]
   },
   "editor": {
     "loadFromLink": "Carregando arquivo do link...",

@@ -15,6 +15,7 @@ import { DocxEditor } from "./pages/DocxEditor"
 import { MarkdownEditor } from "./pages/MarkdownEditor"
 import { XlsxEditor } from "./pages/XlsxEditor"
 import { VideoWizard } from "./pages/Video/VideoWizard"
+import { Privacy } from "./pages/Privacy"
 import "./index.css"
 import { AuthProvider } from "./context/AuthContext"
 
@@ -52,6 +53,7 @@ function AppRoutes() {
       <Route path="/video" element={<VideoWizard />} />
       <Route path="/processing/:jobId" element={<Processing />} />
       <Route path="/settings" element={<Settings />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route path="/auth/login" element={<Login />} />
       <Route path="/auth/register" element={<Register />} />
       <Route path="/auth/confirm" element={<ConfirmEmail />} />

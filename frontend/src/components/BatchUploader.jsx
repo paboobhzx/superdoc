@@ -30,7 +30,7 @@ async function waitForJob(jobId, sessionId) {
   throw new Error("Timed out waiting for conversion.")
 }
 
-export function BatchUploader({ files, gridChoices, loadingOps, inputType, onReset }) {
+export function BatchUploader({ files, gridChoices, loadingOps, inputType, onReset, retentionExtended, onRetentionExtendedChange }) {
   const auth = useAuth()
   const { t } = useI18n()
   const [items, setItems] = useState([])
@@ -38,6 +38,7 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
   const [selected, setSelected] = useState(null)
   const [pendingOp, setPendingOp] = useState(null)
   const maxItems = auth?.isAuthenticated ? 10 : 3
+  const extendedRetentionLabel = auth?.isAuthenticated ? t("processing.retentionRegistered") : t("processing.retentionAnonymous")
 
   useEffect(() => {
     setSelected(null)
@@ -81,6 +82,7 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
           operation: opMeta.operation,
           file_size_bytes: item.file.size,
           file_name: item.file.name,
+          retention_choice: retentionExtended ? "extended" : "default",
         }
         if (opMeta.params && Object.keys(opMeta.params).length > 0) {
           payload.params = opMeta.params
@@ -172,6 +174,22 @@ export function BatchUploader({ files, gridChoices, loadingOps, inputType, onRes
       </div>
 
       <div className="mb-7">
+        <label className="mb-4 flex items-start gap-3 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-low px-4 py-3">
+          <input
+            type="checkbox"
+            checked={retentionExtended}
+            onChange={(e) => onRetentionExtendedChange(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-outline-variant"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-on-surface">
+              {t("home.retentionExtendedLabel", { time: extendedRetentionLabel })}
+            </span>
+            <span className="mt-1 block text-xs leading-5 text-on-surface-variant">
+              {t("home.retentionDefaultHint", { time: t("processing.retentionDefault") })}
+            </span>
+          </span>
+        </label>
         <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-outline">{t("batch.convertAllTo")}</div>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {loadingOps ? (

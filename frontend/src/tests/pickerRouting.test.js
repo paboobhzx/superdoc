@@ -28,6 +28,7 @@ describe("pickerRouting authenticated job fallback session", () => {
       params: { high_fidelity: false },
       auth: { isAuthenticated: true },
       sessionId: "session-123",
+      retentionChoice: "extended",
     });
 
     expect(api.createUserJob).toHaveBeenCalledWith({
@@ -35,6 +36,7 @@ describe("pickerRouting authenticated job fallback session", () => {
       file_size_bytes: 1,
       file_name: "sample.pdf",
       params: { high_fidelity: false },
+      retention_choice: "extended",
       session_id: "session-123",
     });
   });
@@ -52,12 +54,14 @@ describe("pickerRouting authenticated job fallback session", () => {
       operation: "pdf_to_docx",
       auth: { isAuthenticated: true },
       sessionId: "session-123",
+      retentionChoice: "default",
     });
 
     expect(api.createUserJob).toHaveBeenCalledWith({
       operation: "pdf_to_docx",
       file_size_bytes: 1,
       file_name: "sample.pdf",
+      retention_choice: "default",
       session_id: "session-123",
     });
   });

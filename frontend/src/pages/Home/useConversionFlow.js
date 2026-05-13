@@ -41,6 +41,7 @@ export function useConversionFlow() {
   const [err, setErr] = useState(null)
   const [pendingOp, setPendingOp] = useState(null)
   const [batchFiles, setBatchFiles] = useState([])
+  const [retentionExtended, setRetentionExtended] = useState(false)
 
   // Pre-analysis state: "idle" | "uploading" | "analyzing" | "ready" | "error"
   const [analysisState, setAnalysisState] = useState("idle")
@@ -64,6 +65,7 @@ export function useConversionFlow() {
     setAnalysisState("idle")
     setAnalysisResult(null)
     setAnalysisStartedAt(null)
+    setRetentionExtended(false)
     preUploadedJobIdRef.current = null
     analysisCancelRef.current = true
   }, [])
@@ -95,11 +97,13 @@ export function useConversionFlow() {
       setPendingFile(null)
       setPendingOp(null)
       setBatchFiles(list)
+      setRetentionExtended(false)
       return
     }
     setErr(null)
     setBatchFiles([])
     setPendingFile(list[0])
+    setRetentionExtended(false)
   }, [t])
 
   useEffect(() => {
@@ -149,6 +153,7 @@ export function useConversionFlow() {
         operation: opMeta.operation,
         auth,
         sessionId: getSessionId(),
+        retentionChoice: retentionExtended ? "extended" : "default",
       })
       if (analysisCancelRef.current) return
       preUploadedJobIdRef.current = job_id
@@ -168,7 +173,7 @@ export function useConversionFlow() {
       // Non-fatal: user can still convert with manually selected params
       setAnalysisState("error")
     }
-  }, [auth])
+  }, [auth, retentionExtended])
 
   const _startConvert = useCallback(async (opMeta, preJobId = null) => {
     if (!pendingFile || !opMeta || uploading) return
@@ -189,6 +194,7 @@ export function useConversionFlow() {
         file: pendingFile,
         auth,
         sessionId: getSessionId(),
+        retentionChoice: retentionExtended ? "extended" : "default",
       })
 
       setPendingFile(null)
@@ -205,7 +211,7 @@ export function useConversionFlow() {
       setUploading(false)
       setStartingAction(null)
     }
-  }, [pendingFile, auth, navigate, uploading, t])
+  }, [pendingFile, auth, navigate, retentionExtended, uploading, t])
 
   const handlePick = useCallback((opMeta) => {
     if (!pendingFile || !opMeta || uploading) return
@@ -248,6 +254,8 @@ export function useConversionFlow() {
   return {
     pendingFile,
     batchFiles,
+    retentionExtended,
+    setRetentionExtended,
     operations,
     loadingOps,
     uploading,

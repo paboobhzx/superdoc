@@ -238,6 +238,59 @@ describe("Home page", () => {
     expect(screen.getByRole("link", { name: "http://pablobhz.cloud" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "LinkedIn" })).toBeTruthy();
   });
+
+  it("shows the extended retention checkbox after single-file selection", async () => {
+    localStorage.setItem("superdoc-locale", "en-US");
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word", targets: ["docx"], output_type: "docx", params_schema: {} },
+      ],
+    });
+    const { Home } = await import("../pages/Home/Home");
+    render(
+      <BrowserRouter>
+        <Providers>
+          <Home />
+        </Providers>
+      </BrowserRouter>
+    );
+
+    fireEvent.change(screen.getByRole("button", { name: "File upload drop zone" }).querySelector("input"), {
+      target: { files: [new File(["x"], "sample.pdf", { type: "application/pdf" })] },
+    });
+
+    const checkbox = await screen.findByRole("checkbox", { name: /Keep files for up to 12 hours/i });
+    expect(checkbox).not.toBeChecked();
+  });
+
+  it("shows the same retention checkbox for desktop batch selection", async () => {
+    localStorage.setItem("superdoc-locale", "en-US");
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word", targets: ["docx"], output_type: "docx", params_schema: {} },
+      ],
+    });
+    const { Home } = await import("../pages/Home/Home");
+    render(
+      <BrowserRouter>
+        <Providers>
+          <Home />
+        </Providers>
+      </BrowserRouter>
+    );
+
+    fireEvent.change(screen.getByRole("button", { name: "File upload drop zone" }).querySelector("input"), {
+      target: {
+        files: [
+          new File(["x"], "a.pdf", { type: "application/pdf" }),
+          new File(["y"], "b.pdf", { type: "application/pdf" }),
+        ],
+      },
+    });
+
+    const checkbox = await screen.findByRole("checkbox", { name: /Keep files for up to 12 hours/i });
+    expect(checkbox).not.toBeChecked();
+  });
 });
 
 // ── useJob hook ────────────────────────────────────────────────────────────
@@ -423,7 +476,31 @@ describe("AppShell", () => {
     expect(screen.getByRole("button", { name: /Switch to Warm Orange mode/i })).toBeTruthy();
   });
 
+  it("persists locale changes from the header selector", async () => {
+    localStorage.setItem("superdoc-locale", "en-US");
+    const { default: AppShell } = await import(
+      "../components/layout/AppShell"
+    );
+    render(
+      <BrowserRouter>
+        <Providers>
+          <AppShell>
+            <div>Content</div>
+          </AppShell>
+        </Providers>
+      </BrowserRouter>
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Change language" }), {
+      target: { value: "pt-BR" },
+    });
+
+    await waitFor(() => expect(localStorage.getItem("superdoc-locale")).toBe("pt-BR"));
+    expect(screen.getByText("Formatos")).toBeTruthy();
+  });
+
   it("renders design navigation links", async () => {
+    localStorage.setItem("superdoc-locale", "en-US");
     const { default: AppShell } = await import(
       "../components/layout/AppShell"
     );
@@ -445,6 +522,7 @@ describe("AppShell", () => {
   });
 
   it("renders aligned account menu actions", async () => {
+    localStorage.setItem("superdoc-locale", "en-US");
     api.me.mockResolvedValueOnce({ user: { id: "user-1", email: "test@example.com" } });
     const { default: AppShell } = await import(
       "../components/layout/AppShell"
@@ -459,12 +537,27 @@ describe("AppShell", () => {
       </BrowserRouter>
     );
 
-    const account = await screen.findByRole("button", { name: /account/i });
+    const account = await screen.findByRole("button", { name: /account|conta/i });
     fireEvent.click(account);
 
     expect(screen.getByRole("link", { name: /profile/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /sign out/i })).toBeTruthy();
     expect(screen.getByText("test@example.com")).toBeTruthy();
+  });
+
+  it("renders the privacy page content", async () => {
+    localStorage.setItem("superdoc-locale", "en-US");
+    const { Privacy } = await import("../pages/Privacy");
+    render(
+      <BrowserRouter>
+        <Providers>
+          <Privacy />
+        </Providers>
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText("How SuperDoc handles your files")).toBeTruthy();
+    expect(screen.getByText("Temporary conversion jobs")).toBeTruthy();
   });
 });
 

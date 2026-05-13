@@ -22,6 +22,7 @@ def _load_dynamo_with_fake_table():
     fake_resource = types.SimpleNamespace(Table=lambda name: fake_table)
     boto3_stub = types.ModuleType("boto3")
     boto3_stub.resource = lambda service: fake_resource
+    boto3_stub.client = lambda service: types.SimpleNamespace()
 
     dynamo_conditions = types.ModuleType("boto3.dynamodb.conditions")
 
@@ -79,6 +80,7 @@ def _load_create_job_handler(dynamo_stub, *, validate_params=None):
 
     limits_stub = types.ModuleType("limits")
     limits_stub.storage_ttl_for_user = lambda user_id: 43200
+    limits_stub.storage_ttl_for_retention = lambda is_registered, retention_choice: 900 if retention_choice != "extended" else (64800 if is_registered else 43200)
 
     operations_stub = types.ModuleType("operations")
     operations_stub.is_supported = lambda operation: True
@@ -89,7 +91,7 @@ def _load_create_job_handler(dynamo_stub, *, validate_params=None):
     rate_limit_stub.check_user = lambda user_id: True
 
     s3_stub = types.ModuleType("s3")
-    s3_stub.presign_post_upload = lambda file_key, max_bytes: {"url": "https://example.com/upload", "fields": {}}
+    s3_stub.presign_post_upload = lambda file_key, max_bytes, expiry: {"url": "https://example.com/upload", "fields": {}, "expiry": expiry}
 
     original_modules = {
         name: sys.modules.get(name)
@@ -203,6 +205,59 @@ class CreateJobTests(unittest.TestCase):
         )
 
         self.assertEqual(table.items["job-2"]["user_id"], "sub-1")
+
+    def test_handler_uses_default_retention_and_upload_expiry(self):
+        captured = {}
+
+        dynamo_stub = types.ModuleType("dynamo")
+        dynamo_stub.query_by_session = lambda session_id: []
+
+        def create_job(**kwargs):
+            captured.update(kwargs)
+            return kwargs
+
+        dynamo_stub.create_job = create_job
+
+        mod = _load_create_job_handler(dynamo_stub)
+        result = mod.handler(
+            {
+                "httpMethod": "POST",
+                "body": '{"operation":"pdf_to_txt","file_name":"sample.pdf","file_size_bytes":123,"session_id":"11111111-1111-1111-1111-111111111111","retention_choice":"default"}',
+            },
+            None,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        self.assertEqual(captured["ttl_seconds"], 900)
+        self.assertEqual(captured["retention_choice"], "default")
+        self.assertEqual(result["body"]["upload"]["expiry"], 900)
+
+    def test_handler_uses_extended_retention_for_registered_jobs(self):
+        captured = {}
+
+        dynamo_stub = types.ModuleType("dynamo")
+        dynamo_stub.query_by_session = lambda session_id: []
+
+        def create_job(**kwargs):
+            captured.update(kwargs)
+            return kwargs
+
+        dynamo_stub.create_job = create_job
+
+        mod = _load_create_job_handler(dynamo_stub)
+        mod.auth_session.current_user_id = lambda event: "user-123"
+        result = mod.handler(
+            {
+                "httpMethod": "POST",
+                "body": '{"operation":"pdf_to_txt","file_name":"sample.pdf","file_size_bytes":123,"session_id":"11111111-1111-1111-1111-111111111111","retention_choice":"extended"}',
+            },
+            None,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        self.assertEqual(captured["ttl_seconds"], 64800)
+        self.assertEqual(captured["retention_choice"], "extended")
+        self.assertEqual(result["body"]["upload"]["expiry"], 64800)
 
 
 if __name__ == "__main__":

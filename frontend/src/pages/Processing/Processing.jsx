@@ -19,6 +19,15 @@ function getStepIndex(status) {
   return 0
 }
 
+function retentionLabelForJob(job, t) {
+  if (job?.retention_choice === "extended") {
+    return job?.user_id || job?.file_key?.startsWith("users/")
+      ? t("processing.retentionRegistered")
+      : t("processing.retentionAnonymous")
+  }
+  return t("processing.retentionDefault")
+}
+
 export function Processing() {
   const { jobId } = useParams()
   const navigate = useNavigate()
@@ -101,7 +110,7 @@ export function Processing() {
   const stepIdx = getStepIndex(job.status)
   const HEAVY_OPERATIONS = ["docx_to_pdf", "docx_to_image", "xlsx_to_pdf", "pdf_to_docx"]
   const isHeavyOp = HEAVY_OPERATIONS.includes(job?.operation)
-  const retentionLabel = job.file_key?.startsWith("users/") ? t("processing.retentionRegistered") : t("processing.retentionAnonymous")
+  const retentionLabel = retentionLabelForJob(job, t)
   const shortJobId = jobId ? `${jobId.slice(0, 8)}...` : t("common.unknown")
   const operationLabel = job.operation?.replace(/_/g, " ") ?? t("common.conversion")
   const remainingSeconds = (() => {

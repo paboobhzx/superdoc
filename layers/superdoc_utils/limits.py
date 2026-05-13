@@ -11,6 +11,7 @@ _ANON_DAILY_CONVERSION_LIMIT = int(os.environ.get("ANON_DAILY_CONVERSION_LIMIT",
 _USER_DAILY_CONVERSION_LIMIT = int(os.environ.get("USER_DAILY_CONVERSION_LIMIT", "10"))
 _ANON_PDF_PAGE_LIMIT = int(os.environ.get("ANON_PDF_PAGE_LIMIT", "100"))
 _USER_PDF_PAGE_LIMIT = int(os.environ.get("USER_PDF_PAGE_LIMIT", "300"))
+_DEFAULT_TTL_SECONDS = int(os.environ.get("DEFAULT_TTL_SECONDS", "900"))
 _ANON_STORAGE_TTL_SECONDS = int(os.environ.get("TTL_SECONDS", "43200"))
 _USER_STORAGE_TTL_SECONDS = int(os.environ.get("USER_TTL_SECONDS", "64800"))
 _REGISTERED_FREE_MULTIMEDIA_DAILY_LIMIT = int(os.environ.get("REGISTERED_FREE_MULTIMEDIA_DAILY_LIMIT", "1"))
@@ -73,6 +74,13 @@ def page_limit_for_user(user_id: str | None) -> int:
 
 def storage_ttl_for_user(user_id: str | None) -> int:
     return storage_ttl_seconds(tier_for_user_id(user_id))
+
+
+def storage_ttl_for_retention(is_registered: bool, retention_choice: str | None) -> int:
+    choice = str(retention_choice or "default").strip().lower()
+    if choice == "extended":
+        return _USER_STORAGE_TTL_SECONDS if is_registered else _ANON_STORAGE_TTL_SECONDS
+    return _DEFAULT_TTL_SECONDS
 
 
 def count_pdf_pages(pdf_bytes: bytes) -> int:

@@ -39,11 +39,12 @@ const EDITOR_ROUTES_BY_EXTENSION = {
  * Creates a job, uploads file via presigned POST, triggers processing,
  * returns the /processing/:id path.
  */
-export async function handleBackendJob({ file, operation, params, auth, sessionId }) {
+export async function handleBackendJob({ file, operation, params, auth, sessionId, retentionChoice = "default" }) {
   const payload = {
     operation,
     file_size_bytes: file.size,
     file_name: file.name,
+    retention_choice: retentionChoice,
   }
   if (params && Object.keys(params).length > 0) {
     payload.params = params
@@ -66,11 +67,12 @@ export async function handleBackendJob({ file, operation, params, auth, sessionI
  * /analyze and then triggered with final params via triggerProcess.
  * Returns { job_id, file_key }.
  */
-export async function createAndUploadOnly({ file, operation, auth, sessionId }) {
+export async function createAndUploadOnly({ file, operation, auth, sessionId, retentionChoice = "default" }) {
   const payload = {
     operation,
     file_size_bytes: file.size,
     file_name: file.name,
+    retention_choice: retentionChoice,
   }
   let data
   if (auth && auth.isAuthenticated) {

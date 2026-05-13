@@ -60,6 +60,7 @@ def create_job(
     status: str = "PENDING",
     output_key: str | None = None,
     user_id: str | None = None,
+    retention_choice: str | None = None,
 ) -> dict:
     now_ts = int(time.time())
     now_iso = datetime.fromtimestamp(now_ts, tz=timezone.utc).isoformat()
@@ -80,6 +81,8 @@ def create_job(
         item["user_id"] = user_id
     if output_key:
         item["output_key"] = output_key
+    if retention_choice:
+        item["retention_choice"] = retention_choice
     _jobs().put_item(Item=item)
     return item
 
@@ -207,6 +210,26 @@ def scan_expired(now: int) -> list:
         ExpressionAttributeValues={":now": now, ":done": "DONE"},
     )
     return resp.get("Items", [])
+
+
+def scan_all_expired(now: int) -> list:
+    items = []
+    kwargs = {
+        "FilterExpression": "expires_at < :now",
+        "ExpressionAttributeValues": {":now": now},
+    }
+    while True:
+        resp = _jobs().scan(**kwargs)
+        items.extend(resp.get("Items", []))
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
+    return items
+
+
+def mark_job_purged(job_id: str) -> None:
+    update_job(job_id, purge_status="purged", purged_at=int(time.time()))
 
 
 def delete_job(job_id: str) -> None:

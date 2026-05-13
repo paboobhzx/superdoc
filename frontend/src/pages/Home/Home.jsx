@@ -5,6 +5,7 @@ import { ACCEPT, SUPPORTED_FORMATS, formatFileSize, useConversionFlow } from "./
 import { ParamsPanel } from "../../components/ParamsPanel"
 import { BatchUploader } from "../../components/BatchUploader"
 import { api } from "../../lib/api"
+import { useAuth } from "../../context/AuthContext"
 
 const FALLBACK_CARDS = [
   { from: "PDF", to: "DOCX" },
@@ -70,6 +71,7 @@ const FAQ_ITEMS = [
 
 export function Home() {
   const { t } = useI18n()
+  const auth = useAuth()
   const [dragging, setDragging] = useState(false)
   const [openFaq, setOpenFaq] = useState(null)
   const [allOps, setAllOps] = useState([])
@@ -94,6 +96,8 @@ export function Home() {
   const {
     pendingFile,
     batchFiles,
+    retentionExtended,
+    setRetentionExtended,
     loadingOps,
     uploading,
     startingAction,
@@ -113,6 +117,7 @@ export function Home() {
     confirmConvert,
     cancelPending,
   } = useConversionFlow()
+  const extendedRetentionLabel = auth?.isAuthenticated ? t("processing.retentionRegistered") : t("processing.retentionAnonymous")
 
   return (
     <div className="min-h-[calc(100vh-60px)]">
@@ -153,6 +158,8 @@ export function Home() {
               loadingOps={loadingOps}
               inputType={inputType}
               onReset={resetToDrop}
+              retentionExtended={retentionExtended}
+              onRetentionExtendedChange={setRetentionExtended}
             />
           ) : !pendingFile ? (
             <div
@@ -251,6 +258,22 @@ export function Home() {
                 />
               ) : (
                 <>
+                  <label className="mb-7 flex items-start gap-3 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-low px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={retentionExtended}
+                      onChange={(e) => setRetentionExtended(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-outline-variant"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-on-surface">
+                        {t("home.retentionExtendedLabel", { time: extendedRetentionLabel })}
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-on-surface-variant">
+                        {t("home.retentionDefaultHint", { time: t("processing.retentionDefault") })}
+                      </span>
+                    </span>
+                  </label>
                   <div className="mb-7">
                     <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-outline">{t("home.convertTo")}</div>
                     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -462,6 +485,7 @@ export function Home() {
             <a className="text-outline no-underline hover:text-on-surface" href="#formats">{t("common.formats")}</a>
             <a className="text-outline no-underline hover:text-on-surface" href="#how">{t("common.process")}</a>
             <a className="text-outline no-underline hover:text-on-surface" href="#faq">{t("common.faq")}</a>
+            <a className="text-outline no-underline hover:text-on-surface" href="/privacy">{t("common.privacy")}</a>
           </div>
         </div>
       </footer>
