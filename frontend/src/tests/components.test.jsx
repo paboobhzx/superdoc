@@ -120,6 +120,77 @@ describe("ParamsPanel", () => {
 
     await waitFor(() => expect(screen.getByRole("checkbox", { name: /high fidelity/i })).not.toBeChecked());
   });
+
+  it("keeps the PDF analysis report closed until requested", async () => {
+    const { ParamsPanel } = await import("../components/ParamsPanel");
+    render(
+      <Providers>
+        <ParamsPanel
+          opMeta={{
+            operation: "pdf_to_docx",
+            params_schema: { high_fidelity: { type: "boolean", default: false } },
+          }}
+          onConfirm={() => {}}
+          onCancel={() => {}}
+          analysisState="ready"
+          analysisResult={{
+            recommendation: "text",
+            complexity_score: 72,
+            high_fidelity_viable: false,
+            regular_text_viable: true,
+            page_count: 3,
+            file_size_mb: 1.5,
+            rationale_keys: ["high_fidelity_risk"],
+            signals: {
+              producer: "FPDF",
+              mean_xobjects_per_page: 12,
+              text_extractable_ratio: 0.9,
+              image_coverage_ratio: 0.2,
+              column_count_hint: 2,
+            },
+            estimated_seconds: { image: 8, text: 24 },
+          }}
+        />
+      </Providers>
+    );
+
+    expect(screen.getByText(/Editable Word text/i)).toBeTruthy();
+    expect(screen.queryByText("Complexity")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /view analysis report/i }));
+
+    expect(screen.getByText("Complexity")).toBeTruthy();
+    expect(screen.getByText("72")).toBeTruthy();
+    expect(screen.getByText("Producer")).toBeTruthy();
+    expect(screen.getByText("FPDF")).toBeTruthy();
+    expect(screen.getByText("Text extractability")).toBeTruthy();
+    expect(screen.getByText("90%")).toBeTruthy();
+  });
+
+  it("allows manual override after an analysis recommendation", async () => {
+    const { ParamsPanel } = await import("../components/ParamsPanel");
+    const onConfirm = vi.fn();
+    render(
+      <Providers>
+        <ParamsPanel
+          opMeta={{
+            operation: "pdf_to_docx",
+            params_schema: { high_fidelity: { type: "boolean", default: false } },
+          }}
+          onConfirm={onConfirm}
+          onCancel={() => {}}
+          analysisState="ready"
+          analysisResult={{ recommendation: "image", rationale_keys: ["high_fidelity_viable"] }}
+        />
+      </Providers>
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: /high fidelity/i });
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    fireEvent.click(screen.getByRole("button", { name: /convert/i }));
+    expect(onConfirm).toHaveBeenCalledWith({ high_fidelity: false });
+  });
 });
 
 // ── Home page ──────────────────────────────────────────────────────────────
@@ -176,6 +247,8 @@ vi.mock("../lib/api", () => ({
     getStatus: vi.fn(),
     getOperations: vi.fn(() => Promise.resolve({ operations: [] })),
     me: vi.fn(() => Promise.resolve({ user: null })),
+    getUserSettings: vi.fn(() => Promise.resolve({})),
+    logout: vi.fn(() => Promise.resolve({ ok: true })),
   },
 }));
 
@@ -369,6 +442,29 @@ describe("AppShell", () => {
     expect(screen.getByText("Files")).toBeTruthy();
     expect(screen.queryByText("Settings")).toBeNull();
     expect(screen.queryByText("Sign in")).toBeNull();
+  });
+
+  it("renders aligned account menu actions", async () => {
+    api.me.mockResolvedValueOnce({ user: { id: "user-1", email: "test@example.com" } });
+    const { default: AppShell } = await import(
+      "../components/layout/AppShell"
+    );
+    render(
+      <BrowserRouter>
+        <Providers>
+          <AppShell>
+            <div>Content</div>
+          </AppShell>
+        </Providers>
+      </BrowserRouter>
+    );
+
+    const account = await screen.findByRole("button", { name: /account/i });
+    fireEvent.click(account);
+
+    expect(screen.getByRole("link", { name: /profile/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /sign out/i })).toBeTruthy();
+    expect(screen.getByText("test@example.com")).toBeTruthy();
   });
 });
 

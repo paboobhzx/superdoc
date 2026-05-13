@@ -34,7 +34,8 @@ _COMPLEX_PRODUCERS = frozenset([
     "illustrator", "photoshop", "reportlab", "prince", "weasyprint",
 ])
 
-_IMAGE_RECOMMENDATION_THRESHOLD = 60  # score >= this → recommend image mode
+_FRAGILE_LAYOUT_THRESHOLD = 60  # score >= this and text exists → prefer regular text
+_HIGH_FIDELITY_GOOD_THRESHOLD = 45
 
 
 def _score_producer(producer: str) -> float:
@@ -178,6 +179,46 @@ def _build_rationale_keys(
     return keys
 
 
+def _derive_recommendation(
+    complexity_score: int,
+    xobj_score: float,
+    col_score: float,
+    img_score: float,
+    text_ratio: float,
+) -> tuple[str, bool, bool, list[str]]:
+    """Return (recommendation, high_fidelity_viable, regular_text_viable, extra_keys).
+
+    "image" maps to the frontend high-fidelity checkbox for backwards
+    compatibility. It now means the hybrid high-fidelity path is expected to
+    produce the most useful result, not that every PDF page is blindly rendered
+    as an image.
+    """
+    regular_text_viable = text_ratio >= 0.25
+
+    if text_ratio == 0.0:
+        return "image", True, False, ["scanned_best_effort"]
+
+    # Mostly image-based PDFs can usually be preserved visually by embedding
+    # page images where reconstruction is weak. That is a legitimate
+    # high-fidelity result, even though editable text will be limited.
+    if img_score >= 75 and text_ratio < 0.5:
+        return "image", True, regular_text_viable, ["image_dominant_pdf"]
+
+    fragile_layout = (
+        complexity_score >= _FRAGILE_LAYOUT_THRESHOLD
+        or xobj_score >= 60
+        or col_score >= 50
+    )
+    if fragile_layout and regular_text_viable:
+        return "text", False, True, ["high_fidelity_risk"]
+
+    high_fidelity_viable = complexity_score <= _HIGH_FIDELITY_GOOD_THRESHOLD and text_ratio >= 0.6
+    if high_fidelity_viable:
+        return "image", True, True, ["high_fidelity_viable"]
+
+    return "text", False, regular_text_viable, ["regular_text_safer"]
+
+
 def _analyze_pdf(pdf_bytes: bytes) -> dict:
     import pymupdf
 
@@ -212,15 +253,11 @@ def _analyze_pdf(pdf_bytes: bytes) -> dict:
     )
     complexity_score = max(0, min(100, complexity_score))
 
-    # Scanned PDF (no text at all) → always recommend image
-    if text_ratio == 0.0:
-        recommendation = "image"
-    elif complexity_score >= _IMAGE_RECOMMENDATION_THRESHOLD:
-        recommendation = "image"
-    else:
-        recommendation = "text"
+    recommendation, high_fidelity_viable, regular_text_viable, decision_keys = _derive_recommendation(
+        complexity_score, xobj_score, col_score, img_score, text_ratio
+    )
 
-    rationale_keys = _build_rationale_keys(
+    rationale_keys = decision_keys + _build_rationale_keys(
         producer_score, xobj_score, col_score, img_score, text_gap_score, text_ratio
     )
 
@@ -232,6 +269,8 @@ def _analyze_pdf(pdf_bytes: bytes) -> dict:
     return {
         "complexity_score": complexity_score,
         "recommendation": recommendation,
+        "high_fidelity_viable": high_fidelity_viable,
+        "regular_text_viable": regular_text_viable,
         "rationale_keys": rationale_keys,
         "page_count": page_count,
         "file_size_mb": file_size_mb,
@@ -263,13 +302,16 @@ def handler(event, context):
         if not job:
             return response.error("Job not found", 404)
 
-        # Authorization: allow owner (by session or user) or unauthenticated public jobs
-        if session_id and job.get("session_id") != session_id:
+        # Authorization: registered jobs require the matching auth cookie;
+        # anonymous jobs require the matching anonymous session id.
+        job_user_id = job.get("user_id") or ""
+        if job_user_id:
             import auth_session
             user = auth_session.current_user(event)
-            user_id = user.get("user_id") or ""
-            if user_id and job.get("user_id") != user_id:
+            if (user.get("user_id") or "") != job_user_id:
                 return response.error("Forbidden", 403)
+        elif not session_id or job.get("session_id") != session_id:
+            return response.error("Forbidden", 403)
 
         file_key = job.get("file_key") or ""
         if not file_key:

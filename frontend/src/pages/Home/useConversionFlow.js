@@ -178,7 +178,7 @@ export function useConversionFlow() {
     try {
       if (preJobId) {
         // File already in S3 — trigger with final user-chosen params
-        await api.triggerProcess(preJobId, opMeta.params || null)
+        await api.triggerProcess(preJobId, opMeta.params || null, opMeta.analysisResult || null)
         setPendingFile(null)
         setOperations([])
         navigate(`/processing/${preJobId}`)
@@ -223,7 +223,11 @@ export function useConversionFlow() {
 
   const confirmConvert = useCallback((extraParams) => {
     if (!pendingOp) return
-    const merged = { ...pendingOp, params: { ...(pendingOp.params || {}), ...extraParams } }
+    const merged = {
+      ...pendingOp,
+      params: { ...(pendingOp.params || {}), ...extraParams },
+      analysisResult: analysisState === "ready" ? analysisResult : null,
+    }
     setPendingOp(null)
     analysisCancelRef.current = true
     const preJobId = preUploadedJobIdRef.current

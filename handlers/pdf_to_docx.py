@@ -328,6 +328,84 @@ def _build_image_fallback_docx(pdf_bytes: bytes) -> bytes:
         doc.close()
 
 
+def _single_page_pdf_bytes(reader, page_index: int) -> bytes:
+    from pypdf import PdfWriter
+
+    writer = PdfWriter()
+    writer.add_page(reader.pages[page_index])
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+def _count_words_pdf_page(page_bytes: bytes) -> int:
+    try:
+        import pymupdf
+
+        doc = pymupdf.open(stream=page_bytes, filetype="pdf")
+        try:
+            page = doc.load_page(0)
+            return _count_words_in_text(page.get_text("text") or "")
+        finally:
+            doc.close()
+    except Exception:
+        return 0
+
+
+def _hybrid_high_fidelity_docx(pdf_bytes: bytes, body: dict) -> bytes:
+    """Maximum-effort PDF->DOCX: reconstruct per page, image-fallback weak pages."""
+    from pypdf import PdfReader
+
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    page_count = len(reader.pages)
+    chunks: list[bytes] = []
+    used_image_pages = 0
+    used_reconstructed_pages = 0
+    job_id = body.get("job_id", "unknown")
+
+    for page_index in range(page_count):
+        page_bytes = _single_page_pdf_bytes(reader, page_index)
+        source_words = _count_words_pdf_page(page_bytes)
+        use_image = source_words == 0
+        candidate = b""
+
+        if not use_image:
+            try:
+                candidate = _pdf2docx_convert(page_bytes, body)
+                candidate_words = _count_words_docx(candidate)
+                ratio = candidate_words / max(source_words, 1)
+                use_image = ratio < _QA_THRESHOLD
+                log.info(
+                    "high_fidelity page qa ratio=%.3f",
+                    ratio,
+                    extra={"job_id": job_id, "page": page_index + 1},
+                )
+            except Exception:
+                log.exception(
+                    "high_fidelity page reconstruction failed",
+                    extra={"job_id": job_id, "page": page_index + 1},
+                )
+                use_image = True
+
+        if use_image:
+            chunks.append(_render_page_as_image_docx(page_bytes))
+            used_image_pages += 1
+        else:
+            chunks.append(candidate)
+            used_reconstructed_pages += 1
+
+    log.info(
+        "high_fidelity hybrid result",
+        extra={
+            "job_id": job_id,
+            "pages": page_count,
+            "reconstructed_pages": used_reconstructed_pages,
+            "image_pages": used_image_pages,
+        },
+    )
+    return _merge_docx(chunks)
+
+
 def _process(pdf_bytes: bytes, body: dict) -> bytes:
     from pypdf import PdfReader, PdfWriter
 
@@ -368,14 +446,14 @@ def _process(pdf_bytes: bytes, body: dict) -> bytes:
         writer.write(buf)
         pdf_bytes = buf.getvalue()
 
-    # ── Mode 1: every page rendered as image ──────────────────────────────────
+    # ── Mode 1: hybrid high-fidelity reconstruction ──────────────────────────
     if high_fidelity:
-        log.info("mode1 (page-as-image)", extra={"job_id": job_id})
+        log.info("mode1 (hybrid high-fidelity)", extra={"job_id": job_id})
         try:
-            dynamo.record_page_result(job_id, page=0, mode_used="image")
+            dynamo.record_page_result(job_id, page=0, mode_used="hybrid")
         except Exception:
             pass
-        return _build_image_fallback_docx(pdf_bytes)
+        return _hybrid_high_fidelity_docx(pdf_bytes, body)
 
     # ── Mode 0: pdf2docx on the full document, QA gate, fallback ─────────────
     #

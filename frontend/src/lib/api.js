@@ -112,7 +112,7 @@ function sessionQuery(path, sessionId) {
 export const api = {
   login: (payload) => request("POST", "/auth/login", payload),
   me: () => request("GET", "/auth/me", null, { suppressStatuses: [401, 403] }),
-  getUserSettings: () => request("GET", "/users/me/settings", null, { suppressStatuses: [401, 404] }),
+  getUserSettings: () => request("GET", "/users/me/settings", null, { suppressStatuses: [401, 403, 404] }),
   updateUserSettings: (payload) => request("PUT", "/users/me/settings", payload),
   logout: () => request("POST", "/auth/logout"),
 
@@ -153,8 +153,12 @@ export const api = {
 
   // Trigger processing after upload. Pass params to override the job's stored
   // params (used by the pre-analysis upload flow).
-  triggerProcess: (jobId, params = null) =>
-    request("POST", `/jobs/${jobId}/process`, params ? { params } : null),
+  triggerProcess: (jobId, params = null, analysisResult = null) => {
+    const body = {}
+    if (params) body.params = params
+    if (analysisResult) body.analysis_result = analysisResult
+    return request("POST", `/jobs/${jobId}/process`, Object.keys(body).length > 0 ? body : null)
+  },
 
   // User files. Authenticated users are identified by cookie; sessionId is
   // only a fallback for anonymous history and is ignored when the cookie wins.

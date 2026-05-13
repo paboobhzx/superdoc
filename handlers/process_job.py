@@ -64,6 +64,10 @@ def handler(event, context):
             params = {**params, **params_override}
             dynamo.update_job(job_id, params=params)
 
+        analysis_result = body_json.get("analysis_result")
+        if analysis_result and isinstance(analysis_result, dict):
+            dynamo.update_job(job_id, analysis_result=analysis_result)
+
         job_meta = operations.OPERATIONS.get(job.get("operation"), {})
         input_types = {str(item).lower().lstrip(".") for item in job_meta.get("input_types", [])}
         if "pdf" in input_types:
@@ -91,6 +95,8 @@ def handler(event, context):
             "user_id": user_id,
             "params": params if isinstance(params, dict) else {},
         }
+        if analysis_result and isinstance(analysis_result, dict):
+            payload["analysis_result"] = analysis_result
         if isinstance(params, dict):
             payload.update(params)
 

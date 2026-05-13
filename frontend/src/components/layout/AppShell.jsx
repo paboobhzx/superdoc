@@ -59,7 +59,7 @@ function AvatarMenu({ initials, email, t, signOut }) {
   }, [])
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative flex h-9 items-center">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -72,25 +72,25 @@ function AvatarMenu({ initials, email, t, signOut }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[160px] rounded-[10px] border border-outline-variant/30 bg-surface-container-lowest shadow-lg py-1">
-          <div className="px-3 py-2 border-b border-outline-variant/10 mb-1">
-            <p className="text-xs text-on-surface-variant truncate max-w-[140px]">{email}</p>
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[208px] overflow-hidden rounded-[var(--radius-md)] border border-outline-variant/30 bg-surface-container-lowest py-1 text-left shadow-lg">
+          <div className="border-b border-outline-variant/10 px-3 py-2">
+            <p className="truncate text-left text-xs text-on-surface-variant">{email}</p>
           </div>
           <Link
             to="/settings"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-on-surface no-underline hover:bg-surface-container transition-colors"
+            className="flex h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-on-surface no-underline transition-colors hover:bg-surface-container"
           >
-            <span className="material-symbols-outlined text-[16px]">person</span>
-            {t('shell.nav.profile')}
+            <span className="material-symbols-outlined w-5 shrink-0 text-center text-[16px]">person</span>
+            <span className="truncate">{t('shell.nav.profile')}</span>
           </Link>
           <button
             type="button"
             onClick={() => { setOpen(false); signOut() }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors"
+            className="flex h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-on-surface transition-colors hover:bg-surface-container"
           >
-            <span className="material-symbols-outlined text-[16px]">logout</span>
-            {t('dashboard.signOut')}
+            <span className="material-symbols-outlined w-5 shrink-0 text-center text-[16px]">logout</span>
+            <span className="truncate">{t('dashboard.signOut')}</span>
           </button>
         </div>
       )}

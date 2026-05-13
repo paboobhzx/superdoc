@@ -30,8 +30,11 @@ resource "aws_api_gateway_gateway_response" "cors_4xx" {
     "gatewayresponse.header.Access-Control-Allow-Credentials" = "'true'"
   }
 
+  # $context.error.messageString already includes outer quotes — do NOT wrap in "..."
+  # Wrong: {"error":"$context.error.messageString"} → {"error":""Forbidden""} (invalid JSON)
+  # Right: {"error":$context.error.messageString}   → {"error":"Forbidden"}   (valid JSON)
   response_templates = {
-    "application/json" = "{\"error\":\"$context.error.messageString\"}"
+    "application/json" = "{\"error\":$context.error.messageString}"
   }
 }
 
@@ -47,7 +50,7 @@ resource "aws_api_gateway_gateway_response" "cors_5xx" {
   }
 
   response_templates = {
-    "application/json" = "{\"error\":\"$context.error.messageString\"}"
+    "application/json" = "{\"error\":$context.error.messageString}"
   }
 }
 

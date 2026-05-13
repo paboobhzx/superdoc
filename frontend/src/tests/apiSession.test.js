@@ -9,6 +9,7 @@ describe("cookie session API", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.doUnmock("../lib/toast");
     vi.restoreAllMocks();
   });
 
@@ -54,5 +55,45 @@ describe("cookie session API", () => {
       "https://api.example.com/users/me/files?session_id=session-123",
       "https://api.example.com/users/me/files/job-1/complete?session_id=session-123",
     ]);
+  });
+
+  it("suppresses background 403 toasts for user settings", async () => {
+    const toastError = vi.fn();
+    vi.doMock("../lib/toast", () => ({
+      notify: { error: toastError },
+    }));
+    globalThis.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 403,
+      headers: { get: () => "application/json" },
+      json: async () => ({ error: "Forbidden" }),
+    }));
+
+    const { api } = await import("../lib/api");
+    await expect(api.getUserSettings()).rejects.toMatchObject({ status: 403 });
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("sends analysis result when triggering a pre-analyzed job", async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 202,
+      headers: { get: () => "application/json" },
+      json: async () => ({ success: true }),
+    }));
+
+    const { api } = await import("../lib/api");
+    await api.triggerProcess("job-1", { high_fidelity: false }, { recommendation: "text", complexity_score: 72 });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/jobs/job-1/process",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          params: { high_fidelity: false },
+          analysis_result: { recommendation: "text", complexity_score: 72 },
+        }),
+      }),
+    );
   });
 });

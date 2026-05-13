@@ -12,6 +12,7 @@ const PAPER_SIZES = [
 function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt }) {
   const { t } = useI18n()
   const [elapsed, setElapsed] = useState(0)
+  const [reportOpen, setReportOpen] = useState(false)
   const intervalRef = useRef(null)
 
   useEffect(() => {
@@ -50,18 +51,37 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt }) {
   if (analysisState === "ready" && analysisResult) {
     const isImage = analysisResult.recommendation === "image"
     const recLabel = isImage
-      ? t("params.pdfAnalyze.recommendImage")
-      : t("params.pdfAnalyze.recommendText")
+      ? t("params.pdfAnalyze.modeHighFidelity")
+      : t("params.pdfAnalyze.modeRegular")
     const estimatedSecs = isImage
       ? analysisResult.estimated_seconds?.image
       : analysisResult.estimated_seconds?.text
-    const rationaleKey = (analysisResult.rationale_keys || [])[0]
-    const rationaleText = rationaleKey
-      ? t(`params.pdfAnalyze.rationale.${rationaleKey}`, { defaultValue: "" })
-      : ""
+    const rationaleTexts = [...new Set(analysisResult.rationale_keys || [])]
+      .map((key) => t(`params.pdfAnalyze.rationale.${key}`, { defaultValue: "" }))
+      .filter(Boolean)
+    const primaryRationale = rationaleTexts[0] || ""
+    const secondaryRationales = rationaleTexts.slice(1, 3)
+    const signals = analysisResult.signals || {}
+    const percent = (value) => typeof value === "number" ? `${Math.round(value * 100)}%` : t("common.unknown")
+    const numberValue = (value) => value === 0 || value ? String(value) : t("common.unknown")
+    const boolValue = (value) => value === true ? t("common.yes") : value === false ? t("common.no") : t("common.unknown")
+    const reportRows = [
+      [t("params.pdfAnalyze.report.complexity"), numberValue(analysisResult.complexity_score)],
+      [t("params.pdfAnalyze.report.pages"), numberValue(analysisResult.page_count)],
+      [t("params.pdfAnalyze.report.fileSize"), analysisResult.file_size_mb === 0 || analysisResult.file_size_mb ? `${analysisResult.file_size_mb} MB` : t("common.unknown")],
+      [t("params.pdfAnalyze.report.producer"), signals.producer || t("common.unknown")],
+      [t("params.pdfAnalyze.report.xobjects"), numberValue(signals.mean_xobjects_per_page)],
+      [t("params.pdfAnalyze.report.textRatio"), percent(signals.text_extractable_ratio)],
+      [t("params.pdfAnalyze.report.imageCoverage"), percent(signals.image_coverage_ratio)],
+      [t("params.pdfAnalyze.report.columns"), numberValue(signals.column_count_hint)],
+      [t("params.pdfAnalyze.report.highFidelityViable"), boolValue(analysisResult.high_fidelity_viable)],
+      [t("params.pdfAnalyze.report.regularViable"), boolValue(analysisResult.regular_text_viable)],
+      [t("params.pdfAnalyze.report.highFidelityEstimate"), analysisResult.estimated_seconds?.image ? t("params.pdfAnalyze.estimate", { seconds: analysisResult.estimated_seconds.image }) : t("common.unknown")],
+      [t("params.pdfAnalyze.report.regularEstimate"), analysisResult.estimated_seconds?.text ? t("params.pdfAnalyze.estimate", { seconds: analysisResult.estimated_seconds.text }) : t("common.unknown")],
+    ]
 
     return (
-      <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+      <div className="mb-4 rounded-[var(--radius-md)] border border-primary/20 bg-primary/5 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2 mb-1">
           <span className="material-symbols-outlined text-primary text-[16px]">auto_awesome</span>
           <span className="text-sm font-semibold text-on-surface">
@@ -74,8 +94,37 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt }) {
             </span>
           )}
         </div>
-        {rationaleText && (
-          <p className="text-xs text-on-surface-variant leading-relaxed">{rationaleText}</p>
+        {primaryRationale && (
+          <p className="text-xs text-on-surface-variant leading-relaxed">{primaryRationale}</p>
+        )}
+        {secondaryRationales.length > 0 && (
+          <ul className="mt-2 space-y-1 text-xs leading-relaxed text-on-surface-variant">
+            {secondaryRationales.map((text) => (
+              <li key={text} className="flex gap-2">
+                <span className="mt-[0.45em] h-1 w-1 shrink-0 rounded-full bg-primary/70" />
+                <span>{text}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <button
+          type="button"
+          onClick={() => setReportOpen((value) => !value)}
+          aria-expanded={reportOpen}
+          className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary transition-colors hover:text-on-surface"
+        >
+          <span className="material-symbols-outlined text-[15px]">{reportOpen ? "expand_less" : "expand_more"}</span>
+          {reportOpen ? t("params.pdfAnalyze.hideReport") : t("params.pdfAnalyze.viewReport")}
+        </button>
+        {reportOpen && (
+          <dl className="mt-3 grid grid-cols-1 gap-2 border-t border-outline-variant/20 pt-3 sm:grid-cols-2">
+            {reportRows.map(([label, value]) => (
+              <div key={label} className="min-w-0">
+                <dt className="text-[10px] font-bold uppercase tracking-[0.1em] text-outline">{label}</dt>
+                <dd className="mt-0.5 truncate text-xs font-semibold text-on-surface" title={value}>{value}</dd>
+              </div>
+            ))}
+          </dl>
         )}
       </div>
     )

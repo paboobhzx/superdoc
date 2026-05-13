@@ -29,7 +29,9 @@
     "next": "Próximo",
     "submitting": "Enviando...",
     "errorGeneric": "Algo deu errado. Tente novamente.",
-    "learnMore": "Saiba mais"
+    "learnMore": "Saiba mais",
+    "yes": "Sim",
+    "no": "Nao"
   },
   "paramsPanel": {
     "pageSize": "Tamanho da pagina",
@@ -46,8 +48,31 @@
       "recommendation": "Recomendacao",
       "recommendImage": "Manter layout (imagem)",
       "recommendText": "Texto editavel",
+      "modeHighFidelity": "Layout em alta fidelidade",
+      "modeRegular": "Texto editavel no Word",
       "estimate": "~{{seconds}}s estimado",
+      "viewReport": "Ver relatorio da analise",
+      "hideReport": "Ocultar relatorio da analise",
+      "report": {
+        "complexity": "Complexidade",
+        "pages": "Paginas",
+        "fileSize": "Tamanho",
+        "producer": "Produtor",
+        "xobjects": "XObjects / pagina",
+        "textRatio": "Texto extraivel",
+        "imageCoverage": "Cobertura de imagem",
+        "columns": "Indicador de colunas",
+        "highFidelityViable": "Alta fidelidade viavel",
+        "regularViable": "Regular viavel",
+        "highFidelityEstimate": "Estimativa alta fidelidade",
+        "regularEstimate": "Estimativa regular"
+      },
       "rationale": {
+        "high_fidelity_viable": "O PDF parece estavel para o caminho de layout com esforco maximo, reconstruindo conteudo editavel primeiro e usando imagem so quando necessario.",
+        "high_fidelity_risk": "O PDF tem sinais de layout que tornam uma copia quase 1:1 no Word arriscada. Texto editavel e a recomendacao mais segura.",
+        "regular_text_safer": "O PDF nao parece confiavel para uma copia quase 1:1 no Word, mas a extracao de texto ainda deve ser util.",
+        "scanned_best_effort": "Nenhum texto editavel foi detectado. Alta fidelidade preserva as paginas visiveis, mas o texto nao sera diretamente editavel.",
+        "image_dominant_pdf": "O PDF e composto principalmente por imagem de pagina, entao alta fidelidade preserva o resultado visual melhor que a extracao de texto.",
         "multi_column_layout": "Seu PDF tem um layout multi-colunas — manter o layout preserva a aparencia; texto editavel da um Word sem formatacao mas com conteudo.",
         "fpdf_producer": "Este PDF foi gerado por uma ferramenta de layout (FPDF/InDesign) — a reconstrucao de texto e pouco confiavel. Manter o layout e recomendado.",
         "high_xobjects_per_page": "O PDF contem muitos blocos pre-renderizados por pagina — manter o layout produz um resultado mais fiel.",

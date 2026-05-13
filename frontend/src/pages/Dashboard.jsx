@@ -167,7 +167,7 @@ function RecentFilesView({ t, locale }) {
     async function load() {
       setLoading(true);
       try {
-        const data = await api.getUserFiles(getSessionId(), { suppressStatuses: [400, 401] });
+        const data = await api.getUserFiles(getSessionId(), { suppressStatuses: [400, 401, 403] });
         if (active) setJobs(mergeLocalRecent(data.jobs || []));
       } catch {
         if (active) setJobs(mergeLocalRecent([]));
