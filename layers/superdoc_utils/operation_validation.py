@@ -55,6 +55,18 @@ def _int_range(value: object, *, name: str, lo: int, hi: int) -> tuple[bool, str
     return True, ""
 
 
+def _float_range(value: object, *, name: str, lo: float, hi: float) -> tuple[bool, str, float | None]:
+    if value is None or value == "":
+        return True, "", None
+    try:
+        coerced = float(value)
+    except (TypeError, ValueError):
+        return False, f"{name} must be a number", None
+    if coerced < lo or coerced > hi:
+        return False, f"{name} must be between {lo:g} and {hi:g}", None
+    return True, "", coerced
+
+
 def _bool_value(value: object, *, name: str) -> tuple[bool, str, bool | None]:
     if value is None:
         return True, "", None
@@ -67,6 +79,24 @@ def _bool_value(value: object, *, name: str) -> tuple[bool, str, bool | None]:
         if lowered in ("false", "0", "no", "off"):
             return True, "", False
     return False, f"{name} must be a boolean", None
+
+
+def _string_param(params: dict, cleaned: dict, key: str, *, max_len: int) -> ValidationResult | None:
+    ok_flag, err_msg = _limit_str(params.get(key), name=key, max_len=max_len)
+    if not ok_flag:
+        return ValidationResult(ok=False, error=err_msg)
+    if params.get(key) is not None:
+        cleaned[key] = params.get(key).strip()
+    return None
+
+
+def _bool_param(params: dict, cleaned: dict, key: str) -> ValidationResult | None:
+    ok_flag, err_msg, parsed = _bool_value(params.get(key), name=key)
+    if not ok_flag:
+        return ValidationResult(ok=False, error=err_msg)
+    if parsed is not None:
+        cleaned[key] = parsed
+    return None
 
 
 def validate_params(operation: str, params: dict | None) -> ValidationResult:
@@ -151,5 +181,66 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
             return ValidationResult(ok=False, error=err_msg)
         if raw_fs:
             cleaned["fallback_strategy"] = raw_fs.lower()
+
+    if operation in ("pdf_annotate", "pdf_remove_watermark"):
+        err = _string_param(params, cleaned, "watermark_text", max_len=200)
+        if err:
+            return err
+
+    if operation == "pdf_annotate":
+        raw_mode = params.get("stamp_mode")
+        ok_flag, err_msg = _one_of(
+            raw_mode,
+            name="stamp_mode",
+            allowed={"watermark", "header", "footer", "corner"},
+        )
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if raw_mode:
+            cleaned["stamp_mode"] = raw_mode.lower()
+
+        ok_flag, err_msg, parsed = _float_range(params.get("opacity"), name="opacity", lo=0.05, hi=1.0)
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if parsed is not None:
+            cleaned["opacity"] = parsed
+
+    if operation == "pdf_split":
+        err = _string_param(params, cleaned, "ranges", max_len=300)
+        if err:
+            return err
+
+    if operation == "pdf_rearrange":
+        err = _string_param(params, cleaned, "page_order", max_len=500)
+        if err:
+            return err
+
+    if operation == "pdf_svg_annotate":
+        err = _bool_param(params, cleaned, "flatten")
+        if err:
+            return err
+
+    if operation == "pdf_remove_watermark":
+        for key in ("dry_run",):
+            err = _bool_param(params, cleaned, key)
+            if err:
+                return err
+
+        ok_flag, err_msg, parsed = _float_range(params.get("confidence_min"), name="confidence_min", lo=0.0, hi=1.0)
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if parsed is not None:
+            cleaned["confidence_min"] = parsed
+
+        raw_case = params.get("case")
+        ok_flag, err_msg = _one_of(
+            raw_case,
+            name="case",
+            allowed={"insensitive", "sensitive"},
+        )
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if raw_case:
+            cleaned["case"] = raw_case.lower()
 
     return ValidationResult(ok=True, params=cleaned)

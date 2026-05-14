@@ -6,6 +6,7 @@ import { ParamsPanel } from "../../components/ParamsPanel"
 import { BatchUploader } from "../../components/BatchUploader"
 import { api } from "../../lib/api"
 import { useAuth } from "../../context/AuthContext"
+import { OPERATION_UI } from "./picker"
 
 const FALLBACK_CARDS = [
   { from: "PDF", to: "DOCX" },
@@ -31,6 +32,7 @@ function deriveCards(operations) {
   const cards = []
   for (const op of operations) {
     if (op.kind === "client_editor" || op.intent === "edit") continue
+    if (op.intent === "transform") continue
     const inputTypes = op.input_types || []
     const targets = Array.isArray(op.targets) && op.targets.length > 0
       ? op.targets
@@ -99,6 +101,7 @@ export function Home() {
     retentionExtended,
     setRetentionExtended,
     loadingOps,
+    operations,
     uploading,
     startingAction,
     err,
@@ -118,6 +121,10 @@ export function Home() {
     cancelPending,
   } = useConversionFlow()
   const extendedRetentionLabel = auth?.isAuthenticated ? t("processing.retentionRegistered") : t("processing.retentionAnonymous")
+  const pdfToolChoices = useMemo(
+    () => operations.filter((op) => op?.intent === "transform" && op?.kind !== "client_editor"),
+    [operations]
+  )
 
   return (
     <div className="min-h-[calc(100vh-60px)]">
@@ -308,6 +315,40 @@ export function Home() {
                       )})}
                     </div>
                   </div>
+
+                  {pdfToolChoices.length > 0 ? (
+                    <div className="mb-7">
+                      <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-outline">PDF tools</div>
+                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                        {pdfToolChoices.map((op) => {
+                          const ui = OPERATION_UI[op.operation] || {}
+                          const isStarting = startingAction === op.operation
+                          return (
+                            <button
+                              key={op.operation}
+                              type="button"
+                              disabled={uploading || loadingOps}
+                              aria-busy={isStarting ? "true" : undefined}
+                              onClick={() => handlePick(op)}
+                              className={`min-h-[86px] rounded-[var(--radius-md)] border p-3 text-left transition-all active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                                isStarting
+                                  ? "border-primary bg-primary/15 text-primary shadow-sm ring-2 ring-primary/20"
+                                  : "border-outline-variant bg-surface-container-low text-on-surface hover:border-primary/70 hover:bg-primary/10"
+                              }`}
+                            >
+                              <span className="flex items-center gap-2 font-headline text-sm font-bold">
+                                <span className={`material-symbols-outlined text-[17px] ${isStarting ? "animate-spin" : ""}`}>{isStarting ? "progress_activity" : (ui.icon || "picture_as_pdf")}</span>
+                                {op.label}
+                              </span>
+                              <span className="mt-1 block text-[11px] leading-4 text-on-surface-variant">
+                                {isStarting ? t("common.starting") : ui.description || op.output_type?.toUpperCase()}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div className="flex flex-col gap-2 sm:flex-row">
                     {(() => {

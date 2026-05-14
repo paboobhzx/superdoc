@@ -6,35 +6,46 @@ import s3
 from logger import get_logger
 from pypdf import PdfReader, PdfWriter
 from reportlab.lib.colors import Color
-from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 log = get_logger(__name__)
 
 
-def _make_watermark(text: str, page_width: float, page_height: float) -> bytes:
+def _make_watermark(text: str, page_width: float, page_height: float, mode: str, opacity: float) -> bytes:
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=(page_width, page_height))
-    c.setFont("Helvetica", 40)
-    c.setFillColor(Color(0.5, 0.5, 0.5, alpha=0.3))
-    c.saveState()
-    c.translate(page_width / 2, page_height / 2)
-    c.rotate(45)
-    c.drawCentredString(0, 0, text)
-    c.restoreState()
+    c.setFillColor(Color(0.5, 0.5, 0.5, alpha=opacity))
+    if mode == "header":
+        c.setFont("Helvetica", 14)
+        c.drawCentredString(page_width / 2, page_height - 28, text)
+    elif mode == "footer":
+        c.setFont("Helvetica", 14)
+        c.drawCentredString(page_width / 2, 22, text)
+    elif mode == "corner":
+        c.setFont("Helvetica", 16)
+        c.drawRightString(page_width - 24, 24, text)
+    else:
+        c.setFont("Helvetica", 40)
+        c.saveState()
+        c.translate(page_width / 2, page_height / 2)
+        c.rotate(45)
+        c.drawCentredString(0, 0, text)
+        c.restoreState()
     c.save()
     return buf.getvalue()
 
 
 def _process(data: bytes, body: dict) -> bytes:
     watermark_text = body.get("watermark_text", "DRAFT")
+    stamp_mode = body.get("stamp_mode", "watermark")
+    opacity = float(body.get("opacity", 0.3))
     reader = PdfReader(io.BytesIO(data))
     writer = PdfWriter()
 
     for page in reader.pages:
         w = float(page.mediabox.width)
         h = float(page.mediabox.height)
-        wm_bytes = _make_watermark(watermark_text, w, h)
+        wm_bytes = _make_watermark(watermark_text, w, h, stamp_mode, opacity)
         wm_reader = PdfReader(io.BytesIO(wm_bytes))
         page.merge_page(wm_reader.pages[0])
         writer.add_page(page)

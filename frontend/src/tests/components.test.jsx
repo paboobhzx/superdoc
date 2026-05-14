@@ -191,6 +191,41 @@ describe("ParamsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /convert/i }));
     expect(onConfirm).toHaveBeenCalledWith({ high_fidelity: false });
   });
+
+  it("renders generic schema controls and returns typed params", async () => {
+    const { ParamsPanel } = await import("../components/ParamsPanel");
+    const onConfirm = vi.fn();
+    render(
+      <Providers>
+        <ParamsPanel
+          opMeta={{
+            operation: "pdf_remove_watermark",
+            params_schema: {
+              watermark_text: { type: "string", default: "DRAFT", label: "Watermark text" },
+              dry_run: { type: "boolean", default: true, label: "Dry run report" },
+              confidence_min: { type: "float", default: 0.6, minimum: 0, maximum: 1, label: "Minimum confidence" },
+              case: { type: "enum", values: ["insensitive", "sensitive"], default: "insensitive", label: "Text matching" },
+            },
+          }}
+          onConfirm={onConfirm}
+          onCancel={() => {}}
+        />
+      </Providers>
+    );
+
+    fireEvent.change(screen.getByLabelText(/watermark text/i), { target: { value: "CONFIDENTIAL" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /dry run report/i }));
+    fireEvent.change(screen.getByLabelText(/minimum confidence/i), { target: { value: "0.75" } });
+    fireEvent.change(screen.getByLabelText(/text matching/i), { target: { value: "sensitive" } });
+    fireEvent.click(screen.getByRole("button", { name: /convert/i }));
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      watermark_text: "CONFIDENTIAL",
+      dry_run: false,
+      confidence_min: 0.75,
+      case: "sensitive",
+    });
+  });
 });
 
 // ── Home page ──────────────────────────────────────────────────────────────

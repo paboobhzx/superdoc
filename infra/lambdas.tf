@@ -350,6 +350,57 @@ module "lambda_pdf_annotate" {
   layer_arns            = local.lambda_layer_arns
 }
 
+module "lambda_pdf_rearrange" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "pdf-rearrange"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 256
+  timeout               = 120
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/pdf_rearrange.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.worker_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_pdf_svg_annotate" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "pdf-svg-annotate"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 180
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/pdf_svg_annotate.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.worker_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
+module "lambda_pdf_remove_watermark" {
+  source                = "./modules/lambda"
+  name_prefix           = local.name_prefix
+  function_name         = "pdf-remove-watermark"
+  handler               = "handler.handler"
+  runtime               = var.lambda_runtime
+  memory_size           = 512
+  timeout               = 180
+  s3_bucket             = var.lambda_handler_s3_bucket
+  s3_key                = "handlers/pdf_remove_watermark.zip"
+  environment_variables = local.lambda_common_env
+  common_tags           = local.worker_tags
+  dynamodb_table_arns   = local.dynamodb_arns
+  media_bucket_arn      = module.s3.bucket_arn
+  layer_arns            = local.lambda_layer_arns
+}
+
 module "lambda_pdf_extract_text" {
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix

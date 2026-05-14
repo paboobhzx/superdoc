@@ -19,7 +19,8 @@ def _process(data: bytes, body: dict) -> bytes:
 
     out = io.BytesIO()
     writer.write(out)
-    return out.getvalue()
+    compressed = out.getvalue()
+    return compressed if len(compressed) < len(data) else data
 
 
 def handler(event, context):

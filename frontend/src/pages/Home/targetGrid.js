@@ -11,6 +11,7 @@ export const TARGET_GRID = [
   { target: "xlsx", label: "XLSX", description: "Spreadsheet" },
   { target: "csv", label: "CSV", description: "Spreadsheet" },
   { target: "txt", label: "TXT", description: "Plain text" },
+  { target: "zip", label: "ZIP", description: "Archive" },
 ]
 
 const IMAGE_TYPES = new Set(["jpg", "jpeg", "png", "webp", "gif", "tiff"])

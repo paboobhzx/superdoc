@@ -16,6 +16,7 @@ describe("target grid", () => {
       "xlsx",
       "csv",
       "txt",
+      "zip",
     ])
   })
 

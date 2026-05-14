@@ -8,9 +8,9 @@ import { getSessionId } from "../../lib/session"
 import { createAndUploadOnly, dispatchPick } from "./pickerRouting"
 import { buildTargetGridChoices, findClientEditorOperation } from "./targetGrid"
 
-export const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "WEBP", "GIF", "TIFF", "XLSX", "XLS", "TXT"]
-export const ACCEPT = "application/pdf,.docx,.xlsx,.xls,.jpg,.jpeg,.png,.webp,.gif,.tiff,.md,.markdown,.html,.htm,.txt"
-export const KNOWN_CATALOG_TYPES = new Set(["pdf", "docx", "xlsx", "xls", "png", "jpg", "jpeg", "webp", "gif", "tiff", "md", "markdown", "txt", "html", "htm"])
+export const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "WEBP", "GIF", "TIFF", "XLSX", "XLS", "TXT", "ZIP"]
+export const ACCEPT = "application/pdf,.docx,.xlsx,.xls,.jpg,.jpeg,.png,.webp,.gif,.tiff,.md,.markdown,.html,.htm,.txt,.zip,application/zip"
+export const KNOWN_CATALOG_TYPES = new Set(["pdf", "docx", "xlsx", "xls", "png", "jpg", "jpeg", "webp", "gif", "tiff", "md", "markdown", "txt", "html", "htm", "zip"])
 
 // Operations that benefit from pre-analysis (PDF complexity scoring)
 const ANALYSIS_OPERATIONS = new Set(["pdf_to_docx"])

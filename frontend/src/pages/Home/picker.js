@@ -26,6 +26,18 @@ export const OPERATION_UI = {
     icon: "branding_watermark",
     description: "Overlay a watermark or note on every page.",
   },
+  pdf_rearrange: {
+    icon: "view_array",
+    description: "Reorder pages or omit pages by entering a comma-separated page order.",
+  },
+  pdf_svg_annotate: {
+    icon: "draw",
+    description: "Apply annotations from a ZIP containing document.pdf and annotations.svg.",
+  },
+  pdf_remove_watermark: {
+    icon: "layers_clear",
+    description: "Detect removable watermark annotations and produce a report or cleaned PDF.",
+  },
   pdf_extract_text: {
     icon: "content_paste",
     description: "Structured JSON with page-by-page text. Best for developers and automation.",

@@ -9,6 +9,25 @@ const PAPER_SIZES = [
   { id: "A5", label: "A5", sub: "148×210 mm" },
 ]
 
+const BESPOKE_KEYS = new Set(["paper_size", "high_fidelity", "target_format"])
+
+function schemaOptions(definition) {
+  return definition?.values || definition?.enum || []
+}
+
+function labelFor(key, definition) {
+  return definition?.label || key.replaceAll("_", " ")
+}
+
+function defaultValueFor(definition) {
+  if (definition?.type === "boolean") return definition.default === true
+  if (definition?.default !== undefined) return definition.default
+  const options = schemaOptions(definition)
+  if (options.length > 0) return options[0]
+  if (definition?.type === "integer" || definition?.type === "float") return ""
+  return ""
+}
+
 function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt }) {
   const { t } = useI18n()
   const [elapsed, setElapsed] = useState(0)
@@ -143,11 +162,17 @@ export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analys
 
   const [paperSize, setPaperSize] = useState("A4")
   const [highFidelity, setHighFidelity] = useState(defaultHighFidelity)
+  const [genericParams, setGenericParams] = useState({})
 
   useEffect(() => {
     setPaperSize(schema.paper_size?.default || "A4")
     setHighFidelity(defaultHighFidelity)
-  }, [opMeta?.operation, schema.paper_size?.default, defaultHighFidelity])
+    const next = {}
+    for (const [key, definition] of Object.entries(schema)) {
+      if (!BESPOKE_KEYS.has(key)) next[key] = defaultValueFor(definition)
+    }
+    setGenericParams(next)
+  }, [opMeta?.operation, schema, schema.paper_size?.default, defaultHighFidelity])
 
   // When analysis arrives, auto-set checkbox to match the recommendation
   useEffect(() => {
@@ -160,8 +185,27 @@ export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analys
     const params = {}
     if (hasPaperSize) params.paper_size = paperSize
     if (hasHighFidelity) params.high_fidelity = highFidelity
+    for (const [key, definition] of Object.entries(schema)) {
+      if (BESPOKE_KEYS.has(key)) continue
+      const value = genericParams[key]
+      if (definition?.type === "boolean") {
+        params[key] = Boolean(value)
+      } else if (definition?.type === "integer") {
+        if (value !== "" && value !== null && value !== undefined) params[key] = Number.parseInt(value, 10)
+      } else if (definition?.type === "float") {
+        if (value !== "" && value !== null && value !== undefined) params[key] = Number.parseFloat(value)
+      } else if (value !== undefined && value !== null) {
+        params[key] = String(value)
+      }
+    }
     onConfirm(params)
   }
+
+  function updateGenericParam(key, value) {
+    setGenericParams((current) => ({ ...current, [key]: value }))
+  }
+
+  const genericEntries = Object.entries(schema).filter(([key]) => !BESPOKE_KEYS.has(key))
 
   return (
     <div className="animate-[fade-in_0.2s_ease]">
@@ -214,6 +258,72 @@ export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analys
           </label>
         </div>
       )}
+
+      {genericEntries.length > 0 ? (
+        <div className={`${hasPaperSize || hasHighFidelity ? "mt-4 pt-4 border-t border-outline-variant/20" : ""} mb-5 space-y-4`}>
+          {genericEntries.map(([key, definition]) => {
+            const options = schemaOptions(definition)
+            const type = options.length > 0 ? "enum" : definition?.type
+            const label = labelFor(key, definition)
+            if (type === "boolean") {
+              return (
+                <label key={key} className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(genericParams[key])}
+                    onChange={(e) => updateGenericParam(key, e.target.checked)}
+                    className="mt-0.5 accent-primary h-4 w-4 shrink-0"
+                  />
+                  <span className="text-sm font-semibold capitalize text-on-surface">{label}</span>
+                </label>
+              )
+            }
+            if (type === "enum") {
+              return (
+                <label key={key} className="block">
+                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.1em] text-outline">{label}</span>
+                  <select
+                    value={genericParams[key] ?? ""}
+                    onChange={(e) => updateGenericParam(key, e.target.value)}
+                    className="min-h-11 w-full rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-low px-3 text-sm text-on-surface"
+                  >
+                    {options.map((option) => (
+                      <option key={option} value={option}>{String(option)}</option>
+                    ))}
+                  </select>
+                </label>
+              )
+            }
+            if (type === "integer" || type === "float") {
+              return (
+                <label key={key} className="block">
+                  <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.1em] text-outline">{label}</span>
+                  <input
+                    type="number"
+                    step={type === "float" ? "0.01" : "1"}
+                    min={definition?.minimum}
+                    max={definition?.maximum}
+                    value={genericParams[key] ?? ""}
+                    onChange={(e) => updateGenericParam(key, e.target.value)}
+                    className="min-h-11 w-full rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-low px-3 text-sm text-on-surface"
+                  />
+                </label>
+              )
+            }
+            return (
+              <label key={key} className="block">
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.1em] text-outline">{label}</span>
+                <input
+                  type="text"
+                  value={genericParams[key] ?? ""}
+                  onChange={(e) => updateGenericParam(key, e.target.value)}
+                  className="min-h-11 w-full rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-low px-3 text-sm text-on-surface"
+                />
+              </label>
+            )
+          })}
+        </div>
+      ) : null}
 
       <div className="flex gap-3">
         <button

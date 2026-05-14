@@ -1,4 +1,5 @@
 import importlib
+import io
 import sys
 import types
 import unittest
@@ -258,6 +259,122 @@ class CreateJobTests(unittest.TestCase):
         self.assertEqual(captured["ttl_seconds"], 64800)
         self.assertEqual(captured["retention_choice"], "extended")
         self.assertEqual(result["body"]["upload"]["expiry"], 64800)
+
+
+class PdfOperationValidationTests(unittest.TestCase):
+    def _validate(self, operation, params):
+        layer_path = Path(__file__).resolve().parents[1] / "layers" / "superdoc_utils"
+        if str(layer_path) not in sys.path:
+            sys.path.insert(0, str(layer_path))
+        import operation_validation
+        return operation_validation.validate_params(operation, params)
+
+    def test_pdf_annotate_params_are_preserved_and_coerced(self):
+        result = self._validate(
+            "pdf_annotate",
+            {"watermark_text": "CONFIDENTIAL", "stamp_mode": "footer", "opacity": "0.45", "ignored": "x"},
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(
+            result.params,
+            {"watermark_text": "CONFIDENTIAL", "stamp_mode": "footer", "opacity": 0.45},
+        )
+
+    def test_pdf_annotate_rejects_bad_mode_and_opacity(self):
+        self.assertFalse(self._validate("pdf_annotate", {"stamp_mode": "middle"}).ok)
+        self.assertFalse(self._validate("pdf_annotate", {"opacity": "2"}).ok)
+
+    def test_new_pdf_transform_params_are_preserved(self):
+        self.assertEqual(self._validate("pdf_split", {"ranges": "1-2,4"}).params, {"ranges": "1-2,4"})
+        self.assertEqual(self._validate("pdf_rearrange", {"page_order": "3,1,2"}).params, {"page_order": "3,1,2"})
+        self.assertEqual(self._validate("pdf_svg_annotate", {"flatten": "true"}).params, {"flatten": True})
+
+    def test_pdf_remove_watermark_params_are_preserved_and_coerced(self):
+        result = self._validate(
+            "pdf_remove_watermark",
+            {
+                "watermark_text": "DRAFT",
+                "dry_run": "false",
+                "confidence_min": "0.7",
+                "case": "sensitive",
+            },
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(
+            result.params,
+            {
+                "watermark_text": "DRAFT",
+                "dry_run": False,
+                "confidence_min": 0.7,
+                "case": "sensitive",
+            },
+        )
+
+    def test_pdf_remove_watermark_rejects_invalid_values(self):
+        self.assertFalse(self._validate("pdf_remove_watermark", {"dry_run": "maybe"}).ok)
+        self.assertFalse(self._validate("pdf_remove_watermark", {"confidence_min": "1.2"}).ok)
+        self.assertFalse(self._validate("pdf_remove_watermark", {"case": "upper"}).ok)
+
+
+def _pdf_deps_available():
+    try:
+        import pypdf  # noqa: F401
+        import reportlab  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
+def _stub_pdf_worker_modules():
+    for name in ("dynamo", "limits", "s3", "logger"):
+        sys.modules.pop(name, None)
+    sys.modules["dynamo"] = types.ModuleType("dynamo")
+    sys.modules["limits"] = types.SimpleNamespace(assert_pdf_page_limit=lambda *args, **kwargs: None)
+    sys.modules["s3"] = types.ModuleType("s3")
+    logger = types.ModuleType("logger")
+    logger.get_logger = lambda name: types.SimpleNamespace(info=lambda *a, **k: None, exception=lambda *a, **k: None)
+    sys.modules["logger"] = logger
+
+
+@unittest.skipUnless(_pdf_deps_available(), "PDF dependencies are not installed")
+class PdfAdvancedHandlerTests(unittest.TestCase):
+    def setUp(self):
+        _stub_pdf_worker_modules()
+        from pypdf import PdfWriter
+
+        buf = io.BytesIO()
+        writer = PdfWriter()
+        for _ in range(3):
+            writer.add_blank_page(width=200, height=200)
+        writer.write(buf)
+        self.pdf_bytes = buf.getvalue()
+
+    def test_pdf_annotate_modes_emit_valid_pdf(self):
+        mod = importlib.import_module("handlers.pdf_annotate")
+        from pypdf import PdfReader
+
+        for mode in ("watermark", "header", "footer", "corner"):
+            output = mod._process(self.pdf_bytes, {"watermark_text": "DRAFT", "stamp_mode": mode, "opacity": 0.4})
+            self.assertGreater(len(output), 0)
+            self.assertEqual(len(PdfReader(io.BytesIO(output)).pages), 3)
+
+    def test_pdf_compress_returns_original_when_output_is_larger(self):
+        mod = importlib.import_module("handlers.pdf_compress")
+        output = mod._process(self.pdf_bytes, {})
+        self.assertLessEqual(len(output), len(self.pdf_bytes))
+
+    def test_pdf_rearrange_orders_and_deletes_pages(self):
+        mod = importlib.import_module("handlers.pdf_rearrange")
+        from pypdf import PdfReader
+
+        default_output = mod._process(self.pdf_bytes, {})
+        self.assertEqual(len(PdfReader(io.BytesIO(default_output)).pages), 3)
+
+        output = mod._process(self.pdf_bytes, {"page_order": "3,1"})
+        self.assertEqual(len(PdfReader(io.BytesIO(output)).pages), 2)
+
+        with self.assertRaises(ValueError):
+            mod._process(self.pdf_bytes, {"page_order": "4"})
 
 
 if __name__ == "__main__":
