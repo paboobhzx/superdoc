@@ -16,29 +16,27 @@ def _report_bytes(report: dict) -> bytes:
 def _process(data: bytes, body: dict) -> tuple[bytes, str]:
     watermark_text = body.get("watermark_text", "")
     confidence_min = float(body.get("confidence_min", 0.6))
-    case = body.get("case", "insensitive")
-    dry_run = bool(body.get("dry_run", True))
+    mode = body.get("case", "auto")
+    dry_run = bool(body.get("dry_run", False))
 
-    report = detect_watermarks(data, text=watermark_text, case=case)
+    report = detect_watermarks(data, text=watermark_text, mode=mode)
     report["dry_run"] = dry_run
     report["confidence_min"] = confidence_min
 
     if report["detections"] <= 0:
-        raise ValueError("No removable watermark was detected.")
+        raise ValueError("no_watermark_detected")
     if float(report["confidence"]) < confidence_min:
-        raise ValueError(
-            f"Watermark detection confidence {report['confidence']} is below required threshold {confidence_min}."
-        )
-    if report.get("unsafe_xobjects"):
-        raise ValueError("Detected watermark uses unsafe XObject drawing blocks and was not modified.")
+        raise ValueError("no_watermark_detected")
 
     if dry_run:
         return _report_bytes(report), "watermark-report.json"
+    if report.get("unsafe_xobjects") and mode in ("auto", "xobject"):
+        raise ValueError("unsafe_xobject_removal")
 
-    output, removal_report = remove_detected_watermarks(data, text=watermark_text, case=case)
+    output, removal_report = remove_detected_watermarks(data, text=watermark_text, mode=mode)
     removal_report["dry_run"] = False
     if output == data:
-        raise ValueError("Watermark detection was not safely removable.")
+        raise ValueError("no_watermark_detected")
     return output, "watermark-removed.pdf"
 
 
@@ -55,7 +53,7 @@ def handler(event, context):
         out_key = s3.make_output_key(job_id, file_key, filename)
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)
-        log.info("pdf_remove_watermark done", extra={"job_id": job_id, "dry_run": body.get("dry_run", True)})
+        log.info("pdf_remove_watermark done", extra={"job_id": job_id, "dry_run": body.get("dry_run", False)})
     except Exception as exc:
         log.exception("pdf_remove_watermark failed: %s", exc)
         dynamo.mark_failed(job_id, str(exc))

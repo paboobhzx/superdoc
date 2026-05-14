@@ -137,13 +137,13 @@ OPERATIONS: dict[str, dict] = {
         "requires_multiple": False,
         "params_schema": {
             "watermark_text": {"type": "string", "default": "", "label": "Watermark text"},
-            "dry_run": {"type": "boolean", "default": True, "label": "Dry run report"},
-            "confidence_min": {"type": "float", "default": 0.6, "minimum": 0, "maximum": 1, "label": "Minimum confidence"},
+            "dry_run": {"type": "boolean", "default": False, "label": "Dry run report"},
+            "confidence_min": {"type": "float", "default": 0.6, "minimum": 0.3, "maximum": 1, "label": "Minimum confidence"},
             "case": {
                 "type": "enum",
-                "default": "insensitive",
-                "values": ["insensitive", "sensitive"],
-                "label": "Text matching",
+                "default": "auto",
+                "values": ["auto", "annot", "xobject"],
+                "label": "Detection mode",
             },
         },
         "category": "pdf",

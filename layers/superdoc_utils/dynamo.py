@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from decimal import Decimal
 from datetime import datetime, timezone
 
 import boto3
@@ -48,6 +49,18 @@ def _client():
     return _ddb_client
 
 
+def _ddb_safe(value):
+    if isinstance(value, float):
+        return Decimal(str(value))
+    if isinstance(value, list):
+        return [_ddb_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_ddb_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _ddb_safe(item) for key, item in value.items()}
+    return value
+
+
 def create_job(
     job_id: str,
     operation: str,
@@ -72,7 +85,7 @@ def create_job(
         "file_size_bytes": file_size_bytes,
         "file_name": file_name,
         "file_key": file_key,
-        "params": params or {},
+        "params": _ddb_safe(params or {}),
         "status": status or "PENDING",
         "created_at": now_iso,         # String — required by user-history-index GSI
         "expires_at": now_ts + ttl,  # Number — DynamoDB TTL
@@ -83,6 +96,7 @@ def create_job(
         item["output_key"] = output_key
     if retention_choice:
         item["retention_choice"] = retention_choice
+    item = _ddb_safe(item)
     _jobs().put_item(Item=item)
     return item
 
@@ -103,7 +117,7 @@ def update_job(job_id: str, **kwargs) -> None:
         value_key = f":v{i}"
         expressions.append(f"{placeholder} = {value_key}")
         attr_names[placeholder] = k
-        attr_values[value_key] = v
+        attr_values[value_key] = _ddb_safe(v)
 
     _jobs().update_item(
         Key={"job_id": job_id},

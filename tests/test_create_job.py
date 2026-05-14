@@ -1,8 +1,11 @@
 import importlib
 import io
+import json
 import sys
 import types
 import unittest
+import zipfile
+from decimal import Decimal
 from pathlib import Path
 
 
@@ -207,6 +210,23 @@ class CreateJobTests(unittest.TestCase):
 
         self.assertEqual(table.items["job-2"]["user_id"], "sub-1")
 
+    def test_dynamo_create_job_converts_float_params_to_decimal(self):
+        dynamo, table = _load_dynamo_with_fake_table()
+
+        dynamo.create_job(
+            job_id="job-float",
+            operation="pdf_annotate",
+            session_id="sess-1",
+            file_size_bytes=123,
+            file_name="sample.pdf",
+            file_key="uploads/job-float/sample.pdf",
+            params={"opacity": 0.3, "nested": {"confidence_min": 0.6}},
+        )
+
+        item = table.items["job-float"]
+        self.assertEqual(item["params"]["opacity"], Decimal("0.3"))
+        self.assertEqual(item["params"]["nested"]["confidence_min"], Decimal("0.6"))
+
     def test_handler_uses_default_retention_and_upload_expiry(self):
         captured = {}
 
@@ -296,7 +316,7 @@ class PdfOperationValidationTests(unittest.TestCase):
                 "watermark_text": "DRAFT",
                 "dry_run": "false",
                 "confidence_min": "0.7",
-                "case": "sensitive",
+                "case": "xobject",
             },
         )
         self.assertTrue(result.ok)
@@ -306,12 +326,13 @@ class PdfOperationValidationTests(unittest.TestCase):
                 "watermark_text": "DRAFT",
                 "dry_run": False,
                 "confidence_min": 0.7,
-                "case": "sensitive",
+                "case": "xobject",
             },
         )
 
     def test_pdf_remove_watermark_rejects_invalid_values(self):
         self.assertFalse(self._validate("pdf_remove_watermark", {"dry_run": "maybe"}).ok)
+        self.assertFalse(self._validate("pdf_remove_watermark", {"confidence_min": "0.2"}).ok)
         self.assertFalse(self._validate("pdf_remove_watermark", {"confidence_min": "1.2"}).ok)
         self.assertFalse(self._validate("pdf_remove_watermark", {"case": "upper"}).ok)
 
@@ -326,6 +347,9 @@ def _pdf_deps_available():
 
 
 def _stub_pdf_worker_modules():
+    layer_path = Path(__file__).resolve().parents[1] / "layers" / "superdoc_utils"
+    if str(layer_path) not in sys.path:
+        sys.path.insert(0, str(layer_path))
     for name in ("dynamo", "limits", "s3", "logger"):
         sys.modules.pop(name, None)
     sys.modules["dynamo"] = types.ModuleType("dynamo")
@@ -375,6 +399,112 @@ class PdfAdvancedHandlerTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             mod._process(self.pdf_bytes, {"page_order": "4"})
+
+
+class PdfRemoveWatermarkHandlerTests(unittest.TestCase):
+    def setUp(self):
+        _stub_pdf_worker_modules()
+        sys.modules.pop("handlers.pdf_remove_watermark", None)
+        self.mod = importlib.import_module("handlers.pdf_remove_watermark")
+
+    def test_dry_run_writes_report_by_default_only_when_requested(self):
+        self.mod.detect_watermarks = lambda data, text="", mode="auto": {
+            "page_count": 1,
+            "mode": mode,
+            "detections": 1,
+            "confidence": 0.9,
+            "annotations": [{"page": 1}],
+            "xobjects": [],
+            "unsafe_xobjects": [],
+        }
+
+        output, name = self.mod._process(b"%PDF", {"dry_run": True, "case": "annot"})
+
+        self.assertEqual(name, "watermark-report.json")
+        report = json.loads(output.decode("utf-8"))
+        self.assertTrue(report["dry_run"])
+        self.assertEqual(report["mode"], "annot")
+
+    def test_no_detection_uses_stable_failure_reason(self):
+        self.mod.detect_watermarks = lambda *args, **kwargs: {
+            "detections": 0,
+            "confidence": 0.0,
+            "annotations": [],
+            "xobjects": [],
+            "unsafe_xobjects": [],
+        }
+
+        with self.assertRaisesRegex(ValueError, "no_watermark_detected"):
+            self.mod._process(b"%PDF", {})
+
+    def test_unsafe_xobject_uses_stable_failure_reason(self):
+        self.mod.detect_watermarks = lambda *args, **kwargs: {
+            "detections": 1,
+            "confidence": 0.9,
+            "annotations": [],
+            "xobjects": [],
+            "unsafe_xobjects": [{"xref": 7, "reason": "xobject_not_isolated"}],
+        }
+
+        with self.assertRaisesRegex(ValueError, "unsafe_xobject_removal"):
+            self.mod._process(b"%PDF", {"case": "xobject"})
+
+    def test_annotation_removal_path_returns_pdf(self):
+        self.mod.detect_watermarks = lambda *args, **kwargs: {
+            "detections": 1,
+            "confidence": 0.9,
+            "annotations": [{"page": 1}],
+            "xobjects": [],
+            "unsafe_xobjects": [],
+        }
+        self.mod.remove_detected_watermarks = lambda *args, **kwargs: (b"%PDF-clean", {"removed_annotations": 1})
+
+        output, name = self.mod._process(b"%PDF", {"case": "annot"})
+
+        self.assertEqual(output, b"%PDF-clean")
+        self.assertEqual(name, "watermark-removed.pdf")
+
+
+class PdfSvgAnnotateContractTests(unittest.TestCase):
+    def setUp(self):
+        _stub_pdf_worker_modules()
+        sys.modules.pop("handlers.pdf_svg_annotate", None)
+        self.mod = importlib.import_module("handlers.pdf_svg_annotate")
+
+    def test_svg_data_attribute_contract_is_recognized(self):
+        from xml.etree import ElementTree
+
+        element = ElementTree.fromstring(
+            '<rect data-annot-type="Square" data-page="2" data-author="Ada" data-color="#ffcc00" />'
+        )
+
+        self.assertEqual(self.mod._annotation_type(element), "square")
+        self.assertEqual(self.mod._svg_attr(element, "page"), "2")
+        self.assertEqual(self.mod._svg_attr(element, "author"), "Ada")
+        self.assertEqual(self.mod._svg_attr(element, "color"), "#ffcc00")
+
+    def test_viewbox_parser_accepts_valid_svg_viewbox(self):
+        from xml.etree import ElementTree
+
+        root = ElementTree.fromstring('<svg viewBox="0 0 1000 500"></svg>')
+
+        self.assertEqual(self.mod._viewbox(root), (0.0, 0.0, 1000.0, 500.0))
+
+    def test_zip_validation_names_missing_document(self):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("annotations.svg", "<svg />")
+
+        with self.assertRaisesRegex(ValueError, "document.pdf"):
+            self.mod._process(buf.getvalue(), {})
+
+    def test_zip_validation_names_missing_svg(self):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("document.pdf", b"%PDF")
+
+        with self.assertRaisesRegex(ValueError, "annotations.svg"):
+            self.mod._process(buf.getvalue(), {})
 
 
 if __name__ == "__main__":

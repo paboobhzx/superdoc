@@ -202,9 +202,9 @@ describe("ParamsPanel", () => {
             operation: "pdf_remove_watermark",
             params_schema: {
               watermark_text: { type: "string", default: "DRAFT", label: "Watermark text" },
-              dry_run: { type: "boolean", default: true, label: "Dry run report" },
-              confidence_min: { type: "float", default: 0.6, minimum: 0, maximum: 1, label: "Minimum confidence" },
-              case: { type: "enum", values: ["insensitive", "sensitive"], default: "insensitive", label: "Text matching" },
+              dry_run: { type: "boolean", default: false, label: "Dry run report" },
+              confidence_min: { type: "float", default: 0.6, minimum: 0.3, maximum: 1, label: "Minimum confidence" },
+              case: { type: "enum", values: ["auto", "annot", "xobject"], default: "auto", label: "Detection mode" },
             },
           }}
           onConfirm={onConfirm}
@@ -216,14 +216,14 @@ describe("ParamsPanel", () => {
     fireEvent.change(screen.getByLabelText(/watermark text/i), { target: { value: "CONFIDENTIAL" } });
     fireEvent.click(screen.getByRole("checkbox", { name: /dry run report/i }));
     fireEvent.change(screen.getByLabelText(/minimum confidence/i), { target: { value: "0.75" } });
-    fireEvent.change(screen.getByLabelText(/text matching/i), { target: { value: "sensitive" } });
+    fireEvent.change(screen.getByLabelText(/detection mode/i), { target: { value: "xobject" } });
     fireEvent.click(screen.getByRole("button", { name: /convert/i }));
 
     expect(onConfirm).toHaveBeenCalledWith({
       watermark_text: "CONFIDENTIAL",
-      dry_run: false,
+      dry_run: true,
       confidence_min: 0.75,
-      case: "sensitive",
+      case: "xobject",
     });
   });
 });

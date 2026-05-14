@@ -72,7 +72,7 @@ describe("target grid choices", () => {
       { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word", targets: ["docx"] },
     ])
 
-    expect(choices.map((choice) => choice.target)).toEqual(["pdf", "docx", "png", "jpg", "webp", "gif", "tiff", "md", "html", "xlsx", "csv", "txt"])
+    expect(choices.map((choice) => choice.target)).toEqual(["pdf", "docx", "png", "jpg", "webp", "gif", "tiff", "md", "html", "xlsx", "csv", "txt", "zip"])
     expect(choices.find((choice) => choice.target === "docx")?.enabled).toBe(true)
     expect(choices.find((choice) => choice.target === "html")).toMatchObject({
       enabled: false,

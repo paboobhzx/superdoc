@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import re
-
-
 _W_PRODUCER = 30
 _W_XOBJECTS = 25
 _W_COLUMNS = 20
@@ -226,76 +223,194 @@ def analyze_pdf(pdf_bytes: bytes) -> dict:
     }
 
 
-def detect_watermarks(pdf_bytes: bytes, text: str = "", case: str = "insensitive") -> dict:
+def _casefold(value: str) -> str:
+    return value.casefold()
+
+
+def _annotation_matches(annot, needle: str) -> bool:
+    if not needle:
+        return True
+    info = annot.info or {}
+    haystack = " ".join(str(info.get(key) or "") for key in ("content", "title", "subject"))
+    return _casefold(needle) in _casefold(haystack)
+
+
+def detect_annotation_watermarks(doc, text: str = "") -> dict:
+    needle = (text or "").strip()
+    annotations = []
+    for page_idx in range(doc.page_count):
+        page = doc.load_page(page_idx)
+        annot = page.first_annot
+        while annot:
+            if _annotation_matches(annot, needle):
+                info = annot.info or {}
+                rect = annot.rect
+                annotations.append({
+                    "page": page_idx + 1,
+                    "xref": annot.xref,
+                    "type": annot.type[1],
+                    "content": info.get("content") or "",
+                    "title": info.get("title") or "",
+                    "bbox": [round(rect.x0, 2), round(rect.y0, 2), round(rect.x1, 2), round(rect.y1, 2)],
+                })
+            annot = annot.next
+    confidence = 0.0 if not annotations else min(1.0, 0.65 + len(annotations) / max(doc.page_count, 1) * 0.25)
+    return {
+        "detections": len(annotations),
+        "confidence": round(confidence, 3),
+        "annotations": annotations,
+    }
+
+
+def _image_candidates_for_page(page, page_idx: int) -> list[dict]:
+    candidates = []
+    page_area = max(page.rect.width * page.rect.height, 1.0)
+    for image in page.get_images(full=True):
+        xref = image[0]
+        try:
+            rects = page.get_image_rects(xref)
+        except Exception:
+            rects = []
+        for rect in rects:
+            if rect.is_empty or rect.is_infinite:
+                continue
+            area_ratio = max(0.0, min(1.0, (rect.width * rect.height) / page_area))
+            center_x = rect.x0 + rect.width / 2
+            center_y = rect.y0 + rect.height / 2
+            centered = (
+                abs(center_x - page.rect.width / 2) <= page.rect.width * 0.25
+                and abs(center_y - page.rect.height / 2) <= page.rect.height * 0.25
+            )
+            watermark_like = centered and 0.03 <= area_ratio <= 0.85
+            candidates.append({
+                "page": page_idx + 1,
+                "xref": xref,
+                "bbox": [round(rect.x0, 2), round(rect.y0, 2), round(rect.x1, 2), round(rect.y1, 2)],
+                "area_ratio": round(area_ratio, 3),
+                "watermark_like": watermark_like,
+            })
+    return candidates
+
+
+def detect_xobject_watermarks(doc) -> dict:
+    by_xref: dict[int, list[dict]] = {}
+    for page_idx in range(doc.page_count):
+        page = doc.load_page(page_idx)
+        for candidate in _image_candidates_for_page(page, page_idx):
+            by_xref.setdefault(candidate["xref"], []).append(candidate)
+
+    candidates = []
+    unsafe = []
+    for xref, uses in by_xref.items():
+        watermark_uses = [use for use in uses if use["watermark_like"]]
+        page_coverage = len({use["page"] for use in watermark_uses}) / max(doc.page_count, 1)
+        if watermark_uses and len(watermark_uses) == len(uses) and page_coverage >= 0.5:
+            candidates.append({
+                "xref": xref,
+                "uses": watermark_uses,
+                "page_coverage": round(page_coverage, 3),
+                "safe_to_remove": True,
+            })
+        elif watermark_uses:
+            unsafe.append({
+                "xref": xref,
+                "uses": uses,
+                "reason": "xobject_not_isolated",
+            })
+
+    detections = sum(len(item["uses"]) for item in candidates)
+    confidence = 0.0 if detections == 0 else min(1.0, 0.55 + detections / max(doc.page_count, 1) * 0.3)
+    return {
+        "detections": detections,
+        "confidence": round(confidence, 3),
+        "xobjects": candidates,
+        "unsafe_xobjects": unsafe,
+    }
+
+
+def detect_watermarks(pdf_bytes: bytes, text: str = "", mode: str = "auto") -> dict:
     import pymupdf
 
-    needle = (text or "").strip()
-    flags = 0 if case == "sensitive" else re.IGNORECASE
+    mode = (mode or "auto").lower()
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     try:
-        annotations = []
-        text_hits = []
-        for page_idx in range(doc.page_count):
-            page = doc.load_page(page_idx)
-            annot = page.first_annot
-            while annot:
-                info = annot.info or {}
-                content = info.get("content") or info.get("title") or ""
-                if not needle or re.search(re.escape(needle), content, flags):
-                    annotations.append({"page": page_idx + 1, "type": annot.type[1], "content": content})
-                annot = annot.next
-            if needle:
-                for rect in page.search_for(needle):
-                    text_hits.append({"page": page_idx + 1, "bbox": [rect.x0, rect.y0, rect.x1, rect.y1]})
-        detections = len(annotations) + len(text_hits)
-        confidence = 0.0 if detections == 0 else min(1.0, 0.55 + detections / max(doc.page_count, 1) * 0.25)
+        annotation_report = detect_annotation_watermarks(doc, text=text) if mode in ("auto", "annot") else {
+            "detections": 0,
+            "confidence": 0.0,
+            "annotations": [],
+        }
+        xobject_report = detect_xobject_watermarks(doc) if mode in ("auto", "xobject") else {
+            "detections": 0,
+            "confidence": 0.0,
+            "xobjects": [],
+            "unsafe_xobjects": [],
+        }
+        detections = annotation_report["detections"] + xobject_report["detections"]
+        confidence = max(float(annotation_report["confidence"]), float(xobject_report["confidence"]))
         return {
             "page_count": doc.page_count,
+            "mode": mode,
             "detections": detections,
             "confidence": round(confidence, 3),
-            "annotations": annotations,
-            "text_hits": text_hits,
-            "unsafe_xobjects": [],
+            "annotations": annotation_report["annotations"],
+            "xobjects": xobject_report["xobjects"],
+            "unsafe_xobjects": xobject_report["unsafe_xobjects"],
         }
     finally:
         doc.close()
 
 
-def remove_detected_watermarks(pdf_bytes: bytes, text: str = "", case: str = "insensitive") -> tuple[bytes, dict]:
-    import pymupdf
-
-    report = detect_watermarks(pdf_bytes, text=text, case=case)
-    if report["detections"] <= 0:
-        raise ValueError("No removable watermark was detected.")
-
+def _delete_matching_annotations(doc, text: str = "") -> int:
     needle = (text or "").strip()
-    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
-    try:
-        removed_annotations = 0
-        redactions = 0
+    removed = 0
+    for page_idx in range(doc.page_count):
+        page = doc.load_page(page_idx)
+        annot = page.first_annot
+        while annot:
+            next_annot = annot.next
+            if _annotation_matches(annot, needle):
+                page.delete_annot(annot)
+                removed += 1
+            annot = next_annot
+    return removed
+
+
+def _delete_safe_xobjects(doc, xobjects: list[dict]) -> int:
+    removed = 0
+    for item in xobjects:
+        if not item.get("safe_to_remove"):
+            continue
+        xref = int(item["xref"])
         for page_idx in range(doc.page_count):
             page = doc.load_page(page_idx)
-            annot = page.first_annot
-            while annot:
-                next_annot = annot.next
-                info = annot.info or {}
-                content = info.get("content") or info.get("title") or ""
-                matches = not needle or (content == needle if case == "sensitive" else needle.lower() in content.lower())
-                if matches:
-                    page.delete_annot(annot)
-                    removed_annotations += 1
-                annot = next_annot
-            if needle:
-                page_redactions = 0
-                for rect in page.search_for(needle):
-                    page.add_redact_annot(rect, fill=None)
-                    redactions += 1
-                    page_redactions += 1
-                if page_redactions:
-                    page.apply_redactions(images=0)
+            if not any(image[0] == xref for image in page.get_images(full=True)):
+                continue
+            if hasattr(page, "delete_image"):
+                page.delete_image(xref)
+                removed += 1
+            else:
+                raise RuntimeError("unsafe_xobject_removal")
+    return removed
+
+
+def remove_detected_watermarks(pdf_bytes: bytes, text: str = "", mode: str = "auto") -> tuple[bytes, dict]:
+    import pymupdf
+
+    report = detect_watermarks(pdf_bytes, text=text, mode=mode)
+    if report["detections"] <= 0:
+        raise ValueError("no_watermark_detected")
+
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        removed_annotations = _delete_matching_annotations(doc, text=text) if mode in ("auto", "annot") else 0
+        removed_xobjects = _delete_safe_xobjects(doc, report.get("xobjects") or []) if mode in ("auto", "xobject") else 0
+        if report.get("unsafe_xobjects") and removed_xobjects == 0 and mode in ("auto", "xobject"):
+            raise ValueError("unsafe_xobject_removal")
+        if removed_annotations + removed_xobjects == 0:
+            raise ValueError("no_watermark_detected")
         out = doc.tobytes(garbage=4, deflate=True)
         report["removed_annotations"] = removed_annotations
-        report["redactions"] = redactions
+        report["removed_xobjects"] = removed_xobjects
         return out, report
     finally:
         doc.close()

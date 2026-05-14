@@ -226,7 +226,7 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
             if err:
                 return err
 
-        ok_flag, err_msg, parsed = _float_range(params.get("confidence_min"), name="confidence_min", lo=0.0, hi=1.0)
+        ok_flag, err_msg, parsed = _float_range(params.get("confidence_min"), name="confidence_min", lo=0.3, hi=1.0)
         if not ok_flag:
             return ValidationResult(ok=False, error=err_msg)
         if parsed is not None:
@@ -236,7 +236,7 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
         ok_flag, err_msg = _one_of(
             raw_case,
             name="case",
-            allowed={"insensitive", "sensitive"},
+            allowed={"auto", "annot", "xobject"},
         )
         if not ok_flag:
             return ValidationResult(ok=False, error=err_msg)
