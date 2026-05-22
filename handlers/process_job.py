@@ -67,6 +67,8 @@ def handler(event, context):
         analysis_result = body_json.get("analysis_result")
         if analysis_result and isinstance(analysis_result, dict):
             dynamo.update_job(job_id, analysis_result=analysis_result)
+            if isinstance(analysis_result.get("pdf_integrity"), dict):
+                dynamo.update_job(job_id, pdf_integrity=analysis_result["pdf_integrity"])
 
         job_meta = operations.OPERATIONS.get(job.get("operation"), {})
         input_types = {str(item).lower().lstrip(".") for item in job_meta.get("input_types", [])}

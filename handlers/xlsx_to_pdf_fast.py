@@ -8,6 +8,7 @@ import io
 import json as _json
 
 import dynamo
+import output_naming
 import page_sizes
 import s3
 from logger import get_logger
@@ -76,7 +77,7 @@ def handler(event, context):
         dynamo.update_job(job_id, status="PROCESSING")
         data = s3.get_bytes(file_key)
         result = _xlsx_to_pdf(data, paper_size=paper_size, sheet_name=sheet_name)
-        out_key = s3.make_output_key(job_id, file_key, "output.pdf")
+        out_key = s3.make_output_key(job_id, file_key, output_naming.output_filename("xlsx_to_pdf", body, file_key, "pdf"))
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)
         log.info("xlsx_to_pdf_fast done", extra={"job_id": job_id})

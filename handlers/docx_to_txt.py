@@ -11,6 +11,7 @@ import json as _json
 import os
 
 import dynamo
+import output_naming
 import s3
 from logger import get_logger
 
@@ -87,9 +88,7 @@ def _extract_docx_html(docx_bytes: bytes) -> bytes:
 
 
 def _output_filename(body: dict, file_key: str, target_format: str) -> str:
-    original = body.get("file_name") or os.path.basename(file_key) or "document.docx"
-    stem, _ext = os.path.splitext(os.path.basename(original))
-    return f"{stem or 'document'}.{target_format}"
+    return output_naming.output_filename(body.get("operation", "docx_to_txt"), body, file_key, target_format)
 
 
 def handler(event, context):

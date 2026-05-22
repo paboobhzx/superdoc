@@ -10,6 +10,7 @@ import zipfile
 
 import dynamo
 import limits
+import output_naming
 import s3
 from logger import get_logger
 
@@ -271,19 +272,19 @@ def handler(event, context):
         data = s3.get_bytes(file_key)
         if target_format == "docx" or operation == "xlsx_to_docx":
             result = _xlsx_to_docx(data, sheet_name=sheet_name)
-            output_name = "output.docx"
+            output_name = output_naming.output_filename(operation, body, file_key, "docx")
         elif target_format == "html" or operation == "xlsx_to_html":
             result = _xlsx_to_html(data, sheet_name=sheet_name)
-            output_name = "output.html"
+            output_name = output_naming.output_filename(operation, body, file_key, "html")
         else:
             pdf_bytes = _xlsx_to_pdf(data, sheet_name=sheet_name, paper_size=paper_size, source_ext=source_ext)
             limits.assert_pdf_page_limit(pdf_bytes, body.get("user_id") or "")
             if target_format in ("png", "jpg", "jpeg") or operation == "xlsx_to_image":
                 result = _render_pdf_to_zip(pdf_bytes, target_format=target_format, dpi=dpi)
-                output_name = "pages.zip"
+                output_name = output_naming.output_filename(operation, body, file_key, "zip")
             else:
                 result = pdf_bytes
-                output_name = "output.pdf"
+                output_name = output_naming.output_filename(operation, body, file_key, "pdf")
         out_key = s3.make_output_key(job_id, file_key, output_name)
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)

@@ -3,6 +3,7 @@ import os
 
 import dynamo
 import limits
+import output_naming
 import s3
 from document_blocks import parse_html, render_to
 from logger import get_logger
@@ -18,9 +19,7 @@ def _resolve_target(body: dict) -> str:
 
 
 def _output_filename(body: dict, file_key: str, target_format: str) -> str:
-    original = body.get("file_name") or os.path.basename(file_key) or "page.html"
-    stem, _ext = os.path.splitext(os.path.basename(original))
-    return f"{stem or 'page'}.{target_format}"
+    return output_naming.output_filename(body.get("operation", "html_convert"), body, file_key, target_format)
 
 
 def handler(event, context):

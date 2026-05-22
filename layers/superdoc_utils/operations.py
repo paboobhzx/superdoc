@@ -43,6 +43,12 @@ OPERATIONS: dict[str, dict] = {
         "editor_route": None,
         "requires_multiple": False,
         "params_schema": {
+            "watermark_type": {
+                "type": "enum",
+                "default": "text",
+                "values": ["text", "image"],
+                "label": "Watermark type",
+            },
             "watermark_text": {"type": "string", "default": "DRAFT", "label": "Text"},
             "stamp_mode": {
                 "type": "enum",

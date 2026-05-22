@@ -3,6 +3,7 @@ import os
 
 import dynamo
 import limits
+import output_naming
 import s3
 from document_blocks import parse_markdown, render_to
 from logger import get_logger
@@ -31,9 +32,7 @@ def convert_markdown(data: bytes, target_format: str) -> bytes:
 
 
 def _output_filename(body: dict, file_key: str, target_format: str) -> str:
-    original = body.get("file_name") or os.path.basename(file_key) or "markdown.md"
-    stem, _ext = os.path.splitext(os.path.basename(original))
-    return f"{stem or 'markdown'}.{target_format}"
+    return output_naming.output_filename(body.get("operation", "markdown_convert"), body, file_key, target_format)
 
 
 def handler(event, context):

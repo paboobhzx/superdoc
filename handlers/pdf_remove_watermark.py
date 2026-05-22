@@ -2,6 +2,7 @@ import json
 
 import dynamo
 import limits
+import output_naming
 import s3
 from logger import get_logger
 from pdf_inspector import detect_watermarks, remove_detected_watermarks
@@ -50,7 +51,8 @@ def handler(event, context):
         result, filename = _process(data, body)
         if filename.endswith(".pdf"):
             limits.assert_pdf_page_limit(result, body.get("user_id") or "")
-        out_key = s3.make_output_key(job_id, file_key, filename)
+        extension = "json" if filename.endswith(".json") else "pdf"
+        out_key = s3.make_output_key(job_id, file_key, output_naming.output_filename("pdf_remove_watermark", body, file_key, extension))
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)
         log.info("pdf_remove_watermark done", extra={"job_id": job_id, "dry_run": body.get("dry_run", False)})

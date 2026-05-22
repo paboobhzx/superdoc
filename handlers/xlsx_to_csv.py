@@ -11,6 +11,7 @@ import io
 import json as _json
 
 import dynamo
+import output_naming
 import s3
 from logger import get_logger
 
@@ -118,7 +119,7 @@ def handler(event, context):
         dynamo.update_job(job_id, status="PROCESSING")
         data = s3.get_bytes(file_key)
         result, ext = _convert(data, body)
-        out_key = s3.make_output_key(job_id, file_key, f"output.{ext}")
+        out_key = s3.make_output_key(job_id, file_key, output_naming.output_filename(body.get("operation", "xlsx_to_csv"), body, file_key, ext))
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)
         log.info("xlsx_to_csv done", extra={"job_id": job_id, "target_format": ext})

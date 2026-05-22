@@ -87,6 +87,7 @@ def _load_create_job_handler(dynamo_stub, *, validate_params=None):
     limits_stub.storage_ttl_for_retention = lambda is_registered, retention_choice: 900 if retention_choice != "extended" else (64800 if is_registered else 43200)
 
     operations_stub = types.ModuleType("operations")
+    operations_stub.OPERATIONS = {"pdf_annotate": {"label": "Add PDF watermark"}}
     operations_stub.is_supported = lambda operation: True
     operations_stub.validate_params = validate_params or (lambda operation, params: types.SimpleNamespace(ok=True, error="", params=dict(params)))
 
@@ -280,6 +281,62 @@ class CreateJobTests(unittest.TestCase):
         self.assertEqual(captured["retention_choice"], "extended")
         self.assertEqual(result["body"]["upload"]["expiry"], 64800)
 
+    def test_handler_returns_extra_upload_for_image_watermark(self):
+        captured = {}
+
+        dynamo_stub = types.ModuleType("dynamo")
+        dynamo_stub.query_by_session = lambda session_id: []
+        dynamo_stub.create_job = lambda **kwargs: captured.update(kwargs)
+
+        def validate_params(operation, params):
+            return types.SimpleNamespace(ok=True, error="", params={"watermark_type": "image", "opacity": 0.4})
+
+        mod = _load_create_job_handler(dynamo_stub, validate_params=validate_params)
+        result = mod.handler(
+            {
+                "httpMethod": "POST",
+                "body": json.dumps({
+                    "operation": "pdf_annotate",
+                    "file_name": "sample.pdf",
+                    "file_size_bytes": 123,
+                    "session_id": "11111111-1111-1111-1111-111111111111",
+                    "params": {"watermark_type": "image", "opacity": 0.4},
+                    "extra_files": [{
+                        "role": "watermark_image",
+                        "file_name": "logo.png",
+                        "file_size_bytes": 321,
+                        "content_type": "image/png",
+                    }],
+                }),
+            },
+            None,
+        )
+
+        self.assertEqual(result["statusCode"], 200)
+        self.assertIn("extra_uploads", result["body"])
+        self.assertEqual(result["body"]["extra_uploads"][0]["role"], "watermark_image")
+        self.assertTrue(captured["params"]["watermark_image_key"].endswith("/extras/watermark_image/logo.png"))
+        self.assertEqual(captured["operation_label"], "Add PDF watermark")
+
+    def test_handler_rejects_missing_image_watermark_upload(self):
+        dynamo_stub = types.ModuleType("dynamo")
+        dynamo_stub.query_by_session = lambda session_id: []
+        dynamo_stub.create_job = lambda **kwargs: kwargs
+
+        def validate_params(operation, params):
+            return types.SimpleNamespace(ok=True, error="", params={"watermark_type": "image"})
+
+        mod = _load_create_job_handler(dynamo_stub, validate_params=validate_params)
+        result = mod.handler(
+            {
+                "httpMethod": "POST",
+                "body": '{"operation":"pdf_annotate","file_name":"sample.pdf","file_size_bytes":123,"session_id":"11111111-1111-1111-1111-111111111111","params":{"watermark_type":"image"}}',
+            },
+            None,
+        )
+
+        self.assertEqual(result["statusCode"], 400)
+
 
 class PdfOperationValidationTests(unittest.TestCase):
     def _validate(self, operation, params):
@@ -292,15 +349,16 @@ class PdfOperationValidationTests(unittest.TestCase):
     def test_pdf_annotate_params_are_preserved_and_coerced(self):
         result = self._validate(
             "pdf_annotate",
-            {"watermark_text": "CONFIDENTIAL", "stamp_mode": "footer", "opacity": "0.45", "ignored": "x"},
+            {"watermark_type": "text", "watermark_text": "CONFIDENTIAL", "stamp_mode": "footer", "opacity": "0.45", "ignored": "x"},
         )
         self.assertTrue(result.ok)
         self.assertEqual(
             result.params,
-            {"watermark_text": "CONFIDENTIAL", "stamp_mode": "footer", "opacity": 0.45},
+            {"watermark_type": "text", "watermark_text": "CONFIDENTIAL", "stamp_mode": "footer", "opacity": 0.45},
         )
 
     def test_pdf_annotate_rejects_bad_mode_and_opacity(self):
+        self.assertFalse(self._validate("pdf_annotate", {"watermark_type": "video"}).ok)
         self.assertFalse(self._validate("pdf_annotate", {"stamp_mode": "middle"}).ok)
         self.assertFalse(self._validate("pdf_annotate", {"opacity": "2"}).ok)
 
@@ -381,6 +439,22 @@ class PdfAdvancedHandlerTests(unittest.TestCase):
             output = mod._process(self.pdf_bytes, {"watermark_text": "DRAFT", "stamp_mode": mode, "opacity": 0.4})
             self.assertGreater(len(output), 0)
             self.assertEqual(len(PdfReader(io.BytesIO(output)).pages), 3)
+
+    def test_pdf_annotate_image_watermark_emits_valid_pdf(self):
+        mod = importlib.import_module("handlers.pdf_annotate")
+        from PIL import Image
+        from pypdf import PdfReader
+
+        img = Image.new("RGB", (24, 12), color=(255, 0, 0))
+        img_buf = io.BytesIO()
+        img.save(img_buf, format="PNG")
+        output = mod._process(
+            self.pdf_bytes,
+            {"watermark_type": "image", "stamp_mode": "watermark", "opacity": 0.35},
+            img_buf.getvalue(),
+        )
+        self.assertGreater(len(output), 0)
+        self.assertEqual(len(PdfReader(io.BytesIO(output)).pages), 3)
 
     def test_pdf_compress_returns_original_when_output_is_larger(self):
         mod = importlib.import_module("handlers.pdf_compress")

@@ -74,6 +74,7 @@ def create_job(
     output_key: str | None = None,
     user_id: str | None = None,
     retention_choice: str | None = None,
+    operation_label: str | None = None,
 ) -> dict:
     now_ts = int(time.time())
     now_iso = datetime.fromtimestamp(now_ts, tz=timezone.utc).isoformat()
@@ -96,6 +97,8 @@ def create_job(
         item["output_key"] = output_key
     if retention_choice:
         item["retention_choice"] = retention_choice
+    if operation_label:
+        item["operation_label"] = operation_label
     item = _ddb_safe(item)
     _jobs().put_item(Item=item)
     return item

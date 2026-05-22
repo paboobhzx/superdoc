@@ -8,6 +8,7 @@ import zipfile
 
 import dynamo
 import limits
+import output_naming
 import s3
 from logger import get_logger
 
@@ -152,10 +153,10 @@ def handler(event, context):
         limits.assert_pdf_page_limit(pdf_bytes, body.get("user_id") or "")
         if operation == "docx_to_image" or target_format in ("png", "jpg", "jpeg"):
             result = _render_pdf_to_zip(pdf_bytes, target_format=target_format, dpi=dpi)
-            output_name = "pages.zip"
+            output_name = output_naming.output_filename(operation, body, file_key, "zip")
         else:
             result = pdf_bytes
-            output_name = "output.pdf"
+            output_name = output_naming.output_filename(operation, body, file_key, "pdf")
         out_key = s3.make_output_key(job_id, file_key, output_name)
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)

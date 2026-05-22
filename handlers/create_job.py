@@ -16,7 +16,9 @@ from logger import get_logger
 log = get_logger(__name__)
 
 _MAX_ITERATION_BYTES = 100 * 1024 * 1024  # 100MB
+_MAX_WATERMARK_IMAGE_BYTES = 10 * 1024 * 1024
 _ANON_MAX_ACTIVE_DOCS = int(os.environ.get("ANON_MAX_ACTIVE_DOCS", "4"))
+_WATERMARK_IMAGE_TYPES = {"image/png", "image/jpeg"}
 
 
 def _normalize_retention_choice(value) -> str:
@@ -43,6 +45,28 @@ def _validate_file_name(file_name: str) -> str:
     return os.path.basename(file_name)
 
 
+def _validated_watermark_image(extra_files) -> dict:
+    files = [item for item in (extra_files or []) if isinstance(item, dict) and item.get("role") == "watermark_image"]
+    if len(files) != 1:
+        raise ValueError("Exactly one watermark image is required")
+    item = files[0]
+    file_name = _validate_file_name(item.get("file_name") or "watermark.png")
+    file_size_bytes = int(item.get("file_size_bytes") or 0)
+    content_type = str(item.get("content_type") or "").lower()
+    if file_size_bytes <= 0:
+        raise ValueError("watermark image file_size_bytes must be > 0")
+    if file_size_bytes > _MAX_WATERMARK_IMAGE_BYTES:
+        raise ValueError("Watermark image too large. Max 10MB.")
+    if content_type not in _WATERMARK_IMAGE_TYPES:
+        raise ValueError("Watermark image must be PNG or JPEG")
+    return {
+        "role": "watermark_image",
+        "file_name": file_name,
+        "file_size_bytes": file_size_bytes,
+        "content_type": content_type,
+    }
+
+
 def handler(event, context):
     try:
         if event.get("httpMethod") == "OPTIONS":
@@ -54,6 +78,7 @@ def handler(event, context):
         file_size_bytes = int(body.get("file_size_bytes", 0))
         session_id = (body.get("session_id") or "").strip()
         params = body.get("params") or {}
+        extra_files = body.get("extra_files") or []
         analysis_result = body.get("analysis_result") or None
         retention_choice = _normalize_retention_choice(body.get("retention_choice"))
 
@@ -103,6 +128,13 @@ def handler(event, context):
             return response.error(params_validation.error, 400)
         params = params_validation.params or {}
 
+        watermark_upload = None
+        if operation == "pdf_annotate" and params.get("watermark_type") == "image":
+            try:
+                watermark_upload = _validated_watermark_image(extra_files)
+            except ValueError as exc:
+                return response.error(str(exc), 400)
+
         job_id = str(uuid.uuid4())
         if is_registered:
             file_key = f"users/{session_id}/uploads/{job_id}/{file_name}"
@@ -115,6 +147,15 @@ def handler(event, context):
             if _rate_limit_enabled() and len(active) >= _ANON_MAX_ACTIVE_DOCS:
                 return response.error("Too many active jobs. Please wait for current conversions to finish.", 429)
             file_key = f"uploads/{job_id}/{file_name}"
+
+        extra_uploads = []
+        if watermark_upload:
+            if is_registered:
+                extra_key = f"users/{session_id}/uploads/{job_id}/extras/watermark_image/{watermark_upload['file_name']}"
+            else:
+                extra_key = f"uploads/{job_id}/extras/watermark_image/{watermark_upload['file_name']}"
+            params["watermark_image_key"] = extra_key
+            extra_uploads.append({**watermark_upload, "file_key": extra_key})
 
         ttl_seconds = limits.storage_ttl_for_retention(is_registered, retention_choice)
 
@@ -129,15 +170,25 @@ def handler(event, context):
             params=params,
             ttl_seconds=ttl_seconds,
             retention_choice=retention_choice,
+            operation_label=operations.OPERATIONS.get(operation, {}).get("label"),
         )
         # Persist analysis_result alongside the job for diagnostic purposes
         if analysis_result and isinstance(analysis_result, dict):
             dynamo.update_job(job_id, analysis_result=analysis_result)
 
         upload = s3.presign_post_upload(file_key, max_bytes=_MAX_ITERATION_BYTES, expiry=ttl_seconds)
+        response_body = {"job_id": job_id, "upload": upload, "file_key": file_key}
+        if extra_uploads:
+            response_body["extra_uploads"] = [
+                {
+                    **item,
+                    "upload": s3.presign_post_upload(item["file_key"], max_bytes=_MAX_WATERMARK_IMAGE_BYTES, expiry=ttl_seconds),
+                }
+                for item in extra_uploads
+            ]
 
         log.info("Job created", extra={"job_id": job_id, "operation": operation})
-        return response.ok({"job_id": job_id, "upload": upload, "file_key": file_key})
+        return response.ok(response_body)
 
     except Exception as exc:
         log.exception("create_job error: %s", exc)

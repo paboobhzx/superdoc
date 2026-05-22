@@ -3,6 +3,7 @@ import json
 
 import dynamo
 import limits
+import output_naming
 import s3
 from logger import get_logger
 from pypdf import PdfReader, PdfWriter
@@ -49,7 +50,7 @@ def handler(event, context):
         data = s3.get_bytes(file_key)
         result = _process(data, body)
         limits.assert_pdf_page_limit(result, body.get("user_id") or "")
-        out_key = s3.make_output_key(job_id, file_key, "rearranged.pdf")
+        out_key = s3.make_output_key(job_id, file_key, output_naming.output_filename("pdf_rearrange", body, file_key, "pdf"))
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)
         log.info("pdf_rearrange done", extra={"job_id": job_id})

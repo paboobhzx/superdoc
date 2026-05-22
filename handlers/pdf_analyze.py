@@ -4,8 +4,8 @@ import dynamo
 import response
 import s3
 from logger import get_logger
+from pdf_integrity import analyze_pdf_integrity as _analyze_pdf_integrity
 from pdf_inspector import analyze_pdf as _analyze_pdf
-from pdf_inspector import _derive_recommendation
 
 log = get_logger(__name__)
 
@@ -39,7 +39,23 @@ def handler(event, context):
         if not file_key:
             return response.error("Job has no associated file", 422)
 
-        result = _analyze_pdf(s3.get_bytes(file_key))
+        source_bytes = s3.get_bytes(file_key)
+        try:
+            result = _analyze_pdf(source_bytes)
+        except Exception:
+            result = {
+                "complexity_score": 0,
+                "recommendation": "text",
+                "high_fidelity_viable": False,
+                "regular_text_viable": True,
+                "rationale_keys": [],
+                "page_count": 0,
+                "file_size_mb": round(len(source_bytes) / 1024 / 1024, 2),
+                "signals": {},
+                "estimated_seconds": {},
+            }
+        result["pdf_integrity"] = _analyze_pdf_integrity(source_bytes, job.get("operation"))
+        dynamo.update_job(job_id, pdf_integrity=result["pdf_integrity"])
 
         log.info(
             "pdf_analyze done",
@@ -48,6 +64,7 @@ def handler(event, context):
                 "complexity_score": result["complexity_score"],
                 "recommendation": result["recommendation"],
                 "page_count": result["page_count"],
+                "integrity_score": result["pdf_integrity"]["score"],
             },
         )
         return response.ok(result)

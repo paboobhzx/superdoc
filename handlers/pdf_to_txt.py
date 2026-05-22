@@ -15,6 +15,7 @@ import os
 
 import dynamo
 import ocr
+import output_naming
 import s3
 from logger import get_logger
 from pypdf import PdfReader
@@ -94,9 +95,7 @@ def _extract_html(pdf_bytes: bytes) -> bytes:
 
 
 def _output_filename(body: dict, file_key: str, target_format: str) -> str:
-    original = body.get("file_name") or os.path.basename(file_key) or "document.pdf"
-    stem, _ext = os.path.splitext(os.path.basename(original))
-    return f"{stem or 'document'}.{target_format}"
+    return output_naming.output_filename(body.get("operation", "pdf_to_txt"), body, file_key, target_format)
 
 
 def handler(event, context):

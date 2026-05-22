@@ -9,6 +9,7 @@ import json as _json
 import os
 
 import dynamo
+import output_naming
 import s3
 from logger import get_logger
 
@@ -31,9 +32,7 @@ def _pdf_to_docx(pdf_bytes: bytes) -> bytes:
 
 
 def _output_filename(body: dict, file_key: str) -> str:
-    original = body.get("file_name") or os.path.basename(file_key) or "document.pdf"
-    stem, _ext = os.path.splitext(os.path.basename(original))
-    return f"{stem or 'document'}.docx"
+    return output_naming.output_filename("pdf_to_docx", body, file_key, "docx")
 
 
 def handler(event, context):

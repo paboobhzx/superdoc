@@ -188,6 +188,21 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
             return err
 
     if operation == "pdf_annotate":
+        raw_type = params.get("watermark_type")
+        ok_flag, err_msg = _one_of(
+            raw_type,
+            name="watermark_type",
+            allowed={"text", "image"},
+        )
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if raw_type:
+            cleaned["watermark_type"] = raw_type.lower()
+
+        err = _string_param(params, cleaned, "watermark_image_key", max_len=512)
+        if err:
+            return err
+
         raw_mode = params.get("stamp_mode")
         ok_flag, err_msg = _one_of(
             raw_mode,

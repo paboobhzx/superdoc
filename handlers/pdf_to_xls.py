@@ -3,6 +3,7 @@ import json as _json
 import os
 
 import dynamo
+import output_naming
 import s3
 from logger import get_logger
 
@@ -49,34 +50,62 @@ def _page_rows(page) -> list[list[str]]:
     return _rows_from_words(words)
 
 
+def _non_empty_row_count(rows: list[list[str]]) -> int:
+    return sum(1 for row in rows if any(str(cell or "").strip() for cell in row))
+
+
 def _build_workbook(pdf_bytes: bytes) -> bytes:
     import pdfplumber
     from openpyxl import Workbook
 
     workbook = Workbook()
+    consolidated = workbook.active
+    consolidated.title = "Consolidated"
+    consolidated_row = 1
+    last_header: list[str] | None = None
+    warnings: list[str] = []
 
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         pages = list(pdf.pages)
         if not pages:
-            sheet = workbook.active
-            sheet.title = "Page 1"
+            workbook.create_sheet("Page 1")
         for page_index, page in enumerate(pages, start=1):
-            sheet = workbook.active if page_index == 1 else workbook.create_sheet()
+            sheet = workbook.create_sheet()
             sheet.title = f"Page {page_index}"
-            rows = _page_rows(page)
+            try:
+                rows = _page_rows(page)
+            except Exception as exc:
+                warnings.append(f"Page {page_index} could not be extracted: {exc}")
+                continue
+
             for row_index, row in enumerate(rows, start=1):
                 for col_index, value in enumerate(row, start=1):
                     sheet.cell(row=row_index, column=col_index, value=value)
 
+            if not rows:
+                continue
+            first_row = rows[0] if rows else []
+            has_text_header = any(str(cell or "").strip() for cell in first_row)
+            if has_text_header:
+                last_header = [str(cell or "") for cell in first_row]
+            elif last_header:
+                rows = [last_header] + rows
+            elif _non_empty_row_count(rows) <= 1:
+                warnings.append(f"Page {page_index} has insufficient data for consolidated rows.")
+                continue
+
+            for row in rows:
+                for col_index, value in enumerate(row, start=1):
+                    consolidated.cell(row=consolidated_row, column=col_index, value=value)
+                consolidated_row += 1
+
     out = io.BytesIO()
     workbook.save(out)
-    return out.getvalue()
+    return out.getvalue(), warnings
 
 
 def _output_filename(body: dict, file_key: str) -> str:
-    original = body.get("file_name") or os.path.basename(file_key) or "document.pdf"
-    stem, _ext = os.path.splitext(os.path.basename(original))
-    return f"{stem or 'document'}.xlsx"
+    return output_naming.output_filename("pdf_to_xls", body, file_key, "xlsx")
 
 
 def handler(event, context):
@@ -87,9 +116,11 @@ def handler(event, context):
     try:
         dynamo.update_job(job_id, status="PROCESSING")
         data = s3.get_bytes(file_key)
-        result = _build_workbook(data)
+        result, warnings = _build_workbook(data)
         out_key = s3.make_output_key(job_id, file_key, _output_filename(body, file_key))
         s3.put_bytes(out_key, result)
+        if warnings:
+            dynamo.update_job(job_id, job_warnings=warnings)
         dynamo.mark_done(job_id, out_key)
         log.info("pdf_to_xls done", extra={"job_id": job_id})
     except Exception as exc:

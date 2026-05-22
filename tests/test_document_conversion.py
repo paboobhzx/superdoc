@@ -120,7 +120,7 @@ class PdfToDocxTests(unittest.TestCase):
     def test_pdf_to_docx_output_name_uses_input_basename(self):
         self.assertEqual(
             self.mod._output_filename({"file_name": "quarterly-report.pdf"}, "uploads/job/input.pdf"),
-            "quarterly-report.docx",
+            "PDF to Word - quarterly-report.docx",
         )
 
     def test_pdf_to_docx_falls_back_to_text_when_all_converters_fail(self):
@@ -251,11 +251,11 @@ class MarkdownConvertTests(unittest.TestCase):
     def test_output_filename_uses_input_basename(self):
         self.assertEqual(
             self.mod._output_filename({"file_name": "notes.md"}, "uploads/job/input.md", "pdf"),
-            "notes.pdf",
+            "Convert Markdown - notes.pdf",
         )
         self.assertEqual(
             self.mod._output_filename({"file_name": "notes.md"}, "uploads/job/input.md", "jpeg"),
-            "notes.jpeg",
+            "Convert Markdown - notes.jpeg",
         )
 
     @unittest.skipUnless(

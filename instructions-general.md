@@ -79,3 +79,7 @@ Loop until the goal is verified.
 - Report exactly what was verified and what was not verified.
 
 If verification is blocked, explain the blocker and the remaining risk.
+
+## Memory
+
+- If it does not exist, you gonna create a folder called "memory" inside the projects folder. On there, for every change you make, you gonna write it into a file called "Current Date - Changes".md . Example: 20/05/2026. - Changes. On this file, you gonna note each round, results and what has been applied during that day. For each day, one file.
