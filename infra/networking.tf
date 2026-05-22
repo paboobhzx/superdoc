@@ -88,6 +88,10 @@ module "api_gateway" {
       invoke_arn    = module.lambda_pdf_analyze.invoke_arn
       function_name = module.lambda_pdf_analyze.function_name
     }
+    pdf_repair = {
+      invoke_arn    = module.lambda_pdf_repair.invoke_arn
+      function_name = module.lambda_pdf_repair.function_name
+    }
   }
 }
 
