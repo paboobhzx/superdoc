@@ -104,6 +104,7 @@ export function Home() {
     operations,
     uploading,
     startingAction,
+    activeWork,
     err,
     inputType,
     hasEmptyKnownCatalog,
@@ -113,12 +114,15 @@ export function Home() {
     analysisState,
     analysisResult,
     analysisStartedAt,
+    integrityDecision,
     resetToDrop,
     refreshOperations,
     handleFiles,
     handlePick,
     confirmConvert,
     cancelPending,
+    repairPendingPdf,
+    continueWithoutRepair,
   } = useConversionFlow()
   const extendedRetentionLabel = auth?.isAuthenticated ? t("processing.retentionRegistered") : t("processing.retentionAnonymous")
   const pdfToolChoices = useMemo(
@@ -235,6 +239,18 @@ export function Home() {
                 </button>
               </div>
 
+              {activeWork ? (
+                <div className="mb-7 flex items-center gap-3 rounded-[var(--radius-md)] border border-primary/25 bg-primary/10 px-4 py-3 text-primary" aria-live="polite">
+                  <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{activeWork.label}</p>
+                    <p className="mt-0.5 truncate text-xs text-on-surface-variant">
+                      {activeWork.phase === "processing" ? "Starting processing" : "Uploading"} · {activeWork.fileName}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
               {hasEmptyKnownCatalog ? (
                 <div className="mb-7 rounded-[var(--radius-md)] border border-error/20 bg-error-container px-4 py-4 text-on-error-container" aria-live="polite">
                   <div className="flex items-start gap-3">
@@ -262,6 +278,9 @@ export function Home() {
                   analysisState={analysisState}
                   analysisResult={analysisResult}
                   analysisStartedAt={analysisStartedAt}
+                  integrityDecision={integrityDecision}
+                  onRepairPdf={repairPendingPdf}
+                  onContinueWithoutRepair={continueWithoutRepair}
                 />
               ) : (
                 <>

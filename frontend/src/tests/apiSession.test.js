@@ -96,4 +96,21 @@ describe("cookie session API", () => {
       }),
     );
   });
+
+  it("calls the repair endpoint with session id when requested", async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      json: async () => ({ success: true, repaired: true }),
+    }));
+
+    const { api } = await import("../lib/api");
+    await api.repairPdf("job-2", "session-abc");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.example.com/jobs/job-2/repair?session_id=session-abc",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
 });

@@ -204,4 +204,8 @@ export const api = {
     request("POST", sessionQuery(`/jobs/${jobId}/analyze`, sessionId), null, {
       suppressStatuses: [404, 422],
     }),
+  repairPdf: (jobId, sessionId = "") =>
+    request("POST", sessionQuery(`/jobs/${jobId}/repair`, sessionId), null, {
+      suppressStatuses: [404, 409, 422],
+    }),
 };

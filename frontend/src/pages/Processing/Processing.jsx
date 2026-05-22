@@ -28,6 +28,12 @@ function retentionLabelForJob(job, t) {
   return t("processing.retentionDefault")
 }
 
+function displayOperation(job, fallback) {
+  if (job?.operation_label) return job.operation_label
+  if (!job?.operation) return fallback
+  return job.operation.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
 export function Processing() {
   const { jobId } = useParams()
   const navigate = useNavigate()
@@ -76,6 +82,7 @@ export function Processing() {
       fileName: job.file_name || jobId,
       downloadUrl: job.download_url,
       operation: job.operation || "",
+      operationLabel: job.operation_label || "",
       convertedAt: new Date().toISOString(),
       expiresAt: job.expires_at,
     })
@@ -112,7 +119,7 @@ export function Processing() {
   const isHeavyOp = HEAVY_OPERATIONS.includes(job?.operation)
   const retentionLabel = retentionLabelForJob(job, t)
   const shortJobId = jobId ? `${jobId.slice(0, 8)}...` : t("common.unknown")
-  const operationLabel = job.operation?.replace(/_/g, " ") ?? t("common.conversion")
+  const operationLabel = displayOperation(job, t("common.conversion"))
   const remainingSeconds = (() => {
     if (typeof job.estimated_seconds !== "number") return null
     if (typeof job.started_at !== "number") return job.estimated_seconds
@@ -263,6 +270,16 @@ export function Processing() {
 
         {isFailed && job.error_message && (
           <p className="text-sm text-error bg-error-container/15 border border-error/25 px-4 py-3 rounded-lg">{job.error_message}</p>
+        )}
+        {Array.isArray(job.job_warnings) && job.job_warnings.length > 0 && (
+          <div className="mt-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3">
+            <p className="text-sm font-semibold text-on-surface">Conversion warnings</p>
+            <ul className="mt-2 space-y-1">
+              {job.job_warnings.map((warning, index) => (
+                <li key={`${index}-${warning}`} className="text-xs text-on-surface-variant">{warning}</li>
+              ))}
+            </ul>
+          </div>
         )}
       </section>
     </div>

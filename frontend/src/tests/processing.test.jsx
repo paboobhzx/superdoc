@@ -93,6 +93,34 @@ describe("Processing page", () => {
     expect(screen.getByRole("link", { name: "Download file" })).toBeTruthy()
   })
 
+  it("renders persisted job warnings on processing page", async () => {
+    jobStates.current = {
+      job_id: "abc",
+      status: "DONE",
+      operation: "pdf_to_xls",
+      file_size_bytes: 1024,
+      download_url: "https://download.example.com/out.xlsx",
+      job_warnings: ["Page 2 could not be extracted"],
+    }
+
+    const { Processing } = await import("../pages/Processing/Processing")
+
+    render(
+      <MemoryRouter initialEntries={["/processing/abc"]}>
+        <I18nProvider>
+          <ThemeProvider>
+            <Routes>
+              <Route path="/processing/:jobId" element={<Processing />} />
+            </Routes>
+          </ThemeProvider>
+        </I18nProvider>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText("Conversion warnings")).toBeTruthy()
+    expect(screen.getByText("Page 2 could not be extracted")).toBeTruthy()
+  })
+
   it("shows 15 minute retention for default jobs", async () => {
     jobStates.current = {
       job_id: "abc",

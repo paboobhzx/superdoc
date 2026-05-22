@@ -226,6 +226,38 @@ describe("ParamsPanel", () => {
       case: "xobject",
     });
   });
+
+  it("returns selected image watermark as an extra upload", async () => {
+    const { ParamsPanel } = await import("../components/ParamsPanel");
+    const onConfirm = vi.fn();
+    render(
+      <Providers>
+        <ParamsPanel
+          opMeta={{
+            operation: "pdf_annotate",
+            params_schema: {
+              watermark_type: { type: "enum", values: ["text", "image"], default: "text", label: "Watermark type" },
+              watermark_text: { type: "string", default: "DRAFT", label: "Text" },
+              stamp_mode: { type: "enum", values: ["watermark", "header", "footer", "corner"], default: "watermark", label: "Placement" },
+              opacity: { type: "float", default: 0.3, minimum: 0.05, maximum: 1, label: "Opacity" },
+            },
+          }}
+          onConfirm={onConfirm}
+          onCancel={() => {}}
+        />
+      </Providers>
+    );
+
+    const file = new File(["png"], "logo.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText(/watermark type/i), { target: { value: "image" } });
+    fireEvent.change(screen.getByLabelText(/watermark image/i), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: /convert/i }));
+
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
+      watermark_type: "image",
+      __extraFiles: [{ role: "watermark_image", file }],
+    }));
+  });
 });
 
 // ── Home page ──────────────────────────────────────────────────────────────
@@ -298,6 +330,34 @@ describe("Home page", () => {
     expect(checkbox).not.toBeChecked();
   });
 
+  it("shows a PDF tools working strip after selecting a direct-start tool", async () => {
+    localStorage.setItem("superdoc-locale", "en-US");
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "pdf_compress", kind: "backend_job", intent: "transform", label: "Compress PDF", targets: ["pdf"], output_type: "pdf", params_schema: {} },
+      ],
+    });
+    api.createJob.mockResolvedValue({ job_id: "job-1", upload: { url: "https://upload", fields: {} } });
+    api.uploadToS3.mockImplementation(() => new Promise(() => {}));
+    api.triggerProcess.mockResolvedValue(undefined);
+    const { Home } = await import("../pages/Home/Home");
+    render(
+      <BrowserRouter>
+        <Providers>
+          <Home />
+        </Providers>
+      </BrowserRouter>
+    );
+
+    fireEvent.change(screen.getByRole("button", { name: "File upload drop zone" }).querySelector("input"), {
+      target: { files: [new File(["x"], "sample.pdf", { type: "application/pdf" })] },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /Compress PDF/i }));
+
+    expect(await screen.findAllByText("Compress PDF")).not.toHaveLength(0);
+    expect(screen.getByText(/Uploading · sample.pdf/i)).toBeTruthy();
+  });
+
   it("shows the same retention checkbox for desktop batch selection", async () => {
     localStorage.setItem("superdoc-locale", "en-US");
     api.getOperations.mockResolvedValue({
@@ -334,6 +394,10 @@ vi.mock("../lib/api", () => ({
   api: {
     getStatus: vi.fn(),
     getOperations: vi.fn(() => Promise.resolve({ operations: [] })),
+    createJob: vi.fn(),
+    createUserJob: vi.fn(),
+    uploadToS3: vi.fn(),
+    triggerProcess: vi.fn(),
     me: vi.fn(() => Promise.resolve({ user: null })),
     getUserSettings: vi.fn(() => Promise.resolve({})),
     logout: vi.fn(() => Promise.resolve({ ok: true })),

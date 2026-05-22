@@ -28,7 +28,7 @@ function defaultValueFor(definition) {
   return ""
 }
 
-function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt }) {
+function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt, integrityDecision, onRepairPdf, onContinueWithoutRepair }) {
   const { t } = useI18n()
   const [elapsed, setElapsed] = useState(0)
   const [reportOpen, setReportOpen] = useState(false)
@@ -99,6 +99,8 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt }) {
       [t("params.pdfAnalyze.report.regularEstimate"), analysisResult.estimated_seconds?.text ? t("params.pdfAnalyze.estimate", { seconds: analysisResult.estimated_seconds.text }) : t("common.unknown")],
     ]
 
+    const integrity = analysisResult.pdf_integrity || null
+    const integrityNeedsDecision = integrity && Number(integrity.score) < 100 && !integrityDecision
     return (
       <div className="mb-4 rounded-[var(--radius-md)] border border-primary/20 bg-primary/5 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -145,6 +147,21 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt }) {
             ))}
           </dl>
         )}
+        {integrity && Number(integrity.score) < 100 ? (
+          <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
+            <p className="text-xs font-semibold text-on-surface">PDF integrity score: {integrity.score}/100</p>
+            {Array.isArray(integrity.warnings) && integrity.warnings.length > 0 ? (
+              <p className="mt-1 text-xs text-on-surface-variant">{integrity.warnings[0]}</p>
+            ) : null}
+            <div className="mt-2 flex gap-2">
+              <button type="button" onClick={onRepairPdf} className="sd-button-secondary min-h-9 px-3 text-xs">Repair PDF</button>
+              <button type="button" onClick={onContinueWithoutRepair} className="sd-button-secondary min-h-9 px-3 text-xs">Continue without repair</button>
+            </div>
+            {integrityNeedsDecision ? (
+              <p className="mt-2 text-xs text-error">Choose repair or continue before processing.</p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     )
   }
@@ -152,17 +169,22 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt }) {
   return null
 }
 
-export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analysisResult, analysisStartedAt }) {
+export function ParamsPanel({
+  opMeta, onConfirm, onCancel, analysisState, analysisResult, analysisStartedAt,
+  integrityDecision, onRepairPdf, onContinueWithoutRepair,
+}) {
   const { t } = useI18n()
   const schema = opMeta?.params_schema || {}
   const hasPaperSize = Boolean(schema.paper_size)
   const hasHighFidelity = Boolean(schema.high_fidelity)
+  const isPdfOperation = String(opMeta?.operation || "").startsWith("pdf_")
   const isPdfToDocx = opMeta?.operation === "pdf_to_docx"
   const defaultHighFidelity = isPdfToDocx ? false : schema.high_fidelity?.default === true
 
   const [paperSize, setPaperSize] = useState("A4")
   const [highFidelity, setHighFidelity] = useState(defaultHighFidelity)
   const [genericParams, setGenericParams] = useState({})
+  const [watermarkImageFile, setWatermarkImageFile] = useState(null)
 
   useEffect(() => {
     setPaperSize(schema.paper_size?.default || "A4")
@@ -172,6 +194,7 @@ export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analys
       if (!BESPOKE_KEYS.has(key)) next[key] = defaultValueFor(definition)
     }
     setGenericParams(next)
+    setWatermarkImageFile(null)
   }, [opMeta?.operation, schema, schema.paper_size?.default, defaultHighFidelity])
 
   // When analysis arrives, auto-set checkbox to match the recommendation
@@ -198,6 +221,10 @@ export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analys
         params[key] = String(value)
       }
     }
+    if (opMeta?.operation === "pdf_annotate" && params.watermark_type === "image") {
+      if (!watermarkImageFile) return
+      params.__extraFiles = [{ role: "watermark_image", file: watermarkImageFile }]
+    }
     onConfirm(params)
   }
 
@@ -206,14 +233,23 @@ export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analys
   }
 
   const genericEntries = Object.entries(schema).filter(([key]) => !BESPOKE_KEYS.has(key))
+  const needsWatermarkImage = opMeta?.operation === "pdf_annotate" && genericParams.watermark_type === "image"
+
+  const integrity = analysisResult?.pdf_integrity || null
+  const requiresIntegrityDecision = Boolean(
+    isPdfOperation && analysisState === "ready" && integrity && Number(integrity.score) < 100 && !integrityDecision
+  )
 
   return (
     <div className="animate-[fade-in_0.2s_ease]">
-      {isPdfToDocx && (
+      {isPdfOperation && (
         <AnalysisStrip
           analysisState={analysisState}
           analysisResult={analysisResult}
           analysisStartedAt={analysisStartedAt}
+          integrityDecision={integrityDecision}
+          onRepairPdf={onRepairPdf}
+          onContinueWithoutRepair={onContinueWithoutRepair}
         />
       )}
 
@@ -325,10 +361,30 @@ export function ParamsPanel({ opMeta, onConfirm, onCancel, analysisState, analys
         </div>
       ) : null}
 
+      {needsWatermarkImage ? (
+        <div className="mb-5 rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-low px-4 py-3">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.1em] text-outline">Watermark image</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={(e) => setWatermarkImageFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-on-surface file:mr-3 file:rounded-[8px] file:border file:border-outline-variant file:bg-surface-container-lowest file:px-3 file:py-2 file:text-sm file:font-semibold file:text-on-surface"
+            />
+          </label>
+          {watermarkImageFile ? (
+            <p className="mt-2 truncate text-xs text-on-surface-variant">{watermarkImageFile.name}</p>
+          ) : (
+            <p className="mt-2 text-xs text-error">Choose a PNG or JPEG image before starting.</p>
+          )}
+        </div>
+      ) : null}
+
       <div className="flex gap-3">
         <button
           type="button"
           onClick={handleConfirm}
+          disabled={(needsWatermarkImage && !watermarkImageFile) || requiresIntegrityDecision}
           className="sd-button-primary min-h-11 flex-1 px-5 active:scale-[0.98]"
         >
           <span className="material-symbols-outlined text-[18px]">arrow_forward</span>

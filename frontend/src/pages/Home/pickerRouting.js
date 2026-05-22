@@ -40,14 +40,25 @@ const EDITOR_ROUTES_BY_EXTENSION = {
  * returns the /processing/:id path.
  */
 export async function handleBackendJob({ file, operation, params, auth, sessionId, retentionChoice = "default" }) {
+  const extraFiles = Array.isArray(params?.__extraFiles) ? params.__extraFiles : []
+  const cleanParams = { ...(params || {}) }
+  delete cleanParams.__extraFiles
   const payload = {
     operation,
     file_size_bytes: file.size,
     file_name: file.name,
     retention_choice: retentionChoice,
   }
-  if (params && Object.keys(params).length > 0) {
-    payload.params = params
+  if (Object.keys(cleanParams).length > 0) {
+    payload.params = cleanParams
+  }
+  if (extraFiles.length > 0) {
+    payload.extra_files = extraFiles.map((item) => ({
+      role: item.role,
+      file_name: item.file?.name || item.file_name,
+      file_size_bytes: item.file?.size || item.file_size_bytes,
+      content_type: item.file?.type || item.content_type || "",
+    }))
   }
   let data
   if (auth && auth.isAuthenticated) {
@@ -56,6 +67,10 @@ export async function handleBackendJob({ file, operation, params, auth, sessionI
     data = await api.createJob({ ...payload, session_id: sessionId })
   }
   await api.uploadToS3(data.upload || data.upload_url, file)
+  for (const extra of data.extra_uploads || []) {
+    const match = extraFiles.find((item) => item.role === extra.role)
+    if (match?.file) await api.uploadToS3(extra.upload, match.file)
+  }
   await api.triggerProcess(data.job_id)
   return { type: "internal", path: `/processing/${data.job_id}` }
 }

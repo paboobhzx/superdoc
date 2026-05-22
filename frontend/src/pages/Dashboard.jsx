@@ -140,6 +140,12 @@ function expiryMeta(expiresAt) {
   return { key: "dashboard.expiresIn", params: { time: { unit: "days", value: Math.floor(hours / 24) } }, urgent: false };
 }
 
+function displayOperation(job) {
+  if (job?.operation_label) return job.operation_label;
+  if (!job?.operation) return "";
+  return job.operation.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function mergeLocalRecent(apiJobs) {
   const recent = loadRecentFiles();
   const apiIds = new Set(apiJobs.map((j) => j.job_id));
@@ -150,6 +156,7 @@ function mergeLocalRecent(apiJobs) {
       file_name: f.fileName,
       status: "DONE",
       operation: f.operation,
+      operation_label: f.operationLabel,
       download_url: f.downloadUrl,
       created_at: f.convertedAt,
       expires_at: f.expiresAt,
@@ -203,7 +210,7 @@ function RecentFilesView({ t, locale }) {
                 <div className="flex-1 min-w-0">
                   <span className="font-bold text-on-surface truncate block">{f.file_name || f.job_id?.slice(0, 8)}</span>
                   <div className="text-xs text-on-surface-variant mt-1">
-                    {f.operation?.replace(/_/g, " ")}
+                    {displayOperation(f)}
                     {f.created_at ? ` · ${formatWhen(f.created_at, locale)}` : ""}
                   </div>
                 </div>
@@ -379,7 +386,7 @@ export function Dashboard() {
                     ) : null}
                   </div>
                   <div className="text-xs text-on-surface-variant mt-1">
-                    {job.operation ? job.operation.replace(/_/g, " ") : ""}
+                    {displayOperation(job)}
                     {job.file_size_bytes ? ` · ${formatBytes(job.file_size_bytes)}` : ""}
                     {job.created_at ? ` · ${formatWhen(job.created_at, locale)}` : ""}
                   </div>

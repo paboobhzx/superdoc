@@ -13,7 +13,7 @@ export const ACCEPT = "application/pdf,.docx,.xlsx,.xls,.jpg,.jpeg,.png,.webp,.g
 export const KNOWN_CATALOG_TYPES = new Set(["pdf", "docx", "xlsx", "xls", "png", "jpg", "jpeg", "webp", "gif", "tiff", "md", "markdown", "txt", "html", "htm", "zip"])
 
 // Operations that benefit from pre-analysis (PDF complexity scoring)
-const ANALYSIS_OPERATIONS = new Set(["pdf_to_docx"])
+const ANALYSIS_OPERATIONS = new Set(["pdf_to_docx", "pdf_to_xls", "pdf_merge", "pdf_svg_annotate"])
 
 export function extensionOf(file) {
   const name = file?.name || ""
@@ -38,6 +38,7 @@ export function useConversionFlow() {
   const [loadingOps, setLoadingOps] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [startingAction, setStartingAction] = useState(null)
+  const [activeWork, setActiveWork] = useState(null)
   const [err, setErr] = useState(null)
   const [pendingOp, setPendingOp] = useState(null)
   const [batchFiles, setBatchFiles] = useState([])
@@ -47,6 +48,7 @@ export function useConversionFlow() {
   const [analysisState, setAnalysisState] = useState("idle")
   const [analysisResult, setAnalysisResult] = useState(null)
   const [analysisStartedAt, setAnalysisStartedAt] = useState(null)
+  const [integrityDecision, setIntegrityDecision] = useState(null)
   // Ref for the pre-uploaded job_id (avoids stale closure issues in callbacks)
   const preUploadedJobIdRef = useRef(null)
   const analysisCancelRef = useRef(false)
@@ -60,11 +62,13 @@ export function useConversionFlow() {
     setBatchFiles([])
     setOperations([])
     setStartingAction(null)
+    setActiveWork(null)
     setErr(null)
     setPendingOp(null)
     setAnalysisState("idle")
     setAnalysisResult(null)
     setAnalysisStartedAt(null)
+    setIntegrityDecision(null)
     setRetentionExtended(false)
     preUploadedJobIdRef.current = null
     analysisCancelRef.current = true
@@ -146,6 +150,7 @@ export function useConversionFlow() {
     setAnalysisState("uploading")
     setAnalysisResult(null)
     setAnalysisStartedAt(Date.now())
+    setIntegrityDecision(null)
 
     try {
       const { job_id } = await createAndUploadOnly({
@@ -161,7 +166,7 @@ export function useConversionFlow() {
 
       const result = await api.analyzePdf(job_id, getSessionId())
       if (analysisCancelRef.current) return
-      if (result?.recommendation) {
+      if (result) {
         setAnalysisResult(result)
         setAnalysisState("ready")
       } else {
@@ -180,9 +185,15 @@ export function useConversionFlow() {
     setErr(null)
     setUploading(true)
     setStartingAction(opMeta.target ? `${opMeta.operation}:${opMeta.target}` : opMeta.operation)
+    setActiveWork({
+      label: opMeta.label || opMeta.operation?.replaceAll("_", " "),
+      fileName: pendingFile.name,
+      phase: "uploading",
+    })
     try {
       if (preJobId) {
         // File already in S3 — trigger with final user-chosen params
+        setActiveWork((current) => current ? { ...current, phase: "processing" } : current)
         await api.triggerProcess(preJobId, opMeta.params || null, opMeta.analysisResult || null)
         setPendingFile(null)
         setOperations([])
@@ -207,6 +218,7 @@ export function useConversionFlow() {
       navigate(target.path)
     } catch (e) {
       setErr(e.message || t("home.errors.actionFailed"))
+      setActiveWork(null)
     } finally {
       setUploading(false)
       setStartingAction(null)
@@ -232,7 +244,10 @@ export function useConversionFlow() {
     const merged = {
       ...pendingOp,
       params: { ...(pendingOp.params || {}), ...extraParams },
-      analysisResult: analysisState === "ready" ? analysisResult : null,
+      analysisResult: analysisState === "ready" ? {
+        ...analysisResult,
+        integrity_decision: integrityDecision || null,
+      } : null,
     }
     setPendingOp(null)
     analysisCancelRef.current = true
@@ -240,15 +255,31 @@ export function useConversionFlow() {
     preUploadedJobIdRef.current = null
     setAnalysisState("idle")
     setAnalysisResult(null)
+    setIntegrityDecision(null)
     _startConvert(merged, preJobId)
-  }, [pendingOp, _startConvert])
+  }, [pendingOp, _startConvert, analysisState, analysisResult, integrityDecision])
 
   const cancelPending = useCallback(() => {
     setPendingOp(null)
     analysisCancelRef.current = true
     setAnalysisState("idle")
     setAnalysisResult(null)
+    setIntegrityDecision(null)
     preUploadedJobIdRef.current = null
+  }, [])
+
+  const repairPendingPdf = useCallback(async () => {
+    const jobId = preUploadedJobIdRef.current
+    if (!jobId) return
+    const repaired = await api.repairPdf(jobId, getSessionId())
+    if (repaired?.pdf_integrity) {
+      setAnalysisResult((current) => ({ ...(current || {}), pdf_integrity: repaired.pdf_integrity }))
+    }
+    setIntegrityDecision("repaired")
+  }, [])
+
+  const continueWithoutRepair = useCallback(() => {
+    setIntegrityDecision("continue_without_repair")
   }, [])
 
   return {
@@ -260,6 +291,7 @@ export function useConversionFlow() {
     loadingOps,
     uploading,
     startingAction,
+    activeWork,
     err,
     inputType,
     hasEmptyKnownCatalog,
@@ -269,11 +301,14 @@ export function useConversionFlow() {
     analysisState,
     analysisResult,
     analysisStartedAt,
+    integrityDecision,
     resetToDrop,
     refreshOperations,
     handleFiles,
     handlePick,
     confirmConvert,
     cancelPending,
+    repairPendingPdf,
+    continueWithoutRepair,
   }
 }

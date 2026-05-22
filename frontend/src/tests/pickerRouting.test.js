@@ -65,4 +65,39 @@ describe("pickerRouting authenticated job fallback session", () => {
       session_id: "session-123",
     });
   });
+
+  it("requests and uploads image watermark extra file", async () => {
+    const watermark = new File(["png"], "logo.png", { type: "image/png" });
+    api.createJob.mockResolvedValue({
+      job_id: "job-3",
+      upload: { url: "https://main", fields: {} },
+      extra_uploads: [{ role: "watermark_image", upload: { url: "https://extra", fields: {} } }],
+    });
+    api.uploadToS3.mockResolvedValue(undefined);
+    api.triggerProcess.mockResolvedValue(undefined);
+
+    await handleBackendJob({
+      file: new File(["x"], "sample.pdf", { type: "application/pdf" }),
+      operation: "pdf_annotate",
+      params: {
+        watermark_type: "image",
+        opacity: 0.4,
+        __extraFiles: [{ role: "watermark_image", file: watermark }],
+      },
+      auth: { isAuthenticated: false },
+      sessionId: "session-123",
+    });
+
+    expect(api.createJob).toHaveBeenCalledWith({
+      operation: "pdf_annotate",
+      file_size_bytes: 1,
+      file_name: "sample.pdf",
+      params: { watermark_type: "image", opacity: 0.4 },
+      extra_files: [{ role: "watermark_image", file_name: "logo.png", file_size_bytes: 3, content_type: "image/png" }],
+      retention_choice: "default",
+      session_id: "session-123",
+    });
+    expect(api.uploadToS3).toHaveBeenCalledTimes(2);
+    expect(api.uploadToS3).toHaveBeenLastCalledWith({ url: "https://extra", fields: {} }, watermark);
+  });
 });
