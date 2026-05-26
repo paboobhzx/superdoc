@@ -36,7 +36,8 @@
   },
   "paramsPanel": {
     "pageSize": "Tamanho da pagina",
-    "convert": "Converter"
+    "convert": "Converter",
+    "fallbackStrategyLabel": "Se não funcionar, tente converter o documento para:"
   },
   "params": {
     "highFidelity": "Alta fidelidade",
@@ -51,13 +52,14 @@
       "recommendText": "Texto editavel",
       "modeHighFidelity": "Layout em alta fidelidade",
       "modeRegular": "Texto editavel no Word",
+      "modeXlsx": "Planilha do Excel (.xlsx)",
       "estimate": "~{{seconds}}s estimado",
       "viewReport": "Ver relatorio da analise",
       "hideReport": "Ocultar relatorio da analise",
       "compositionTitle": "Composicao do documento",
       "compositionValue": "Texto {{text}}, Digitalizado {{scanned}}, Hibrido {{hybrid}}, Ambiguo {{ambiguous}}",
       "scannedTitle": "Paginas digitalizadas detectadas",
-      "scannedBody": "A saida DOCX e de melhor esforco e pode nao ficar totalmente editavel.",
+      "scannedBody": "Paginas digitalizadas foram detectadas. Para documentos com tabelas, a saida em Excel costuma ser mais confiavel.",
       "report": {
         "complexity": "Complexidade",
         "pages": "Paginas",
@@ -77,11 +79,12 @@
         "high_fidelity_risk": "O PDF tem sinais de layout que tornam uma copia quase 1:1 no Word arriscada. Texto editavel e a recomendacao mais segura.",
         "regular_text_safer": "O PDF nao parece confiavel para uma copia quase 1:1 no Word, mas a extracao de texto ainda deve ser util.",
         "scanned_best_effort": "Nenhum texto editavel foi detectado. Alta fidelidade preserva as paginas visiveis, mas o texto nao sera diretamente editavel.",
+        "scanned_table_recommend_xlsx": "Conteudo digitalizado com caracteristicas de tabela foi detectado. Recomendamos converter para Excel (.xlsx) para preservar melhor a estrutura.",
         "image_dominant_pdf": "O PDF e composto principalmente por imagem de pagina, entao alta fidelidade preserva o resultado visual melhor que a extracao de texto.",
         "multi_column_layout": "Seu PDF tem um layout multi-colunas — manter o layout preserva a aparencia; texto editavel da um Word sem formatacao mas com conteudo.",
         "fpdf_producer": "Este PDF foi gerado por uma ferramenta de layout (FPDF/InDesign) — a reconstrucao de texto e pouco confiavel. Manter o layout e recomendado.",
         "high_xobjects_per_page": "O PDF contem muitos blocos pre-renderizados por pagina — manter o layout produz um resultado mais fiel.",
-        "no_extractable_text": "Nenhum texto extraivel encontrado — este parece ser um PDF digitalizado. Manter o layout e a unica opcao.",
+        "no_extractable_text": "Nenhum texto extraivel foi encontrado. Este arquivo parece ser um PDF digitalizado.",
         "high_image_coverage": "Grande parte das paginas e coberta por imagens — preservar o layout ficara melhor.",
         "simple_layout": "Este PDF tem um layout simples — Texto Editavel deve reconstruir bem e gerar um Word totalmente editavel."
       }

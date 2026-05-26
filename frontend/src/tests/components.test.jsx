@@ -121,6 +121,26 @@ describe("ParamsPanel", () => {
     await waitFor(() => expect(screen.getByRole("checkbox", { name: /high fidelity/i })).not.toBeChecked());
   });
 
+  it("keeps high fidelity disabled when analysis recommends xlsx", async () => {
+    const { ParamsPanel } = await import("../components/ParamsPanel");
+    render(
+      <Providers>
+        <ParamsPanel
+          opMeta={{
+            operation: "pdf_to_docx",
+            params_schema: { high_fidelity: { type: "boolean", default: false } },
+          }}
+          onConfirm={() => {}}
+          onCancel={() => {}}
+          analysisState="ready"
+          analysisResult={{ recommendation: "xlsx" }}
+        />
+      </Providers>
+    );
+    expect(screen.getByRole("checkbox", { name: /high fidelity/i })).not.toBeChecked();
+    expect(screen.getByText(/Excel spreadsheet/i)).toBeTruthy();
+  });
+
   it("keeps the PDF analysis report closed until requested", async () => {
     const { ParamsPanel } = await import("../components/ParamsPanel");
     render(

@@ -62,6 +62,17 @@ def _minimal_pdf_bytes(n_pages: int = 1) -> bytes:
     return out.getvalue()
 
 
+def _text_pdf_bytes(text: str = "sample words " * 30) -> bytes:
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), text)
+    out = doc.tobytes()
+    doc.close()
+    return out
+
+
 def _import_operations():
     layer_path = Path(__file__).resolve().parents[1] / "layers" / "superdoc_utils"
     if str(layer_path) not in sys.path:
@@ -192,6 +203,33 @@ class PdfToDocxTests(unittest.TestCase):
         self.assertEqual(chunk_page_counts[1], 5)
         # Result must be a valid zip (DOCX)
         self.assertTrue(zipfile.is_zipfile(io.BytesIO(result)))
+
+    def test_text_fallback_is_authoritative_and_never_switches_to_image_docx(self):
+        pdf = _text_pdf_bytes()
+        self.mod._pdf2docx_convert = lambda *_args, **_kwargs: _minimal_docx_bytes("")
+        self.mod._build_text_fallback_docx = lambda *_args, **_kwargs: b"text-fallback"
+        self.mod._build_image_fallback_docx = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("image fallback must not be used when fallback_strategy=text")
+        )
+
+        out = self.mod._process(
+            pdf,
+            {"params": {"fallback_strategy": "text", "high_fidelity": False}},
+        )
+        self.assertEqual(out, b"text-fallback")
+
+    def test_text_fallback_disables_hybrid_high_fidelity_override(self):
+        pdf = _text_pdf_bytes()
+        self.mod._hybrid_high_fidelity_docx = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("hybrid mode must be disabled by strict text fallback")
+        )
+        self.mod._pdf2docx_convert = lambda *_args, **_kwargs: _minimal_docx_bytes("ok")
+
+        out = self.mod._process(
+            pdf,
+            {"params": {"fallback_strategy": "text", "high_fidelity": True}},
+        )
+        self.assertTrue(zipfile.is_zipfile(io.BytesIO(out)))
 
 
 class OfficeToPdfTests(unittest.TestCase):

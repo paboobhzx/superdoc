@@ -15,7 +15,8 @@ function schemaOptions(definition) {
   return definition?.values || definition?.enum || []
 }
 
-function labelFor(key, definition) {
+function labelFor(key, definition, t) {
+  if (key === "fallback_strategy") return t("paramsPanel.fallbackStrategyLabel")
   return definition?.label || key.replaceAll("_", " ")
 }
 
@@ -68,11 +69,13 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt, integ
   }
 
   if (analysisState === "ready" && analysisResult) {
-    const isImage = analysisResult.recommendation === "image"
-    const recLabel = isImage
-      ? t("params.pdfAnalyze.modeHighFidelity")
-      : t("params.pdfAnalyze.modeRegular")
-    const estimatedSecs = isImage
+    const recommendation = analysisResult.recommendation
+    const recLabel = recommendation === "xlsx"
+      ? t("params.pdfAnalyze.modeXlsx")
+      : recommendation === "image"
+        ? t("params.pdfAnalyze.modeHighFidelity")
+        : t("params.pdfAnalyze.modeRegular")
+    const estimatedSecs = recommendation === "image"
       ? analysisResult.estimated_seconds?.image
       : analysisResult.estimated_seconds?.text
     const rationaleTexts = [...new Set(analysisResult.rationale_keys || [])]
@@ -320,7 +323,7 @@ export function ParamsPanel({
           {genericEntries.map(([key, definition]) => {
             const options = schemaOptions(definition)
             const type = options.length > 0 ? "enum" : definition?.type
-            const label = labelFor(key, definition)
+            const label = labelFor(key, definition, t)
             if (type === "boolean") {
               return (
                 <label key={key} className="flex items-start gap-3 cursor-pointer select-none">

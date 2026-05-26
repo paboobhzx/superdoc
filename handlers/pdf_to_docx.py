@@ -448,13 +448,18 @@ def _process(pdf_bytes: bytes, body: dict) -> bytes:
         pdf_bytes = buf.getvalue()
 
     # ── Mode 1: hybrid high-fidelity reconstruction ──────────────────────────
-    if high_fidelity:
+    if high_fidelity and fallback_strategy != "text":
         log.info("mode1 (hybrid high-fidelity)", extra={"job_id": job_id})
         try:
             dynamo.record_page_result(job_id, page=0, mode_used="hybrid")
         except Exception:
             pass
         return _hybrid_high_fidelity_docx(pdf_bytes, body)
+    if high_fidelity and fallback_strategy == "text":
+        log.info(
+            "high_fidelity disabled by strict text fallback contract",
+            extra={"job_id": job_id},
+        )
 
     # ── Mode 0: pdf2docx on the full document, QA gate, fallback ─────────────
     #

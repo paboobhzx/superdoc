@@ -73,6 +73,8 @@ def handler(event, context):
                         "text_words": page.text_words,
                         "text_viable": page.text_viable,
                         "image_coverage_ratio": page.image_coverage_ratio,
+                        "likely_table_image": page.likely_table_image,
+                        "table_confidence": page.table_confidence,
                         "reasons": page.reasons,
                     }
                     for page in classified.pages
@@ -83,6 +85,8 @@ def handler(event, context):
                     "scanned_image_pages": classified.summary.scanned_image_pages,
                     "hybrid_pages": classified.summary.hybrid_pages,
                     "ambiguous_pages": classified.summary.ambiguous_pages,
+                    "table_like_pages": classified.summary.table_like_pages,
+                    "has_table_like_scanned_content": classified.summary.has_table_like_scanned_content,
                 },
             }
 
@@ -92,7 +96,13 @@ def handler(event, context):
             result["needs_ocr"] = needs_ocr
             result["is_scanned_pdf"] = classified.summary.scanned_image_pages > 0 and classified.summary.text_pages == 0
 
-            if needs_ocr:
+            if classified.summary.has_table_like_scanned_content:
+                result["recommendation"] = "xlsx"
+                rk = list(result.get("rationale_keys") or [])
+                if "scanned_table_recommend_xlsx" not in rk:
+                    rk.insert(0, "scanned_table_recommend_xlsx")
+                result["rationale_keys"] = rk
+            elif needs_ocr:
                 result["recommendation"] = "image"
                 rk = list(result.get("rationale_keys") or [])
                 if "scanned_best_effort" not in rk:

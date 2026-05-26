@@ -224,7 +224,7 @@ OPERATIONS: dict[str, dict] = {
                 "required": False,
                 "default": "text",
                 "values": ["text", "image"],
-                "label": "Fallback strategy",
+                "label": "If it doesn't work, try converting the document to:",
             },
             "page_range": {
                 "type": "string",

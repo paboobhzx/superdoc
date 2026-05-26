@@ -18,6 +18,9 @@ class ClassifierConfig:
     hybrid_image_threshold: float = 0.15
     hybrid_min_words: int = 8
     max_image_rects_per_page: int = 120
+    table_dark_ratio_threshold: float = 0.65
+    table_min_line_bands: int = 3
+    table_confidence_threshold: float = 0.55
 
 
 @dataclass(frozen=True)
@@ -28,6 +31,8 @@ class PageClassification:
     text_words: int
     text_viable: bool
     image_coverage_ratio: float
+    likely_table_image: bool
+    table_confidence: float
     reasons: list[str] = field(default_factory=list)
 
 
@@ -38,6 +43,8 @@ class ClassificationSummary:
     scanned_image_pages: int
     hybrid_pages: int
     ambiguous_pages: int
+    table_like_pages: int
+    has_table_like_scanned_content: bool
 
 
 @dataclass(frozen=True)
@@ -68,12 +75,65 @@ def _image_coverage(page, cfg: ClassifierConfig) -> float:
     return min(1.0, image_area / page_area)
 
 
+def _count_line_bands(values: list[float], threshold: float) -> int:
+    bands = 0
+    in_band = False
+    for value in values:
+        if value >= threshold:
+            if not in_band:
+                bands += 1
+            in_band = True
+        else:
+            in_band = False
+    return bands
+
+
+def _table_like_confidence(page, cfg: ClassifierConfig) -> float:
+    # Lightweight grid-line heuristic for scanned/table-like pages.
+    try:
+        pix = page.get_pixmap(dpi=72, alpha=False)
+        width, height = pix.width, pix.height
+        if width <= 0 or height <= 0:
+            return 0.0
+        data = pix.samples
+        stride = pix.n
+        row_ratios: list[float] = []
+        col_dark_counts = [0] * width
+        threshold = 140
+        for y in range(height):
+            row_dark = 0
+            row_offset = y * width * stride
+            for x in range(width):
+                offset = row_offset + (x * stride)
+                r = data[offset]
+                g = data[offset + 1]
+                b = data[offset + 2]
+                gray = (r + g + b) // 3
+                if gray < threshold:
+                    row_dark += 1
+                    col_dark_counts[x] += 1
+            row_ratios.append(row_dark / width)
+        col_ratios = [count / height for count in col_dark_counts]
+
+        horizontal_bands = _count_line_bands(row_ratios, cfg.table_dark_ratio_threshold)
+        vertical_bands = _count_line_bands(col_ratios, cfg.table_dark_ratio_threshold)
+
+        score_h = min(1.0, horizontal_bands / 8.0)
+        score_v = min(1.0, vertical_bands / 8.0)
+        grid_balance = min(score_h, score_v)
+        return min(1.0, 0.35 * score_h + 0.35 * score_v + 0.30 * grid_balance)
+    except Exception:
+        return 0.0
+
+
 def classify_page(page, page_index: int, cfg: ClassifierConfig | None = None) -> PageClassification:
     cfg = cfg or ClassifierConfig()
     text = page.get_text("text") or ""
     words = len(text.split())
     text_viable = words >= cfg.min_words_for_text_viable
     image_cov = _image_coverage(page, cfg)
+    table_confidence = round(_table_like_confidence(page, cfg), 3)
+    likely_table_image = table_confidence >= cfg.table_confidence_threshold
 
     reasons: list[str] = []
 
@@ -89,6 +149,8 @@ def classify_page(page, page_index: int, cfg: ClassifierConfig | None = None) ->
             text_words=words,
             text_viable=False,
             image_coverage_ratio=round(image_cov, 3),
+            likely_table_image=likely_table_image,
+            table_confidence=table_confidence,
             reasons=reasons,
         )
 
@@ -101,6 +163,8 @@ def classify_page(page, page_index: int, cfg: ClassifierConfig | None = None) ->
             text_words=words,
             text_viable=True,
             image_coverage_ratio=round(image_cov, 3),
+            likely_table_image=likely_table_image,
+            table_confidence=table_confidence,
             reasons=reasons,
         )
 
@@ -113,6 +177,8 @@ def classify_page(page, page_index: int, cfg: ClassifierConfig | None = None) ->
             text_words=words,
             text_viable=True,
             image_coverage_ratio=round(image_cov, 3),
+            likely_table_image=likely_table_image,
+            table_confidence=table_confidence,
             reasons=reasons,
         )
 
@@ -124,6 +190,8 @@ def classify_page(page, page_index: int, cfg: ClassifierConfig | None = None) ->
         text_words=words,
         text_viable=True,
         image_coverage_ratio=round(image_cov, 3),
+        likely_table_image=likely_table_image,
+        table_confidence=table_confidence,
         reasons=reasons,
     )
 
@@ -146,5 +214,10 @@ def classify_pdf(pdf_bytes: bytes, cfg: ClassifierConfig | None = None) -> Class
         scanned_image_pages=sum(1 for p in pages if p.page_type == PageType.SCANNED_IMAGE),
         hybrid_pages=sum(1 for p in pages if p.page_type == PageType.HYBRID),
         ambiguous_pages=sum(1 for p in pages if p.page_type == PageType.AMBIGUOUS),
+        table_like_pages=sum(1 for p in pages if p.likely_table_image),
+        has_table_like_scanned_content=any(
+            p.likely_table_image and p.page_type in (PageType.SCANNED_IMAGE, PageType.HYBRID)
+            for p in pages
+        ),
     )
     return ClassificationResult(pages=pages, summary=summary)

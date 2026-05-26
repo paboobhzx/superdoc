@@ -25,6 +25,12 @@ variable "owner" {
   default     = "pablo"
 }
 
+variable "cost_allocation_feature" {
+  description = "Cost allocation tag value for feature-level tracking in AWS cost explorer and budgets."
+  type        = string
+  default     = "pdf-fallback-table-aware"
+}
+
 variable "alert_email" {
   description = "Email for budget alerts"
   type        = string
