@@ -16,6 +16,7 @@ log = get_logger(__name__)
 
 _sqs = boto3.client("sqs")
 SQS_QUEUE_URL = os.environ.get("SQS_QUEUE_URL", "")
+_OCR_CAPABLE_OPERATIONS = {"pdf_to_docx", "pdf_to_xls", "pdf_to_txt"}
 
 
 def _json_safe(value):
@@ -70,6 +71,10 @@ def handler(event, context):
             if isinstance(analysis_result.get("pdf_integrity"), dict):
                 dynamo.update_job(job_id, pdf_integrity=analysis_result["pdf_integrity"])
 
+        needs_ocr = bool((analysis_result or {}).get("needs_ocr"))
+        if not needs_ocr and job.get("operation") in _OCR_CAPABLE_OPERATIONS:
+            needs_ocr = bool((job.get("analysis_result") or {}).get("needs_ocr"))
+
         job_meta = operations.OPERATIONS.get(job.get("operation"), {})
         input_types = {str(item).lower().lstrip(".") for item in job_meta.get("input_types", [])}
         if "pdf" in input_types:
@@ -84,6 +89,22 @@ def handler(event, context):
             if page_count > page_limit:
                 dynamo.mark_failed(job_id, f"PDF has {page_count} pages; max {page_limit}")
                 return response.error(f"PDF page limit exceeded. Max {page_limit} pages.", 413)
+
+        if needs_ocr:
+            tier = limits.tier_for_user_id(user_id)
+            identity = user_id
+            if not identity:
+                identity = session_id = (event.get("queryStringParameters") or {}).get("session_id", "")
+            if not identity:
+                identity = job.get("session_id") or ""
+            allowed = limits.record_daily_ocr(tier=tier, identity=identity)
+            if not allowed:
+                used = limits.ocr_used_today(tier=tier, identity=identity)
+                limit = limits.daily_ocr_limit(tier)
+                return response.error(
+                    f"OCR daily limit reached ({used}/{limit}).",
+                    429,
+                )
 
         dynamo.update_job(job_id, status="QUEUED")
 

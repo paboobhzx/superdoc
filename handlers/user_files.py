@@ -51,6 +51,8 @@ def handler(event, context):
 
             s3.delete_key(job.get("file_key", ""))
             s3.delete_key(job.get("output_key", ""))
+            for value in (job.get("output_keys") or {}).values():
+                s3.delete_key(value)
             dynamo.delete_job(job_id)
             return response.ok({"deleted": True, "job_id": job_id})
 

@@ -1,3 +1,4 @@
+import auth_session
 import dynamo
 import response
 import s3
@@ -18,6 +19,7 @@ def handler(event, context):
     try:
         if event.get("httpMethod") == "OPTIONS":
             return response.preflight()
+        method = event.get("httpMethod") or "GET"
 
         job_id = (event.get("pathParameters") or {}).get("jobId", "")
         if not job_id:
@@ -27,7 +29,23 @@ def handler(event, context):
         if not job:
             return response.error("Job not found", 404)
 
-        if _is_anonymous_job(job) and job.get("session_id") != _query_session(event):
+        if method == "DELETE":
+            user_id = auth_session.current_user_id(event)
+            if job.get("user_id"):
+                if job.get("user_id") != user_id:
+                    return response.error("Forbidden", 403)
+            elif job.get("session_id") != _query_session(event):
+                return response.error("Forbidden", 403)
+
+            keys = [job.get("file_key"), job.get("output_key")]
+            for value in (job.get("output_keys") or {}).values():
+                keys.append(value)
+            for key in keys:
+                if key:
+                    s3.delete_key(key)
+            dynamo.delete_job(job_id)
+            return response.ok({"deleted": True, "job_id": job_id})
+        elif _is_anonymous_job(job) and job.get("session_id") != _query_session(event):
             return response.error("Forbidden", 403)
 
         if job.get("status") == "DONE":

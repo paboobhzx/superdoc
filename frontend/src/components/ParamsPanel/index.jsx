@@ -98,6 +98,7 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt, integ
       [t("params.pdfAnalyze.report.highFidelityEstimate"), analysisResult.estimated_seconds?.image ? t("params.pdfAnalyze.estimate", { seconds: analysisResult.estimated_seconds.image }) : t("common.unknown")],
       [t("params.pdfAnalyze.report.regularEstimate"), analysisResult.estimated_seconds?.text ? t("params.pdfAnalyze.estimate", { seconds: analysisResult.estimated_seconds.text }) : t("common.unknown")],
     ]
+    const composition = analysisResult.classification?.summary || null
 
     const integrity = analysisResult.pdf_integrity || null
     const integrityNeedsDecision = integrity && Number(integrity.score) < 100 && !integrityDecision
@@ -146,6 +147,25 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt, integ
               </div>
             ))}
           </dl>
+        )}
+        {composition && (
+          <div className="mt-3 rounded-lg border border-outline-variant/25 bg-surface-container px-3 py-2">
+            <p className="text-xs font-semibold text-on-surface">{t("params.pdfAnalyze.compositionTitle")}</p>
+            <p className="mt-1 text-xs text-on-surface-variant">
+              {t("params.pdfAnalyze.compositionValue", {
+                text: composition.text_pages,
+                scanned: composition.scanned_image_pages,
+                hybrid: composition.hybrid_pages,
+                ambiguous: composition.ambiguous_pages,
+              })}
+            </p>
+          </div>
+        )}
+        {analysisResult.needs_ocr && (
+          <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
+            <p className="text-xs font-semibold text-on-surface">{t("params.pdfAnalyze.scannedTitle")}</p>
+            <p className="mt-1 text-xs text-on-surface-variant">{t("params.pdfAnalyze.scannedBody")}</p>
+          </div>
         )}
         {integrity && Number(integrity.score) < 100 ? (
           <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useI18n } from "../../context/I18nContext"
 import { useJob } from "../../hooks/useJob"
+import { api } from "../../lib/api"
 import { saveRecentFile } from "../../lib/recentFiles"
+import { getSessionId } from "../../lib/session"
 
 // Upload is already complete when this page mounts, so the stepper tracks the
 // lifecycle visible from /processing/:jobId rather than the upload flow.
@@ -41,8 +43,10 @@ export function Processing() {
   const { job, loading, error } = useJob(jobId)
   const [now, setNow] = useState(Date.now())
   const [downloadFeedback, setDownloadFeedback] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleted, setIsDeleted] = useState(false)
   const autoDownloadedRef = useRef(false)
-  const isDone = job?.status === "DONE"
+  const isDone = job?.status === "DONE" && !isDeleted
   const canShareDownload = isDone && job?.download_url && typeof navigator !== "undefined" && typeof navigator.share === "function"
 
   useEffect(() => {
@@ -265,6 +269,26 @@ export function Processing() {
               <span aria-hidden="true" className="material-symbols-outlined text-[17px]">restart_alt</span>
               {t("common.convertAnother")}
             </button>
+            {(job.download_url || job.download_urls) && (
+              <button
+                type="button"
+                disabled={isDeleting || isDeleted}
+                onClick={async () => {
+                  setIsDeleting(true)
+                  try {
+                    await api.deleteJob(jobId, getSessionId())
+                    setIsDeleted(true)
+                    setDownloadFeedback(t("processing.deletedNow"))
+                  } finally {
+                    setIsDeleting(false)
+                  }
+                }}
+                className="mt-3 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-error/45 text-error font-semibold text-sm transition-all hover:bg-error/10 disabled:opacity-60"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-[17px]">delete</span>
+                {job.download_urls ? t("processing.deleteAll") : t("processing.deleteFile")}
+              </button>
+            )}
           </aside>
         </div>
 

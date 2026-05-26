@@ -322,6 +322,30 @@ resource "aws_api_gateway_method_response" "job_id_get_200" {
   status_code = "200"
 }
 
+# DELETE /jobs/{jobId} -> get_status (purge input + outputs)
+resource "aws_api_gateway_method" "job_id_delete" {
+  rest_api_id   = aws_api_gateway_rest_api.superdoc.id
+  resource_id   = aws_api_gateway_resource.job_id.id
+  http_method   = "DELETE"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "job_id_delete" {
+  rest_api_id             = aws_api_gateway_rest_api.superdoc.id
+  resource_id             = aws_api_gateway_resource.job_id.id
+  http_method             = aws_api_gateway_method.job_id_delete.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_integrations["get_status"].invoke_arn
+}
+
+resource "aws_api_gateway_method_response" "job_id_delete_200" {
+  rest_api_id = aws_api_gateway_rest_api.superdoc.id
+  resource_id = aws_api_gateway_resource.job_id.id
+  http_method = aws_api_gateway_method.job_id_delete.http_method
+  status_code = "200"
+}
+
 # OPTIONS /jobs/{jobId} (CORS)
 resource "aws_api_gateway_method" "job_id_options" {
   rest_api_id   = aws_api_gateway_rest_api.superdoc.id
@@ -1920,6 +1944,9 @@ resource "aws_api_gateway_deployment" "superdoc" {
       aws_api_gateway_resource.job_id.id,
       aws_api_gateway_method.job_id_get.id,
       aws_api_gateway_integration.job_id_get.id,
+      aws_api_gateway_method.job_id_delete.id,
+      aws_api_gateway_integration.job_id_delete.id,
+      aws_api_gateway_method_response.job_id_delete_200.id,
       aws_api_gateway_resource.job_process.id,
       aws_api_gateway_method.job_process_post.id,
       aws_api_gateway_integration.job_process_post.id,
@@ -1995,6 +2022,7 @@ resource "aws_api_gateway_deployment" "superdoc" {
     aws_api_gateway_method_response.health_200,
     aws_api_gateway_integration.jobs_post,
     aws_api_gateway_integration.job_id_get,
+    aws_api_gateway_integration.job_id_delete,
     aws_api_gateway_integration.job_process_post,
     aws_api_gateway_integration.job_analyze_post,
     aws_api_gateway_integration.job_analyze_options,

@@ -122,6 +122,7 @@ export const api = {
 
   // Get job status (poll this)
   getStatus: (jobId, sessionId = "") => request("GET", sessionQuery(`/jobs/${jobId}`, sessionId)),
+  deleteJob: (jobId, sessionId = "") => request("DELETE", sessionQuery(`/jobs/${jobId}`, sessionId)),
 
   // Upload file directly to S3 via presigned POST
   uploadToS3: async (upload, file) => {

@@ -68,6 +68,8 @@ locals {
     CREDITS_TIER_1000                      = "10"
     CREDITS_TIER_5000                      = "50"
     REGISTERED_FREE_MULTIMEDIA_DAILY_LIMIT = "1"
+    ANON_DAILY_OCR_LIMIT                   = "2"
+    USER_DAILY_OCR_LIMIT                   = "3"
     USER_SETTINGS_TABLE                    = aws_dynamodb_table.user_settings.name
   }
 

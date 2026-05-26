@@ -15,6 +15,8 @@ _DEFAULT_TTL_SECONDS = int(os.environ.get("DEFAULT_TTL_SECONDS", "900"))
 _ANON_STORAGE_TTL_SECONDS = int(os.environ.get("TTL_SECONDS", "43200"))
 _USER_STORAGE_TTL_SECONDS = int(os.environ.get("USER_TTL_SECONDS", "64800"))
 _REGISTERED_FREE_MULTIMEDIA_DAILY_LIMIT = int(os.environ.get("REGISTERED_FREE_MULTIMEDIA_DAILY_LIMIT", "1"))
+_ANON_DAILY_OCR_LIMIT = int(os.environ.get("ANON_DAILY_OCR_LIMIT", "2"))
+_USER_DAILY_OCR_LIMIT = int(os.environ.get("USER_DAILY_OCR_LIMIT", "3"))
 
 
 def tier_for_user_id(user_id: str | None) -> str:
@@ -55,6 +57,28 @@ def record_daily_conversion(*, tier: str, identity: str, now: int | None = None)
     key = quota_key(tier=tier, identity=identity, now=now)
     count = dynamo.rate_limit_increment(key, quota_ttl_seconds(now))
     return count <= daily_conversion_limit(tier)
+
+
+def daily_ocr_limit(tier: str) -> int:
+    return _USER_DAILY_OCR_LIMIT if tier == "registered" else _ANON_DAILY_OCR_LIMIT
+
+
+def ocr_quota_key(*, tier: str, identity: str, now: int | None = None) -> str:
+    return f"quota#ocr#{tier}#{identity}#{quota_day_bucket(now)}"
+
+
+def record_daily_ocr(*, tier: str, identity: str, now: int | None = None) -> bool:
+    if not identity:
+        return True
+    key = ocr_quota_key(tier=tier, identity=identity, now=now)
+    count = dynamo.rate_limit_increment(key, quota_ttl_seconds(now))
+    return count <= daily_ocr_limit(tier)
+
+
+def ocr_used_today(*, tier: str, identity: str, now: int | None = None) -> int:
+    if not identity:
+        return 0
+    return dynamo.rate_limit_count(ocr_quota_key(tier=tier, identity=identity, now=now))
 
 
 def multimedia_quota_key(*, user_id: str, now: int | None = None) -> str:

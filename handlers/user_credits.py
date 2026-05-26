@@ -26,12 +26,17 @@ def handler(event, context):
         used_today = dynamo.rate_limit_count(
             limits.quota_key(tier="registered", identity=user_id)
         )
+        ocr_used_today = limits.ocr_used_today(tier="registered", identity=user_id)
+        ocr_daily_limit = limits.daily_ocr_limit("registered")
         return response.ok(
             {
                 "balance": balance.get("balance", 0),
                 "free_multimedia_remaining_today": limits.multimedia_free_remaining(user_id),
                 "conversions_used_today": used_today,
                 "daily_conversion_limit": _DAILY_LIMIT,
+                "ocr_used_today": ocr_used_today,
+                "ocr_daily_limit": ocr_daily_limit,
+                "ocr_remaining_today": max(ocr_daily_limit - ocr_used_today, 0),
                 "recent_events": events,
             }
         )
