@@ -94,19 +94,15 @@ echo "Pushing branch '$BRANCH'..."
 git push origin "$BRANCH"
 
 echo "Git push completed."
-echo "Running Terraform in infra/..."
+echo "Running Terraform via infra/apply.sh..."
 
-if ! command -v terraform >/dev/null 2>&1; then
-  echo "Error: terraform is not installed."
+if [[ ! -x "infra/apply.sh" ]]; then
+  echo "Error: infra/apply.sh not found or not executable."
   exit 1
 fi
 
-export TF_VAR_amplify_oauth_token="$GITHUB_TOKEN"
-
-pushd infra >/dev/null
-terraform init
-terraform plan
-terraform apply
-popd >/dev/null
+# Reuse token already loaded here. infra/apply.sh will also resolve
+# TF_VAR_lambda_handler_s3_bucket automatically and run non-interactive apply.
+bash infra/apply.sh
 
 echo "Terraform apply flow completed."
