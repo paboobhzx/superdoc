@@ -106,3 +106,8 @@ scripts/
 
 # Local docs drafts
 docs/security-hardening.md
+
+# Local test fixtures and converted outputs
+cheque.pdf
+cheque.docx
+cheque.xlsx

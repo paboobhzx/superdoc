@@ -255,6 +255,37 @@ def _pdf2docx_convert(pdf_bytes: bytes, body: dict) -> bytes:
         return _extract_text_docx(pdf_bytes)
 
 
+def _build_ocr_text_docx(pdf_bytes: bytes, ocr_page_indices: list[int]) -> bytes:
+    """Build DOCX from OCR text for scanned pages, PyMuPDF text for others."""
+    import pymupdf
+    from docx import Document as DocxDocument
+
+    from pdf_ocr_pages import ocr_pdf_pages
+
+    ocr_set = set(ocr_page_indices)
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    docx_doc = DocxDocument()
+    try:
+        for page_num in range(doc.page_count):
+            if page_num > 0:
+                docx_doc.add_page_break()
+            native_text = (doc.load_page(page_num).get_text("text") or "").strip()
+            if native_text:
+                for line in native_text.split("\n"):
+                    if line.strip():
+                        docx_doc.add_paragraph(line.strip())
+            elif page_num in ocr_set:
+                results = ocr_pdf_pages(pdf_bytes, page_indices=[page_num])
+                if results and results[0].lines:
+                    for line in results[0].lines:
+                        docx_doc.add_paragraph(line)
+    finally:
+        doc.close()
+    out = io.BytesIO()
+    docx_doc.save(out)
+    return out.getvalue()
+
+
 def _build_text_fallback_docx(pdf_bytes: bytes) -> bytes:
     """Build a plain-text DOCX from the full PDF using PyMuPDF."""
     import pymupdf
@@ -505,8 +536,18 @@ def _process(pdf_bytes: bytes, body: dict) -> bytes:
             docx_chunks.append(_pdf2docx_convert(chunk_buf.getvalue(), body))
         docx_result = _merge_docx(docx_chunks)
 
-    # QA gate: check word retention. If pdf has no text (scanned), skip.
-    if total_pdf_words > 0:
+    # QA gate: check word retention.
+    if total_pdf_words == 0:
+        # Scanned PDF — pdf2docx produced empty result. Use OCR or image fallback.
+        analysis_result = body.get("analysis_result") or {}
+        ocr_indices = analysis_result.get("ocr_page_indices") or []
+        if ocr_indices:
+            docx_result = _build_ocr_text_docx(pdf_bytes, ocr_indices)
+        elif fallback_strategy == "image":
+            docx_result = _build_image_fallback_docx(pdf_bytes)
+        else:
+            docx_result = _build_text_fallback_docx(pdf_bytes)
+    elif total_pdf_words > 0:
         try:
             docx_words = _count_words_docx(docx_result)
             ratio = docx_words / total_pdf_words

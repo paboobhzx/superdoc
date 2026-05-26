@@ -1,5 +1,7 @@
 """Synchronous PDF complexity analysis endpoint."""
 
+import json
+
 import dynamo
 import response
 import s3
@@ -115,7 +117,11 @@ def handler(event, context):
             result["is_scanned_pdf"] = False
 
         result["pdf_integrity"] = _analyze_pdf_integrity(source_bytes, job.get("operation"))
-        dynamo.update_job(job_id, pdf_integrity=result["pdf_integrity"])
+
+        # Persist full analysis so downstream handlers can read OCR metadata from
+        # Dynamo even if the frontend doesn't relay analysis_result in process body.
+        safe_result = json.loads(json.dumps(result, default=str))
+        dynamo.update_job(job_id, pdf_integrity=result["pdf_integrity"], analysis_result=safe_result)
 
         log.info(
             "pdf_analyze done",

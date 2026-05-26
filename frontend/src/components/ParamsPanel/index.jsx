@@ -50,16 +50,28 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt, integ
   if (!analysisState || analysisState === "idle" || analysisState === "error") return null
 
   if (analysisState === "uploading" || analysisState === "analyzing") {
+    let analyzeMessage = t("params.pdfAnalyze.step1")
+    if (elapsed >= 7) {
+      analyzeMessage = t("params.pdfAnalyze.step4")
+    } else if (elapsed >= 4) {
+      analyzeMessage = t("params.pdfAnalyze.step3")
+    } else if (elapsed >= 2) {
+      analyzeMessage = t("params.pdfAnalyze.step2")
+    }
+
     return (
       <div className="mb-4 rounded-xl border border-outline-variant/20 bg-surface-container px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent shrink-0" />
           <span className="text-sm font-semibold text-on-surface">
-            {t("params.pdfAnalyze.waitingTitle")}
+            {analyzeMessage}
           </span>
           <span className="ml-auto text-xs tabular-nums text-on-surface-variant">
             {elapsed}{t("params.pdfAnalyze.seconds")}
           </span>
+        </div>
+        <div className="mt-2 h-1 w-full rounded-full bg-primary/10 overflow-hidden">
+          <div className="h-full w-1/3 rounded-full bg-primary/30 animate-pulse" />
         </div>
         <p className="mt-1.5 text-xs text-on-surface-variant leading-relaxed">
           {t("params.pdfAnalyze.waitingHint")}
@@ -70,11 +82,9 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt, integ
 
   if (analysisState === "ready" && analysisResult) {
     const recommendation = analysisResult.recommendation
-    const recLabel = recommendation === "xlsx"
-      ? t("params.pdfAnalyze.modeXlsx")
-      : recommendation === "image"
-        ? t("params.pdfAnalyze.modeHighFidelity")
-        : t("params.pdfAnalyze.modeRegular")
+    let recLabel = t("params.pdfAnalyze.modeRegular")
+    if (recommendation === "xlsx") recLabel = t("params.pdfAnalyze.modeXlsx")
+    else if (recommendation === "image") recLabel = t("params.pdfAnalyze.modeHighFidelity")
     const estimatedSecs = recommendation === "image"
       ? analysisResult.estimated_seconds?.image
       : analysisResult.estimated_seconds?.text
@@ -122,6 +132,7 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt, integ
         {primaryRationale && (
           <p className="text-xs text-on-surface-variant leading-relaxed">{primaryRationale}</p>
         )}
+        <p className="mt-1 text-xs text-on-surface-variant">{t("params.pdfAnalyze.alternativeHint")}</p>
         {secondaryRationales.length > 0 && (
           <ul className="mt-2 space-y-1 text-xs leading-relaxed text-on-surface-variant">
             {secondaryRationales.map((text) => (
@@ -167,7 +178,12 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt, integ
         {analysisResult.needs_ocr && (
           <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
             <p className="text-xs font-semibold text-on-surface">{t("params.pdfAnalyze.scannedTitle")}</p>
-            <p className="mt-1 text-xs text-on-surface-variant">{t("params.pdfAnalyze.scannedBody")}</p>
+            <p className="mt-1 text-xs text-on-surface-variant">
+              {t("params.pdfAnalyze.scannedBody")}
+              {analysisResult.ocr_page_indices?.length > 0 && (
+                <span> ({t("params.pdfAnalyze.ocrPageCount", { count: analysisResult.ocr_page_indices.length })})</span>
+              )}
+            </p>
           </div>
         )}
         {integrity && Number(integrity.score) < 100 ? (

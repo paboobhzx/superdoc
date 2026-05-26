@@ -75,6 +75,12 @@ def handler(event, context):
         if not needs_ocr and job.get("operation") in _OCR_CAPABLE_OPERATIONS:
             needs_ocr = bool((job.get("analysis_result") or {}).get("needs_ocr"))
 
+        # Backfill from Dynamo so SQS payload always carries analysis_result
+        if not analysis_result:
+            stored = job.get("analysis_result")
+            if isinstance(stored, dict):
+                analysis_result = stored
+
         job_meta = operations.OPERATIONS.get(job.get("operation"), {})
         input_types = {str(item).lower().lstrip(".") for item in job_meta.get("input_types", [])}
         if "pdf" in input_types:

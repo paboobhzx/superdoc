@@ -54,7 +54,7 @@ def _non_empty_row_count(rows: list[list[str]]) -> int:
     return sum(1 for row in rows if any(str(cell or "").strip() for cell in row))
 
 
-def _build_workbook(pdf_bytes: bytes) -> bytes:
+def _build_workbook(pdf_bytes: bytes, *, ocr_page_indices: list[int] | None = None) -> tuple[bytes, list[str]]:
     import pdfplumber
     from openpyxl import Workbook
 
@@ -64,6 +64,7 @@ def _build_workbook(pdf_bytes: bytes) -> bytes:
     consolidated_row = 1
     last_header: list[str] | None = None
     warnings: list[str] = []
+    ocr_set = set(ocr_page_indices or [])
 
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         pages = list(pdf.pages)
@@ -76,7 +77,20 @@ def _build_workbook(pdf_bytes: bytes) -> bytes:
                 rows = _page_rows(page)
             except Exception as exc:
                 warnings.append(f"Page {page_index} could not be extracted: {exc}")
-                continue
+                rows = []
+
+            # OCR fallback: if pdfplumber returned empty AND this page needs OCR
+            if _non_empty_row_count(rows) == 0 and (page_index - 1) in ocr_set:
+                try:
+                    from pdf_ocr_pages import ocr_pdf_pages
+                    ocr_results = ocr_pdf_pages(pdf_bytes, page_indices=[page_index - 1])
+                    if ocr_results and ocr_results[0].words:
+                        ocr_words = [w.to_pdfplumber_dict() for w in ocr_results[0].words]
+                        rows = _rows_from_words(ocr_words)
+                        sheet.title = f"Page {page_index} (OCR)"
+                        warnings.append(f"Page {page_index} extracted via OCR.")
+                except Exception as ocr_exc:
+                    warnings.append(f"Page {page_index} OCR failed: {ocr_exc}")
 
             for row_index, row in enumerate(rows, start=1):
                 for col_index, value in enumerate(row, start=1):
@@ -112,11 +126,13 @@ def handler(event, context):
     body = _json.loads(event["Records"][0]["body"])
     job_id = body["job_id"]
     file_key = body["file_key"]
+    analysis_result = body.get("analysis_result") or {}
+    ocr_page_indices = analysis_result.get("ocr_page_indices") or []
 
     try:
         dynamo.update_job(job_id, status="PROCESSING")
         data = s3.get_bytes(file_key)
-        result, warnings = _build_workbook(data)
+        result, warnings = _build_workbook(data, ocr_page_indices=ocr_page_indices)
         out_key = s3.make_output_key(job_id, file_key, _output_filename(body, file_key))
         s3.put_bytes(out_key, result)
         if warnings:
