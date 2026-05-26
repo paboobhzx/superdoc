@@ -15,7 +15,7 @@ Usage:
 What this script does:
   1) Ensures a GitHub token is available (env or SSM)
   2) Commits and pushes current git changes
-  3) Prints Terraform apply variables/instructions for infra/
+  3) Runs Terraform apply flow in infra/ (init, plan, apply)
 EOF
 }
 
@@ -93,21 +93,20 @@ fi
 echo "Pushing branch '$BRANCH'..."
 git push origin "$BRANCH"
 
-cat <<EOF
+echo "Git push completed."
+echo "Running Terraform in infra/..."
 
-Git push completed.
+if ! command -v terraform >/dev/null 2>&1; then
+  echo "Error: terraform is not installed."
+  exit 1
+fi
 
-Terraform apply notes (run from infra/):
-  cd infra
-  export TF_VAR_amplify_oauth_token="\$GITHUB_TOKEN"
+export TF_VAR_amplify_oauth_token="$GITHUB_TOKEN"
 
-Then run:
-  terraform init
-  terraform plan
-  terraform apply
+pushd infra >/dev/null
+terraform init
+terraform plan
+terraform apply
+popd >/dev/null
 
-Important:
-  - Do not put amplify_oauth_token in tfvars files.
-  - If needed, the token source is SSM: ${SSM_PARAM_NAME}
-    (${SSM_PARAM_ARN})
-EOF
+echo "Terraform apply flow completed."
