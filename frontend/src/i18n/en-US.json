@@ -158,6 +158,8 @@
     "faqTitle": "Common questions",
     "retentionExtendedLabel": "Keep files for up to {{time}}",
     "retentionDefaultHint": "Unchecked jobs are deleted after {{time}}.",
+    "recommended": "Recommended",
+    "analysisInProgress": "Analyzing this PDF to recommend the best output path...",
     "errors": {
       "loadActions": "Could not load available actions",
       "multipleFiles": "Multiple-file workflows are not available yet. Upload one file at a time.",

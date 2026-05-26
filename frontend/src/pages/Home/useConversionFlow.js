@@ -12,8 +12,16 @@ export const SUPPORTED_FORMATS = ["PDF", "DOCX", "MD", "HTML", "PNG", "JPG", "WE
 export const ACCEPT = "application/pdf,.docx,.xlsx,.xls,.jpg,.jpeg,.png,.webp,.gif,.tiff,.md,.markdown,.html,.htm,.txt,.zip,application/zip"
 export const KNOWN_CATALOG_TYPES = new Set(["pdf", "docx", "xlsx", "xls", "png", "jpg", "jpeg", "webp", "gif", "tiff", "md", "markdown", "txt", "html", "htm", "zip"])
 
-// Operations that benefit from pre-analysis (PDF complexity scoring)
-const ANALYSIS_OPERATIONS = new Set(["pdf_to_docx", "pdf_to_xls", "pdf_merge", "pdf_svg_annotate"])
+// Operations that can be used to create a pre-uploaded PDF job for analysis.
+const ANALYSIS_OPERATIONS = ["pdf_to_docx", "pdf_to_xls", "pdf_merge", "pdf_svg_annotate"]
+
+function preferredAnalysisOperation(operations = []) {
+  for (const opName of ANALYSIS_OPERATIONS) {
+    const found = operations.find((op) => op?.operation === opName)
+    if (found) return found
+  }
+  return null
+}
 
 export function extensionOf(file) {
   const name = file?.name || ""
@@ -52,6 +60,7 @@ export function useConversionFlow() {
   // Ref for the pre-uploaded job_id (avoids stale closure issues in callbacks)
   const preUploadedJobIdRef = useRef(null)
   const analysisCancelRef = useRef(false)
+  const analysisRunKeyRef = useRef("")
 
   const activeFile = pendingFile || batchFiles[0] || null
   const inputType = extensionOf(activeFile)
@@ -72,6 +81,7 @@ export function useConversionFlow() {
     setRetentionExtended(false)
     preUploadedJobIdRef.current = null
     analysisCancelRef.current = true
+    analysisRunKeyRef.current = ""
   }, [])
 
   const refreshOperations = useCallback(() => {
@@ -88,6 +98,13 @@ export function useConversionFlow() {
   }, [activeFile, inputType, t])
 
   const handleFiles = useCallback((files) => {
+    analysisCancelRef.current = true
+    preUploadedJobIdRef.current = null
+    setAnalysisState("idle")
+    setAnalysisResult(null)
+    setAnalysisStartedAt(null)
+    setIntegrityDecision(null)
+    analysisRunKeyRef.current = ""
     const list = Array.from(files || []).filter(Boolean)
     if (list.length === 0) return
     if (list.length > 1) {
@@ -139,12 +156,7 @@ export function useConversionFlow() {
   )
   const editOperation = useMemo(() => findClientEditorOperation(operations), [operations])
 
-  /**
-   * Upload the file proactively (no params, no trigger) and then call /analyze.
-   * Non-blocking — ParamsPanel is shown immediately; analysis result arrives
-   * asynchronously and updates the panel's recommendation.
-   */
-  const _runPreAnalysis = useCallback(async (opMeta, file) => {
+  const _runPreAnalysis = useCallback(async (opMeta, file, runKey) => {
     analysisCancelRef.current = false
     preUploadedJobIdRef.current = null
     setAnalysisState("uploading")
@@ -160,12 +172,12 @@ export function useConversionFlow() {
         sessionId: getSessionId(),
         retentionChoice: retentionExtended ? "extended" : "default",
       })
-      if (analysisCancelRef.current) return
+      if (analysisCancelRef.current || analysisRunKeyRef.current !== runKey) return
       preUploadedJobIdRef.current = job_id
       setAnalysisState("analyzing")
 
       const result = await api.analyzePdf(job_id, getSessionId())
-      if (analysisCancelRef.current) return
+      if (analysisCancelRef.current || analysisRunKeyRef.current !== runKey) return
       if (result) {
         setAnalysisResult(result)
         setAnalysisState("ready")
@@ -174,11 +186,24 @@ export function useConversionFlow() {
         setAnalysisState("error")
       }
     } catch {
-      if (analysisCancelRef.current) return
+      if (analysisCancelRef.current || analysisRunKeyRef.current !== runKey) return
       // Non-fatal: user can still convert with manually selected params
       setAnalysisState("error")
     }
   }, [auth, retentionExtended])
+
+  useEffect(() => {
+    if (!pendingFile || extensionOf(pendingFile) !== "pdf") return
+    if (batchFiles.length > 0) return
+    if (loadingOps || operations.length === 0) return
+    const analysisOp = preferredAnalysisOperation(operations)
+    if (!analysisOp) return
+
+    const runKey = `${pendingFile.name}:${pendingFile.size}:${pendingFile.lastModified}:${analysisOp.operation}:${retentionExtended ? "extended" : "default"}`
+    if (analysisRunKeyRef.current === runKey) return
+    analysisRunKeyRef.current = runKey
+    _runPreAnalysis(analysisOp, pendingFile, runKey)
+  }, [pendingFile, batchFiles.length, loadingOps, operations, retentionExtended, _runPreAnalysis])
 
   const _startConvert = useCallback(async (opMeta, preJobId = null) => {
     if (!pendingFile || !opMeta || uploading) return
@@ -206,6 +231,10 @@ export function useConversionFlow() {
         auth,
         sessionId: getSessionId(),
         retentionChoice: retentionExtended ? "extended" : "default",
+        analysisResult: analysisState === "ready" ? {
+          ...analysisResult,
+          integrity_decision: integrityDecision || null,
+        } : null,
       })
 
       setPendingFile(null)
@@ -223,21 +252,17 @@ export function useConversionFlow() {
       setUploading(false)
       setStartingAction(null)
     }
-  }, [pendingFile, auth, navigate, retentionExtended, uploading, t])
+  }, [pendingFile, auth, navigate, retentionExtended, uploading, t, analysisState, analysisResult, integrityDecision])
 
   const handlePick = useCallback((opMeta) => {
     if (!pendingFile || !opMeta || uploading) return
     if (needsInteractiveParams(opMeta)) {
       setErr(null)
       setPendingOp(opMeta)
-      // Proactively upload + analyze for qualifying operations
-      if (ANALYSIS_OPERATIONS.has(opMeta.operation)) {
-        _runPreAnalysis(opMeta, pendingFile)
-      }
       return
     }
     _startConvert(opMeta)
-  }, [pendingFile, _startConvert, _runPreAnalysis, uploading])
+  }, [pendingFile, _startConvert, uploading])
 
   const confirmConvert = useCallback((extraParams) => {
     if (!pendingOp) return

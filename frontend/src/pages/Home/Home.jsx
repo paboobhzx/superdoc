@@ -51,6 +51,14 @@ function deriveCards(operations) {
   return cards
 }
 
+function recommendedTargetsFromAnalysis(analysisResult) {
+  const recommendation = analysisResult?.recommendation
+  if (recommendation === "xlsx") return new Set(["xlsx"])
+  if (recommendation === "image") return new Set(["png", "jpg", "webp", "gif", "tiff", "zip"])
+  if (recommendation === "text") return new Set(["docx", "txt", "md", "html"])
+  return new Set()
+}
+
 const HOW_STEPS = [
   { icon: "upload_file", n: "01", key: "drop" },
   { icon: "view_module", n: "02", key: "choose" },
@@ -129,6 +137,11 @@ export function Home() {
     () => operations.filter((op) => op?.intent === "transform" && op?.kind !== "client_editor"),
     [operations]
   )
+  const recommendedTargets = useMemo(
+    () => recommendedTargetsFromAnalysis(analysisResult),
+    [analysisResult]
+  )
+  const showAnalysisStrip = inputType === "pdf" && (analysisState === "uploading" || analysisState === "analyzing" || analysisState === "ready")
 
   return (
     <div className="min-h-[calc(100vh-60px)]">
@@ -251,6 +264,19 @@ export function Home() {
                 </div>
               ) : null}
 
+              {showAnalysisStrip ? (
+                <div className="mb-7 rounded-[var(--radius-md)] border border-primary/20 bg-primary/5 px-4 py-3">
+                  {analysisState === "ready" && analysisResult ? (
+                    <p className="text-sm font-semibold text-on-surface">
+                      <span className="mr-2 text-primary">{t("home.recommended")}: </span>
+                      {analysisResult.recommendation === "xlsx" ? "XLSX" : analysisResult.recommendation === "image" ? t("params.pdfAnalyze.recommendImage") : t("params.pdfAnalyze.recommendText")}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-on-surface-variant">{t("home.analysisInProgress")}</p>
+                  )}
+                </div>
+              ) : null}
+
               {hasEmptyKnownCatalog ? (
                 <div className="mb-7 rounded-[var(--radius-md)] border border-error/20 bg-error-container px-4 py-4 text-on-error-container" aria-live="polite">
                   <div className="flex items-start gap-3">
@@ -306,6 +332,7 @@ export function Home() {
                       {(loadingOps || hasEmptyKnownCatalog ? TARGET_GRID.map((item) => ({ ...item, enabled: false, disabledReason: loadingOps ? t("common.loading") : t("common.unavailable") })) : gridChoices).map((choice) => {
                         const actionKey = choice.opMeta ? (choice.opMeta.target ? `${choice.opMeta.operation}:${choice.opMeta.target}` : choice.opMeta.operation) : choice.target
                         const isStarting = startingAction === actionKey
+                        const isRecommended = recommendedTargets.has((choice.target || "").toLowerCase())
                         return (
                         <button
                           key={choice.target}
@@ -318,6 +345,10 @@ export function Home() {
                               ? "border-primary bg-primary/15 text-primary shadow-sm ring-2 ring-primary/20"
                               : ""
                           } ${
+                            isRecommended && choice.enabled
+                              ? "border-primary/60 bg-primary/10"
+                              : ""
+                          } ${
                             choice.enabled
                               ? "border-outline-variant bg-surface-container-low text-on-surface hover:border-primary/70 hover:bg-primary/10 disabled:border-primary/40 disabled:bg-primary/10 disabled:text-primary"
                               : "cursor-not-allowed border-outline-variant bg-surface-container-low text-outline opacity-55 grayscale"
@@ -326,6 +357,11 @@ export function Home() {
                           <span className="flex items-center gap-2 font-headline text-sm font-bold">
                             {isStarting ? <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span> : null}
                             {choice.label}
+                            {isRecommended && choice.enabled ? (
+                              <span className="rounded-full border border-primary/40 bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-primary">
+                                {t("home.recommended")}
+                              </span>
+                            ) : null}
                           </span>
                           <span className="mt-0.5 block text-[11px] text-on-surface-variant">
                             {isStarting ? t("common.starting") : choice.enabled ? choice.description : choice.disabledReason}

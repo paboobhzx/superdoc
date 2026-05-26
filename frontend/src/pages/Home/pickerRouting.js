@@ -39,7 +39,7 @@ const EDITOR_ROUTES_BY_EXTENSION = {
  * Creates a job, uploads file via presigned POST, triggers processing,
  * returns the /processing/:id path.
  */
-export async function handleBackendJob({ file, operation, params, auth, sessionId, retentionChoice = "default" }) {
+export async function handleBackendJob({ file, operation, params, auth, sessionId, retentionChoice = "default", analysisResult = null }) {
   const extraFiles = Array.isArray(params?.__extraFiles) ? params.__extraFiles : []
   const cleanParams = { ...(params || {}) }
   delete cleanParams.__extraFiles
@@ -71,7 +71,7 @@ export async function handleBackendJob({ file, operation, params, auth, sessionI
     const match = extraFiles.find((item) => item.role === extra.role)
     if (match?.file) await api.uploadToS3(extra.upload, match.file)
   }
-  await api.triggerProcess(data.job_id)
+  await api.triggerProcess(data.job_id, null, analysisResult || null)
   return { type: "internal", path: `/processing/${data.job_id}` }
 }
 
@@ -191,5 +191,6 @@ export async function dispatchPick(opMeta, context) {
     ...context,
     operation: opMeta.operation,
     params: opMeta.params,
+    analysisResult: context.analysisResult || null,
   })
 }

@@ -12,11 +12,14 @@ vi.mock("../lib/api", () => ({
     createJob: vi.fn(),
     uploadToS3: vi.fn(),
     triggerProcess: vi.fn(),
+    analyzePdf: vi.fn(),
+    repairPdf: vi.fn(),
   },
 }))
 
 vi.mock("../pages/Home/pickerRouting", () => ({
   dispatchPick: vi.fn(),
+  createAndUploadOnly: vi.fn(async () => ({ job_id: "job-ana", file_key: "uploads/sample.pdf" })),
 }))
 
 import { api } from "../lib/api"
@@ -101,5 +104,27 @@ describe("MobileHome", () => {
 
     await waitFor(() => expect(dispatchPick).toHaveBeenCalled())
     expect(dispatchPick.mock.calls[0][0].operation).toBe("pdf_to_docx")
+  })
+
+  it("uses shared PDF analysis recommendation in mobile params panel", async () => {
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word", targets: ["docx"], output_type: "docx", params_schema: { high_fidelity: { type: "boolean", default: false } } },
+      ],
+    })
+    api.createJob.mockResolvedValue({ job_id: "job-ana", upload: { url: "https://upload", fields: {} } })
+    api.uploadToS3.mockResolvedValue(undefined)
+    api.analyzePdf.mockResolvedValue({ recommendation: "image" })
+
+    render(<MobileHome />, { wrapper: Providers })
+    fireEvent.change(screen.getByLabelText("File upload drop zone", { selector: "input" }), {
+      target: { files: [new File(["x"], "sample.pdf", { type: "application/pdf" })] },
+    })
+
+    await waitFor(() => expect(screen.getByRole("combobox")).toBeTruthy())
+    await waitFor(() => expect(api.analyzePdf).toHaveBeenCalled())
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "pdf_to_docx:docx" } })
+    fireEvent.click(screen.getByRole("button", { name: /Process/ }))
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /high fidelity/i })).toBeChecked())
   })
 })

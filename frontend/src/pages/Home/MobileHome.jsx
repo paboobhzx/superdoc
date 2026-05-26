@@ -37,19 +37,33 @@ export function MobileHome() {
     gridChoices,
     editOperation,
     pendingOp,
+    analysisState,
+    analysisResult,
+    analysisStartedAt,
+    integrityDecision,
     resetToDrop,
     handleFiles,
     handlePick,
     confirmConvert,
     cancelPending,
+    repairPendingPdf,
+    continueWithoutRepair,
   } = useConversionFlow()
+
+  const recommendedTargets = useMemo(() => {
+    const recommendation = analysisResult?.recommendation
+    if (recommendation === "xlsx") return new Set(["xlsx"])
+    if (recommendation === "image") return new Set(["png", "jpg", "webp", "gif", "tiff", "zip"])
+    if (recommendation === "text") return new Set(["docx", "txt", "md", "html"])
+    return new Set()
+  }, [analysisResult])
 
   const options = useMemo(() => {
     const enabled = gridChoices
       .filter((choice) => choice.enabled && choice.opMeta)
       .map((choice) => ({
         key: choice.opMeta.target ? `${choice.opMeta.operation}:${choice.opMeta.target}` : choice.opMeta.operation,
-        label: choice.label,
+        label: recommendedTargets.has((choice.target || "").toLowerCase()) ? `${choice.label} (${t("home.recommended")})` : choice.label,
         detail: choice.description,
         opMeta: choice.opMeta,
       }))
@@ -62,7 +76,7 @@ export function MobileHome() {
       })
     }
     return enabled
-  }, [gridChoices, editOperation, t])
+  }, [gridChoices, editOperation, t, recommendedTargets])
 
   const selectedOption = options.find((option) => option.key === selected)
   const isStarting = Boolean(selectedOption && startingAction === selectedOption.key)
@@ -139,7 +153,17 @@ export function MobileHome() {
 
             {pendingOp ? (
               <div className="rounded-[var(--radius-lg)] border border-outline-variant bg-surface-container-lowest p-4">
-                <ParamsPanel opMeta={pendingOp} onConfirm={confirmConvert} onCancel={cancelPending} />
+                <ParamsPanel
+                  opMeta={pendingOp}
+                  onConfirm={confirmConvert}
+                  onCancel={cancelPending}
+                  analysisState={analysisState}
+                  analysisResult={analysisResult}
+                  analysisStartedAt={analysisStartedAt}
+                  integrityDecision={integrityDecision}
+                  onRepairPdf={repairPendingPdf}
+                  onContinueWithoutRepair={continueWithoutRepair}
+                />
               </div>
             ) : (
               <>

@@ -378,6 +378,32 @@ describe("Home page", () => {
     expect(screen.getByText(/Uploading · sample.pdf/i)).toBeTruthy();
   });
 
+  it("shows recommended badge on matching target after PDF analysis", async () => {
+    localStorage.setItem("superdoc-locale", "en-US");
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word", targets: ["docx"], output_type: "docx", params_schema: {} },
+      ],
+    });
+    api.createJob.mockResolvedValue({ job_id: "job-ana", upload: { url: "https://upload", fields: {} } });
+    api.uploadToS3.mockResolvedValue(undefined);
+    api.analyzePdf.mockResolvedValue({ recommendation: "text" });
+    const { Home } = await import("../pages/Home/Home");
+    render(
+      <BrowserRouter>
+        <Providers>
+          <Home />
+        </Providers>
+      </BrowserRouter>
+    );
+
+    fireEvent.change(screen.getByRole("button", { name: "File upload drop zone" }).querySelector("input"), {
+      target: { files: [new File(["x"], "sample.pdf", { type: "application/pdf" })] },
+    });
+
+    expect(await screen.findByText("Recommended")).toBeTruthy();
+  });
+
   it("shows the same retention checkbox for desktop batch selection", async () => {
     localStorage.setItem("superdoc-locale", "en-US");
     api.getOperations.mockResolvedValue({
@@ -418,6 +444,8 @@ vi.mock("../lib/api", () => ({
     createUserJob: vi.fn(),
     uploadToS3: vi.fn(),
     triggerProcess: vi.fn(),
+    analyzePdf: vi.fn(),
+    repairPdf: vi.fn(),
     me: vi.fn(() => Promise.resolve({ user: null })),
     getUserSettings: vi.fn(() => Promise.resolve({})),
     logout: vi.fn(() => Promise.resolve({ ok: true })),

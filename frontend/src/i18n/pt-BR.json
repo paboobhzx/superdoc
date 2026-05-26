@@ -158,6 +158,8 @@
     "faqTitle": "Perguntas comuns",
     "retentionExtendedLabel": "Manter arquivos por ate {{time}}",
     "retentionDefaultHint": "Jobs sem essa opcao sao excluidos apos {{time}}.",
+    "recommended": "Recomendado",
+    "analysisInProgress": "Analisando este PDF para recomendar a melhor saida...",
     "errors": {
       "loadActions": "Nao foi possivel carregar as acoes disponiveis",
       "multipleFiles": "Fluxos com varios arquivos ainda nao estao disponiveis. Envie um arquivo por vez.",
