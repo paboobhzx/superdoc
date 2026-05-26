@@ -13,11 +13,14 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 import os
 import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass, field
+
+log = logging.getLogger(__name__)
 
 _MAX_PAGES = 50
 _DEFAULT_DPI = 200  # 200 gives better accuracy for small numbers vs 150
@@ -104,6 +107,7 @@ def ocr_pdf_pages(
                     page_index=idx, words=words, lines=lines, source=source,
                 ))
             except Exception:
+                log.exception("OCR failed for page %d", idx)
                 results.append(OcrPageResult(page_index=idx))
         return results
     finally:
@@ -133,9 +137,13 @@ def _extract_words(
     page_height_pts: float,
     dpi: int,
 ) -> tuple[list[OcrWord], str]:
-    """Try Tesseract TSV, fall back to Textract.  Returns (words, source)."""
+    """Try Tesseract TSV, fall back to Textract.  Returns (words, source).
+
+    Falls through to Textract when Tesseract is unavailable OR returns no
+    words (e.g. wrong language model → low confidence → all filtered out).
+    """
     words = _extract_words_tesseract_tsv(image_bytes, dpi)
-    if words is not None:
+    if words:  # None (not found) or [] (no usable words) both fall through
         return words, "tesseract"
 
     words = _extract_words_textract(image_bytes, page_width_pts, page_height_pts)
