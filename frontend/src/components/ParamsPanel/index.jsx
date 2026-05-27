@@ -177,12 +177,45 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt, integ
         )}
         {analysisResult.needs_ocr && (
           <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
-            <p className="text-xs font-semibold text-on-surface">{t("params.pdfAnalyze.scannedTitle")}</p>
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-warning text-[16px]">document_scanner</span>
+              <p className="text-xs font-semibold text-on-surface">{t("params.pdfAnalyze.scannedTitle")}</p>
+            </div>
             <p className="mt-1 text-xs text-on-surface-variant">
               {t("params.pdfAnalyze.scannedBody")}
               {analysisResult.ocr_page_indices?.length > 0 && (
                 <span> ({t("params.pdfAnalyze.ocrPageCount", { count: analysisResult.ocr_page_indices.length })})</span>
               )}
+            </p>
+            <p className="mt-1 text-xs text-on-surface-variant/70">{t("params.pdfAnalyze.scannedMakeEditableHint")}</p>
+          </div>
+        )}
+        {analysisResult.encryption?.needs_password && (
+          <div className="mt-3 rounded-lg border border-error/30 bg-error/10 px-3 py-2">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-error text-[16px]">lock</span>
+              <p className="text-xs font-semibold text-on-surface">{t("params.pdfAnalyze.encryptedTitle")}</p>
+            </div>
+            <p className="mt-1 text-xs text-on-surface-variant">{t("params.pdfAnalyze.encryptedNeedsPassword")}</p>
+          </div>
+        )}
+        {analysisResult.encryption?.is_encrypted && !analysisResult.encryption?.needs_password && (
+          <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-warning text-[16px]">lock</span>
+              <p className="text-xs font-semibold text-on-surface">{t("params.pdfAnalyze.encryptedTitle")}</p>
+            </div>
+            <p className="mt-1 text-xs text-on-surface-variant">{t("params.pdfAnalyze.encryptedBody")}</p>
+          </div>
+        )}
+        {analysisResult.signatures?.has_signatures && (
+          <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-warning text-[16px]">verified</span>
+              <p className="text-xs font-semibold text-on-surface">{t("params.pdfAnalyze.signedTitle")}</p>
+            </div>
+            <p className="mt-1 text-xs text-on-surface-variant">
+              {t("params.pdfAnalyze.signedBody", { count: analysisResult.signatures.count })}
             </p>
           </div>
         )}
