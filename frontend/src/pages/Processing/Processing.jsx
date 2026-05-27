@@ -177,16 +177,6 @@ export function Processing() {
 
         <div className="grid md:grid-cols-[1fr_18rem] gap-6 py-6">
           <div className="space-y-5">
-            <div className="grid sm:grid-cols-3 gap-3">
-              <SummaryItem icon="description" label={t("processing.operation")} value={operationLabel} />
-              <SummaryItem icon="badge" label={t("processing.job")} value={shortJobId} />
-              <SummaryItem
-                icon="data_object"
-                label={t("processing.size")}
-                value={job.file_size_bytes ? `${(job.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : t("common.unknown")}
-              />
-            </div>
-
             <div>
               <h2 className="text-sm font-bold text-on-surface mb-3">{t("processing.status")}</h2>
               {typeof job.progress === "number" && !isDone && !isFailed ? (
@@ -222,12 +212,29 @@ export function Processing() {
               )}
             </div>
 
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container border border-outline-variant/40">
-              <span className="material-symbols-outlined text-on-surface-variant text-[18px]">schedule</span>
-              <span className="text-sm text-on-surface-variant">
-                {t("processing.deletedAfter")} <strong className="text-on-surface">{retentionLabel}</strong>
-              </span>
-            </div>
+            <details className="group">
+              <summary className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-on-surface-variant hover:text-on-surface transition-colors select-none">
+                <span className="material-symbols-outlined text-[15px] transition-transform group-open:rotate-90">chevron_right</span>
+                {t("processing.jobDetails")}
+              </summary>
+              <div className="mt-3 space-y-3">
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <SummaryItem icon="description" label={t("processing.operation")} value={operationLabel} />
+                  <SummaryItem icon="badge" label={t("processing.job")} value={shortJobId} />
+                  <SummaryItem
+                    icon="data_object"
+                    label={t("processing.size")}
+                    value={job.file_size_bytes ? `${(job.file_size_bytes / 1024 / 1024).toFixed(1)} MB` : t("common.unknown")}
+                  />
+                </div>
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container border border-outline-variant/40">
+                  <span className="material-symbols-outlined text-on-surface-variant text-[18px]">schedule</span>
+                  <span className="text-sm text-on-surface-variant">
+                    {t("processing.deletedAfter")} <strong className="text-on-surface">{retentionLabel}</strong>
+                  </span>
+                </div>
+              </div>
+            </details>
           </div>
 
           <aside className="rounded-xl bg-surface-container-low border border-outline-variant/40 p-4 h-fit">

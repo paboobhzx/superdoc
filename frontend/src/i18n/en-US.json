@@ -365,7 +365,8 @@
     "noOutput": "No output file was created.",
     "unlock": "The download button will unlock when processing finishes.",
     "soon": "Download ready soon",
-    "heavyOpHint": "First conversion might take a few seconds, please wait."
+    "heavyOpHint": "First conversion might take a few seconds, please wait.",
+    "jobDetails": "Job details"
   },
   "privacy": {
     "eyebrow": "Privacy",

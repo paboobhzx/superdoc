@@ -365,7 +365,8 @@
     "noOutput": "Nenhum arquivo de saida foi criado.",
     "unlock": "O botao de download sera liberado quando o processamento terminar.",
     "soon": "Download disponivel em breve",
-    "heavyOpHint": "A primeira conversão pode levar alguns segundos, por favor aguarde."
+    "heavyOpHint": "A primeira conversão pode levar alguns segundos, por favor aguarde.",
+    "jobDetails": "Detalhes do job"
   },
   "privacy": {
     "eyebrow": "Privacidade",
