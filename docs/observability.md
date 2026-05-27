@@ -106,3 +106,19 @@ fields @timestamp, job_id, detected_ocr_indices
 | sort @timestamp desc
 | limit 20
 ```
+
+### Password-protected PDFs
+```
+fields @timestamp, job_id, is_encrypted, needs_password
+| filter event = "analysis_completed" and is_encrypted = 1
+| sort @timestamp desc
+| limit 20
+```
+
+### Digitally-signed PDFs
+```
+fields @timestamp, job_id, has_signatures, signature_count
+| filter event = "analysis_completed" and has_signatures = 1
+| sort @timestamp desc
+| limit 20
+```

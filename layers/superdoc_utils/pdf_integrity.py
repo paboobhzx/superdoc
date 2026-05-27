@@ -102,6 +102,71 @@ def analyze_pdf_integrity(
     return _scan_pdf_bytes(file_bytes)
 
 
+def detect_encryption(pdf_bytes: bytes) -> dict:
+    """Check whether a PDF is encrypted / password-protected."""
+    import pymupdf
+
+    try:
+        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    except Exception:
+        return {"is_encrypted": False, "needs_password": False, "permissions": {}}
+
+    try:
+        is_encrypted = bool(doc.is_encrypted)
+        needs_password = bool(doc.needs_pass)
+
+        # Permission flags (only meaningful when encrypted)
+        perms = {}
+        if is_encrypted:
+            perms = {
+                "print": bool(doc.permissions & pymupdf.PDF_PERM_PRINT),
+                "copy": bool(doc.permissions & pymupdf.PDF_PERM_COPY),
+                "modify": bool(doc.permissions & pymupdf.PDF_PERM_MODIFY),
+                "annotate": bool(doc.permissions & pymupdf.PDF_PERM_ANNOTATE),
+            }
+
+        return {
+            "is_encrypted": is_encrypted,
+            "needs_password": needs_password,
+            "permissions": perms,
+        }
+    finally:
+        doc.close()
+
+
+def detect_signatures(pdf_bytes: bytes) -> dict:
+    """Detect digital signature fields in a PDF."""
+    import pymupdf
+
+    try:
+        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    except Exception:
+        return {"has_signatures": False, "count": 0, "details": []}
+
+    try:
+        details: list[dict] = []
+        for page_idx in range(doc.page_count):
+            page = doc.load_page(page_idx)
+            widgets = page.widgets()
+            if not widgets:
+                continue
+            for widget in widgets:
+                if widget.field_type == pymupdf.PDF_WIDGET_TYPE_SIG:
+                    details.append({
+                        "page": page_idx + 1,
+                        "field_name": widget.field_name or "",
+                        "is_signed": bool(widget.field_value),
+                    })
+
+        return {
+            "has_signatures": len(details) > 0,
+            "count": len(details),
+            "details": details,
+        }
+    finally:
+        doc.close()
+
+
 def repair_pdf_bytes(pdf_bytes: bytes) -> bytes:
     import pymupdf
 

@@ -7,7 +7,11 @@ import response
 import s3
 from logger import get_logger, log_event
 from pdf_classifier import PageType, classify_pdf
-from pdf_integrity import analyze_pdf_integrity as _analyze_pdf_integrity
+from pdf_integrity import (
+    analyze_pdf_integrity as _analyze_pdf_integrity,
+    detect_encryption as _detect_encryption,
+    detect_signatures as _detect_signatures,
+)
 from pdf_inspector import analyze_pdf as _analyze_pdf
 
 log = get_logger(__name__)
@@ -117,6 +121,8 @@ def handler(event, context):
             result["is_scanned_pdf"] = False
 
         result["pdf_integrity"] = _analyze_pdf_integrity(source_bytes, job.get("operation"))
+        result["encryption"] = _detect_encryption(source_bytes)
+        result["signatures"] = _detect_signatures(source_bytes)
 
         # Persist full analysis so downstream handlers can read OCR metadata from
         # Dynamo even if the frontend doesn't relay analysis_result in process body.
@@ -131,7 +137,11 @@ def handler(event, context):
                   integrity_score=result["pdf_integrity"]["score"],
                   needs_ocr=result.get("needs_ocr", False),
                   is_scanned_pdf=result.get("is_scanned_pdf", False),
-                  ocr_page_count=len(result.get("ocr_page_indices", [])))
+                  ocr_page_count=len(result.get("ocr_page_indices", [])),
+                  is_encrypted=result["encryption"]["is_encrypted"],
+                  needs_password=result["encryption"]["needs_password"],
+                  has_signatures=result["signatures"]["has_signatures"],
+                  signature_count=result["signatures"]["count"])
         return response.ok(result)
 
     except Exception as exc:
