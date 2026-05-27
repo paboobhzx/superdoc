@@ -18,6 +18,9 @@ RUN apt-get update \
       libreoffice-calc \
       libreoffice-writer \
       libreoffice-java-common \
+      tesseract-ocr \
+      tesseract-ocr-eng \
+      tesseract-ocr-por \
     && rm -rf /var/lib/apt/lists/*
 
 COPY office_image/requirements.txt /tmp/requirements.txt
@@ -32,6 +35,8 @@ COPY ${HANDLER_FILE} ${LAMBDA_TASK_ROOT}/handler.py
 
 ENV LIBREOFFICE_BIN=/usr/bin/libreoffice \
     LIBREOFFICE_TIMEOUT_SECONDS=240 \
+    TESSERACT_BIN=/usr/bin/tesseract \
+    TESSERACT_LANG=eng+por \
     HOME=/tmp
 
 ENTRYPOINT ["python", "-m", "awslambdaric"]

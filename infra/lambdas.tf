@@ -89,6 +89,7 @@ locals {
     docx_to_pdf = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:docx_to_pdf-${var.office_converter_image_tag}" : ""
     xlsx_to_pdf = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:xlsx_to_pdf-${var.office_converter_image_tag}" : ""
     pdf_to_docx = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:pdf_to_docx-${var.office_converter_image_tag}" : ""
+    pdf_to_xls  = var.office_converter_package_type == "Image" ? "${aws_ecr_repository.office_conversion[0].repository_url}:pdf_to_xls-${var.office_converter_image_tag}" : ""
   }
 
   dynamodb_arns = [
@@ -248,6 +249,13 @@ module "lambda_pdf_to_docx" {
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
   layer_arns            = var.office_converter_package_type == "Image" ? [] : local.lambda_layer_arns
+  extra_iam_statements = [
+    {
+      Effect   = "Allow"
+      Action   = ["textract:DetectDocumentText"]
+      Resource = ["*"]
+    },
+  ]
 }
 
 module "lambda_pdf_to_docx_fast" {
@@ -499,17 +507,27 @@ module "lambda_pdf_to_xls" {
   source                = "./modules/lambda"
   name_prefix           = local.name_prefix
   function_name         = "pdf-to-xls"
-  handler               = "handler.handler"
-  runtime               = var.lambda_runtime
-  memory_size           = 512
-  timeout               = 120
-  s3_bucket             = var.lambda_handler_s3_bucket
-  s3_key                = "handlers/pdf_to_xls.zip"
+  handler               = var.office_converter_package_type == "Image" ? "" : "handler.handler"
+  runtime               = var.office_converter_package_type == "Image" ? "" : var.lambda_runtime
+  package_type          = var.office_converter_package_type
+  image_uri             = local.office_converter_images.pdf_to_xls
+  architectures         = var.office_converter_package_type == "Image" ? ["arm64"] : []
+  memory_size           = var.office_converter_package_type == "Image" ? 2048 : 512
+  timeout               = var.office_converter_package_type == "Image" ? 300 : 120
+  s3_bucket             = var.office_converter_package_type == "Image" ? "" : var.lambda_handler_s3_bucket
+  s3_key                = var.office_converter_package_type == "Image" ? "" : "handlers/pdf_to_xls.zip"
   environment_variables = local.lambda_common_env
   common_tags           = local.worker_tags
   dynamodb_table_arns   = local.dynamodb_arns
   media_bucket_arn      = module.s3.bucket_arn
-  layer_arns            = local.lambda_layer_arns
+  layer_arns            = var.office_converter_package_type == "Image" ? [] : local.lambda_layer_arns
+  extra_iam_statements = [
+    {
+      Effect   = "Allow"
+      Action   = ["textract:DetectDocumentText"]
+      Resource = ["*"]
+    },
+  ]
 }
 
 # ── DOCX / XLSX handlers ──────────────────────────────────────────────────────
@@ -735,7 +753,7 @@ module "lambda_video_process" {
   dynamodb_table_arns            = local.dynamodb_arns
   media_bucket_arn               = module.s3.bucket_arn
   layer_arns                     = local.lambda_layer_arns
-  reserved_concurrent_executions = -1  # unlimited — was 0 (blocked)
+  reserved_concurrent_executions = -1 # unlimited — was 0 (blocked)
   extra_iam_statements = [
     {
       Effect = "Allow"
@@ -746,8 +764,8 @@ module "lambda_video_process" {
       Resource = ["*"]
     },
     {
-      Effect = "Allow"
-      Action = ["translate:TranslateText"]
+      Effect   = "Allow"
+      Action   = ["translate:TranslateText"]
       Resource = ["*"]
     },
     {

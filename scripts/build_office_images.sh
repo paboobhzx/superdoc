@@ -51,3 +51,4 @@ build_image() {
 build_image docx_to_pdf
 build_image xlsx_to_pdf
 build_image pdf_to_docx
+build_image pdf_to_xls
