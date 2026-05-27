@@ -73,7 +73,7 @@ def _page_is_scanned(pdf_bytes: bytes, page_index_0based: int) -> bool:
 _OCR_MAX_PAGES = int(os.environ.get("OCR_MAX_PAGES_PER_JOB", "30"))
 
 
-def _build_workbook(pdf_bytes: bytes, *, ocr_page_indices: list[int] | None = None, job: dict | None = None) -> tuple[bytes, list[str]]:
+def _build_workbook(pdf_bytes: bytes, *, ocr_page_indices: list[int] | None = None, job: dict | None = None, job_id: str = "") -> tuple[bytes, list[str]]:
     import pdfplumber
     from openpyxl import Workbook
 
@@ -93,10 +93,14 @@ def _build_workbook(pdf_bytes: bytes, *, ocr_page_indices: list[int] | None = No
         pages = list(pdf.pages)
         log_event("info", "pdfplumber_opened", job, page_count=len(pages))
 
+        total_pages = len(pages)
         if not pages:
             workbook.create_sheet("Page 1")
         for page_index, page in enumerate(pages, start=1):
             page_0 = page_index - 1
+            if job_id and total_pages > 0:
+                pct = int(page_index / total_pages * 90)  # reserve 10% for save
+                dynamo.update_progress(job_id, pct, f"Page {page_index}/{total_pages}")
             sheet = workbook.create_sheet()
             sheet.title = f"Page {page_index}"
             try:
@@ -221,7 +225,8 @@ def handler(event, context):
         data = s3.get_bytes(file_key)
         log_event("info", "file_loaded", job, size_bytes=len(data))
 
-        result, warnings = _build_workbook(data, ocr_page_indices=ocr_page_indices, job=job)
+        dynamo.update_progress(job_id, 5, "Reading PDF")
+        result, warnings = _build_workbook(data, ocr_page_indices=ocr_page_indices, job=job, job_id=job_id)
         out_key = s3.make_output_key(job_id, file_key, _output_filename(body, file_key))
         s3.put_bytes(out_key, result)
 

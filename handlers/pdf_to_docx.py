@@ -635,8 +635,11 @@ def handler(event, context):
     file_key = body["file_key"]
     try:
         dynamo.update_job(job_id, status="PROCESSING")
+        dynamo.update_progress(job_id, 5, "Reading PDF")
         data = s3.get_bytes(file_key)
+        dynamo.update_progress(job_id, 15, "Converting")
         result = _process(data, body)
+        dynamo.update_progress(job_id, 90, "Saving output")
         out_key = s3.make_output_key(job_id, file_key, _output_filename(body, file_key))
         s3.put_bytes(out_key, result)
         dynamo.mark_done(job_id, out_key)

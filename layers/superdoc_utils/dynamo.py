@@ -142,6 +142,14 @@ def mark_done_multi(job_id: str, output_keys: dict) -> None:
     update_job(job_id, **fields)
 
 
+def update_progress(job_id: str, percent: int, message: str | None = None) -> None:
+    """Set the job's progress percentage (0-100) with an optional status message."""
+    fields: dict = {"progress": max(0, min(100, int(percent)))}
+    if message is not None:
+        fields["progress_message"] = message
+    update_job(job_id, **fields)
+
+
 def mark_done(job_id: str, output_key: str) -> None:
     completed_at = int(time.time())
     job = get_job(job_id)
@@ -172,6 +180,7 @@ def mark_done(job_id: str, output_key: str) -> None:
         "status": "DONE",
         "output_key": output_key,
         "completed_at": completed_at,
+        "progress": 100,
     }
     if actual_seconds is not None:
         fields["actual_seconds"] = actual_seconds
