@@ -685,6 +685,25 @@ OPERATIONS: dict[str, dict] = {
         "label": "Process video",
         "lambda_suffix": "video-process",
     },
+    "pdf_make_editable": {
+        "intent": "transform",
+        "kind": "backend_job",
+        "input_types": ["pdf"],
+        "output_type": "pdf",
+        "targets": ["pdf"],
+        "editor_route": None,
+        "requires_multiple": False,
+        "params_schema": {
+            "language": {
+                "type": "string",
+                "default": "eng+por",
+                "label": "OCR language",
+            },
+        },
+        "category": "pdf",
+        "label": "Make PDF Editable",
+        "lambda_suffix": "pdf-make-editable",
+    },
 }
 
 

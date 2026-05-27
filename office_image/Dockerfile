@@ -18,6 +18,7 @@ RUN apt-get update \
       libreoffice-calc \
       libreoffice-writer \
       libreoffice-java-common \
+      ghostscript \
       tesseract-ocr \
       tesseract-ocr-eng \
       tesseract-ocr-por \
