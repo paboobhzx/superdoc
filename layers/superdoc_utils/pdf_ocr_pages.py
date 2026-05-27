@@ -13,14 +13,13 @@ from __future__ import annotations
 
 import csv
 import io
-import logging
 import os
 import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass, field
 
-log = logging.getLogger(__name__)
+from logger import log_event
 
 _MAX_PAGES = 50
 _DEFAULT_DPI = 200  # 200 gives better accuracy for small numbers vs 150
@@ -64,23 +63,7 @@ def ocr_pdf_pages(
     page_indices: list[int] | None = None,
     dpi: int = _DEFAULT_DPI,
 ) -> list[OcrPageResult]:
-    """Rasterize selected pages and run OCR, returning words with bbox.
-
-    Parameters
-    ----------
-    pdf_bytes : bytes
-        Raw PDF file content.
-    page_indices : list[int] | None
-        0-based page indices to OCR.  ``None`` means all pages.
-    dpi : int
-        Render resolution.  200 is the sweet spot for tabular scans (small
-        numbers like "2.825,50" are misread at 150).
-
-    Returns
-    -------
-    list[OcrPageResult]
-        One result per requested page, in order.
-    """
+    """Rasterize selected pages and run OCR, returning words with bbox."""
     import pymupdf
 
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
@@ -97,17 +80,30 @@ def ocr_pdf_pages(
         for idx in page_indices:
             try:
                 page = doc.load_page(idx)
-                page_rect = page.rect  # width/height in points
+                page_rect = page.rect
                 image_bytes = _rasterize_page(page, dpi)
+
+                log_event("info", "ocr_page_rasterized", None,
+                          page_index=idx, dpi=dpi,
+                          image_bytes=len(image_bytes),
+                          page_width_pts=round(page_rect.width, 1),
+                          page_height_pts=round(page_rect.height, 1))
+
                 words, source = _extract_words(
-                    image_bytes, page_rect.width, page_rect.height, dpi
+                    image_bytes, page_rect.width, page_rect.height, dpi, idx
                 )
                 lines = _words_to_lines(words)
+
+                log_event("info", "ocr_page_done", None,
+                          page_index=idx, source=source,
+                          word_count=len(words), line_count=len(lines))
+
                 results.append(OcrPageResult(
                     page_index=idx, words=words, lines=lines, source=source,
                 ))
-            except Exception:
-                log.exception("OCR failed for page %d", idx)
+            except Exception as exc:
+                log_event("error", "ocr_page_exception", None,
+                          page_index=idx, error=str(exc))
                 results.append(OcrPageResult(page_index=idx))
         return results
     finally:
@@ -136,27 +132,46 @@ def _extract_words(
     page_width_pts: float,
     page_height_pts: float,
     dpi: int,
+    page_index: int = -1,
 ) -> tuple[list[OcrWord], str]:
     """Try Tesseract TSV, fall back to Textract.  Returns (words, source).
 
     Falls through to Textract when Tesseract is unavailable OR returns no
-    words (e.g. wrong language model → low confidence → all filtered out).
+    words (e.g. wrong language model -> low confidence -> all filtered out).
     """
-    words = _extract_words_tesseract_tsv(image_bytes, dpi)
+    tesseract_path = shutil.which(os.environ.get("TESSERACT_BIN", "tesseract"))
+    tesseract_lang = os.environ.get("TESSERACT_LANG", "eng")
+
+    log_event("info", "ocr_extract_start", None,
+              page_index=page_index,
+              tesseract_available=tesseract_path is not None,
+              tesseract_path=tesseract_path or "not_found",
+              tesseract_lang=tesseract_lang,
+              image_bytes=len(image_bytes),
+              dpi=dpi)
+
+    words = _extract_words_tesseract_tsv(image_bytes, dpi, page_index)
     if words:  # None (not found) or [] (no usable words) both fall through
+        log_event("info", "ocr_tesseract_success", None,
+                  page_index=page_index, word_count=len(words))
         return words, "tesseract"
 
-    words = _extract_words_textract(image_bytes, page_width_pts, page_height_pts)
+    log_event("info", "ocr_fallback_to_textract", None,
+              page_index=page_index,
+              tesseract_result="none" if words is None else "empty_after_filter")
+
+    words = _extract_words_textract(image_bytes, page_width_pts, page_height_pts, page_index)
+    log_event("info", "ocr_textract_result", None,
+              page_index=page_index, word_count=len(words))
     return words, "textract"
 
 
 def _extract_words_tesseract_tsv(
-    image_bytes: bytes, dpi: int,
+    image_bytes: bytes, dpi: int, page_index: int = -1,
 ) -> list[OcrWord] | None:
     """Run Tesseract in TSV mode, parse word-level bboxes.
 
     Returns None if Tesseract is unavailable or fails, triggering Textract fallback.
-    Coordinates are converted from render-pixels to PDF points: pts = px * 72 / dpi.
     """
     tesseract = shutil.which(os.environ.get("TESSERACT_BIN", "tesseract"))
     if not tesseract:
@@ -177,29 +192,37 @@ def _extract_words_tesseract_tsv(
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired:
+            log_event("warning", "ocr_tesseract_timeout", None,
+                      page_index=page_index, timeout=timeout)
             return None
 
     if completed.returncode != 0:
+        log_event("warning", "ocr_tesseract_nonzero_exit", None,
+                  page_index=page_index, returncode=completed.returncode,
+                  stderr=completed.stderr.decode("utf-8", errors="replace")[:500])
         return None
 
     scale = 72.0 / dpi
     words: list[OcrWord] = []
+    tsv_rows_total = 0
+    tsv_rows_above_conf = 0
+
     reader = csv.DictReader(
         io.StringIO(completed.stdout.decode("utf-8", errors="replace")),
         delimiter="\t",
     )
     for row in reader:
-        # TSV fields: level, page_num, block_num, par_num, line_num, word_num,
-        #             left, top, width, height, conf, text
         text = (row.get("text") or "").strip()
         if not text:
             continue
+        tsv_rows_total += 1
         try:
             conf = int(float(row.get("conf", "-1")))
         except (ValueError, TypeError):
             conf = -1
         if conf < 30:
             continue
+        tsv_rows_above_conf += 1
 
         left = int(row.get("left", 0))
         top = int(row.get("top", 0))
@@ -214,6 +237,12 @@ def _extract_words_tesseract_tsv(
             bottom=(top + height) * scale,
         ))
 
+    log_event("info", "ocr_tesseract_tsv_parsed", None,
+              page_index=page_index,
+              tsv_rows_total=tsv_rows_total,
+              tsv_rows_above_confidence=tsv_rows_above_conf,
+              words_returned=len(words))
+
     return words
 
 
@@ -221,6 +250,7 @@ def _extract_words_textract(
     image_bytes: bytes,
     page_width_pts: float,
     page_height_pts: float,
+    page_index: int = -1,
 ) -> list[OcrWord]:
     """Use AWS Textract detect_document_text for word-level bboxes.
 
@@ -231,6 +261,7 @@ def _extract_words_textract(
     client = boto3.client("textract")
     resp = client.detect_document_text(Document={"Bytes": image_bytes})
 
+    blocks_total = len(resp.get("Blocks", []))
     words: list[OcrWord] = []
     for block in resp.get("Blocks", []):
         if block.get("BlockType") != "WORD":
@@ -251,6 +282,11 @@ def _extract_words_textract(
             x1=(left + w) * page_width_pts,
             bottom=(top + h) * page_height_pts,
         ))
+
+    log_event("info", "ocr_textract_parsed", None,
+              page_index=page_index,
+              blocks_total=blocks_total,
+              words_returned=len(words))
 
     return words
 

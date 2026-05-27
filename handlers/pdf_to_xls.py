@@ -5,7 +5,7 @@ import os
 import dynamo
 import output_naming
 import s3
-from logger import get_logger
+from logger import get_logger, log_event
 
 log = get_logger(__name__)
 
@@ -55,10 +55,7 @@ def _non_empty_row_count(rows: list[list[str]]) -> int:
 
 
 def _page_is_scanned(pdf_bytes: bytes, page_index_0based: int) -> bool:
-    """Detect if a page is a scanned image (no extractable text, has images).
-
-    Uses pymupdf directly — does not depend on upstream analysis_result.
-    """
+    """Detect if a page is a scanned image (no extractable text, has images)."""
     import pymupdf
 
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
@@ -66,24 +63,17 @@ def _page_is_scanned(pdf_bytes: bytes, page_index_0based: int) -> bool:
         page = doc.load_page(page_index_0based)
         text = (page.get_text("text") or "").strip()
         images = page.get_images(full=False)
-        has_text = len(text) > 10  # ignore trivial artifacts
+        has_text = len(text) > 10
         has_images = len(images) > 0
-        log.info(
-            "page_scan_check",
-            extra={
-                "page": page_index_0based,
-                "text_len": len(text),
-                "has_text": has_text,
-                "image_count": len(images),
-                "is_scanned": not has_text and has_images,
-            },
-        )
         return not has_text and has_images
     finally:
         doc.close()
 
 
-def _build_workbook(pdf_bytes: bytes, *, ocr_page_indices: list[int] | None = None, job_id: str = "unknown") -> tuple[bytes, list[str]]:
+_OCR_MAX_PAGES = int(os.environ.get("OCR_MAX_PAGES_PER_JOB", "30"))
+
+
+def _build_workbook(pdf_bytes: bytes, *, ocr_page_indices: list[int] | None = None, job: dict | None = None) -> tuple[bytes, list[str]]:
     import pdfplumber
     from openpyxl import Workbook
 
@@ -94,15 +84,15 @@ def _build_workbook(pdf_bytes: bytes, *, ocr_page_indices: list[int] | None = No
     last_header: list[str] | None = None
     warnings: list[str] = []
     ocr_set = set(ocr_page_indices or [])
+    ocr_pages_used = 0
 
-    log.info(
-        "build_workbook_start",
-        extra={"job_id": job_id, "ocr_page_indices": list(ocr_set), "ocr_set_size": len(ocr_set)},
-    )
+    log_event("info", "build_workbook_start", job,
+              ocr_page_indices=list(ocr_set), ocr_set_size=len(ocr_set))
 
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         pages = list(pdf.pages)
-        log.info("pdfplumber_pages", extra={"job_id": job_id, "page_count": len(pages)})
+        log_event("info", "pdfplumber_opened", job, page_count=len(pages))
+
         if not pages:
             workbook.create_sheet("Page 1")
         for page_index, page in enumerate(pages, start=1):
@@ -113,70 +103,60 @@ def _build_workbook(pdf_bytes: bytes, *, ocr_page_indices: list[int] | None = No
                 rows = _page_rows(page)
             except Exception as exc:
                 warnings.append(f"Page {page_index} could not be extracted: {exc}")
-                log.warning("page_extract_error", extra={"job_id": job_id, "page": page_index, "error": str(exc)})
+                log_event("warning", "page_extract_error", job,
+                          page_index=page_0, error=str(exc))
                 rows = []
 
             non_empty = _non_empty_row_count(rows)
-            log.info(
-                "page_extract_result",
-                extra={
-                    "job_id": job_id,
-                    "page": page_index,
-                    "total_rows": len(rows),
-                    "non_empty_rows": non_empty,
-                    "in_ocr_set": page_0 in ocr_set,
-                },
-            )
+            log_event("info", "page_extract_result", job,
+                      page_index=page_0, total_rows=len(rows),
+                      non_empty_rows=non_empty, in_ocr_set=page_0 in ocr_set)
 
-            # OCR fallback: trigger when pdfplumber returned nothing usable.
-            # Two paths to trigger:
-            #   1. Page is in ocr_page_indices (from upstream analysis)
-            #   2. Page has no text but has images (inline detection)
-            needs_ocr = False
-            if non_empty == 0:
+            # Self-sufficient OCR fallback: always try OCR for empty pages.
+            # Upstream ocr_page_indices is a priority hint, not a gate.
+            if non_empty == 0 and ocr_pages_used < _OCR_MAX_PAGES:
+                trigger = None
                 if page_0 in ocr_set:
-                    needs_ocr = True
-                    log.info("ocr_trigger_upstream", extra={"job_id": job_id, "page": page_index})
-                else:
-                    # Inline detection: check if this is a scanned page
-                    is_scanned = _page_is_scanned(pdf_bytes, page_0)
-                    if is_scanned:
-                        needs_ocr = True
-                        log.info("ocr_trigger_inline_detection", extra={"job_id": job_id, "page": page_index})
+                    trigger = "upstream"
+                elif _page_is_scanned(pdf_bytes, page_0):
+                    trigger = "inline_detection"
 
-            if needs_ocr:
-                try:
-                    from pdf_ocr_pages import ocr_pdf_pages
-                    log.info("ocr_starting", extra={"job_id": job_id, "page": page_index})
-                    ocr_results = ocr_pdf_pages(pdf_bytes, page_indices=[page_0])
-                    ocr_result = ocr_results[0] if ocr_results else None
-                    log.info(
-                        "ocr_result",
-                        extra={
-                            "job_id": job_id,
-                            "page": page_index,
-                            "source": ocr_result.source if ocr_result else "none",
-                            "word_count": len(ocr_result.words) if ocr_result else 0,
-                            "line_count": len(ocr_result.lines) if ocr_result else 0,
-                            "first_words": [w.text for w in (ocr_result.words if ocr_result else [])[:5]],
-                        },
-                    )
-                    if ocr_result and ocr_result.words:
-                        ocr_words = [w.to_pdfplumber_dict() for w in ocr_result.words]
-                        rows = _rows_from_words(ocr_words)
-                        non_empty = _non_empty_row_count(rows)
-                        sheet.title = f"Page {page_index} (OCR)"
-                        warnings.append(f"Page {page_index} extracted via OCR ({ocr_result.source}, {len(ocr_result.words)} words).")
-                        log.info(
-                            "ocr_rows_built",
-                            extra={"job_id": job_id, "page": page_index, "rows": len(rows), "non_empty": non_empty},
-                        )
-                    else:
-                        log.warning("ocr_no_words", extra={"job_id": job_id, "page": page_index})
-                        warnings.append(f"Page {page_index} OCR returned no words.")
-                except Exception as ocr_exc:
-                    log.exception("ocr_failed", extra={"job_id": job_id, "page": page_index})
-                    warnings.append(f"Page {page_index} OCR failed: {ocr_exc}")
+                if trigger:
+                    ocr_pages_used += 1
+                    log_event("info", "ocr_started", job,
+                              page_index=page_0, trigger=trigger,
+                              ocr_pages_used=ocr_pages_used)
+                    try:
+                        from pdf_ocr_pages import ocr_pdf_pages
+                        ocr_results = ocr_pdf_pages(pdf_bytes, page_indices=[page_0])
+                        r = ocr_results[0] if ocr_results else None
+                        log_event("info", "ocr_result", job,
+                                  page_index=page_0,
+                                  source=r.source if r else "none",
+                                  word_count=len(r.words) if r else 0,
+                                  line_count=len(r.lines) if r else 0,
+                                  first_words=[w.text for w in (r.words if r else [])[:5]])
+                        if r and r.words:
+                            ocr_words = [w.to_pdfplumber_dict() for w in r.words]
+                            rows = _rows_from_words(ocr_words)
+                            non_empty = _non_empty_row_count(rows)
+                            sheet.title = f"Page {page_index} (OCR)"
+                            warnings.append(
+                                f"Page {page_index} extracted via OCR "
+                                f"({r.source}, {len(r.words)} words)."
+                            )
+                            log_event("info", "ocr_succeeded", job,
+                                      page_index=page_0, rows=len(rows),
+                                      non_empty_rows=non_empty)
+                        else:
+                            log_event("warning", "ocr_no_words", job,
+                                      page_index=page_0,
+                                      source=r.source if r else "none")
+                            warnings.append(f"Page {page_index} OCR returned no words.")
+                    except Exception as ocr_exc:
+                        log_event("error", "ocr_failed", job,
+                                  page_index=page_0, error=str(ocr_exc))
+                        warnings.append(f"Page {page_index} OCR failed: {ocr_exc}")
 
             for row_index, row in enumerate(rows, start=1):
                 for col_index, value in enumerate(row, start=1):
@@ -199,7 +179,10 @@ def _build_workbook(pdf_bytes: bytes, *, ocr_page_indices: list[int] | None = No
                     consolidated.cell(row=consolidated_row, column=col_index, value=value)
                 consolidated_row += 1
 
-    log.info("build_workbook_done", extra={"job_id": job_id, "consolidated_rows": consolidated_row - 1, "warnings": warnings})
+    log_event("info", "build_workbook_done", job,
+              consolidated_rows=consolidated_row - 1,
+              ocr_pages_used=ocr_pages_used,
+              warning_count=len(warnings))
     out = io.BytesIO()
     workbook.save(out)
     return out.getvalue(), warnings
@@ -216,32 +199,40 @@ def handler(event, context):
     analysis_result = body.get("analysis_result") or {}
     ocr_page_indices = analysis_result.get("ocr_page_indices") or []
 
-    log.info(
-        "pdf_to_xls_handler_start",
-        extra={
-            "job_id": job_id,
-            "file_key": file_key,
-            "has_analysis_result": bool(analysis_result),
-            "needs_ocr": analysis_result.get("needs_ocr"),
-            "ocr_page_indices": ocr_page_indices,
-            "recommendation": analysis_result.get("recommendation"),
-            "body_keys": list(body.keys()),
-        },
-    )
+    job = {
+        "job_id": job_id,
+        "operation": "pdf_to_xls",
+        "file_key": file_key,
+        "file_size_bytes": body.get("file_size_bytes", 0),
+        "file_name": body.get("file_name", ""),
+        "session_id": body.get("session_id", ""),
+        "user_id": body.get("user_id", ""),
+    }
+
+    log_event("info", "job_started", job,
+              has_analysis_result=bool(analysis_result),
+              needs_ocr=analysis_result.get("needs_ocr"),
+              ocr_page_indices=ocr_page_indices,
+              recommendation=analysis_result.get("recommendation"),
+              body_keys=list(body.keys()))
 
     try:
         dynamo.update_job(job_id, status="PROCESSING")
         data = s3.get_bytes(file_key)
-        log.info("pdf_bytes_loaded", extra={"job_id": job_id, "size_bytes": len(data)})
-        result, warnings = _build_workbook(data, ocr_page_indices=ocr_page_indices, job_id=job_id)
+        log_event("info", "file_loaded", job, size_bytes=len(data))
+
+        result, warnings = _build_workbook(data, ocr_page_indices=ocr_page_indices, job=job)
         out_key = s3.make_output_key(job_id, file_key, _output_filename(body, file_key))
         s3.put_bytes(out_key, result)
-        log.info("xlsx_written", extra={"job_id": job_id, "output_size": len(result), "warnings": warnings})
+
+        log_event("info", "job_completed", job,
+                  output_size=len(result), warning_count=len(warnings),
+                  warnings=warnings)
         if warnings:
             dynamo.update_job(job_id, job_warnings=warnings)
         dynamo.mark_done(job_id, out_key)
-        log.info("pdf_to_xls_done", extra={"job_id": job_id})
     except Exception as exc:
+        log_event("error", "job_failed", job, error=str(exc))
         log.exception("pdf_to_xls failed: %s", exc)
         dynamo.mark_failed(job_id, str(exc))
         raise

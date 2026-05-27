@@ -5,7 +5,7 @@ import json
 import dynamo
 import response
 import s3
-from logger import get_logger
+from logger import get_logger, log_event
 from pdf_classifier import PageType, classify_pdf
 from pdf_integrity import analyze_pdf_integrity as _analyze_pdf_integrity
 from pdf_inspector import analyze_pdf as _analyze_pdf
@@ -123,18 +123,17 @@ def handler(event, context):
         safe_result = json.loads(json.dumps(result, default=str))
         dynamo.update_job(job_id, pdf_integrity=result["pdf_integrity"], analysis_result=safe_result)
 
-        log.info(
-            "pdf_analyze done",
-            extra={
-                "job_id": job_id,
-                "complexity_score": result["complexity_score"],
-                "recommendation": result["recommendation"],
-                "page_count": result["page_count"],
-                "integrity_score": result["pdf_integrity"]["score"],
-            },
-        )
+        log_event("info", "analysis_completed", None,
+                  job_id=job_id,
+                  complexity_score=result["complexity_score"],
+                  recommendation=result["recommendation"],
+                  page_count=result["page_count"],
+                  integrity_score=result["pdf_integrity"]["score"],
+                  needs_ocr=result.get("needs_ocr", False),
+                  is_scanned_pdf=result.get("is_scanned_pdf", False),
+                  ocr_page_count=len(result.get("ocr_page_indices", [])))
         return response.ok(result)
 
     except Exception as exc:
-        log.exception("pdf_analyze error: %s", exc)
+        log_event("error", "analysis_failed", None, job_id=job_id, error=str(exc))
         return response.error("Analysis failed", 500)

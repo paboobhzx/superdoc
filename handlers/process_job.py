@@ -10,7 +10,7 @@ import limits
 import operations
 import response
 import s3
-from logger import get_logger
+from logger import get_logger, log_event
 
 log = get_logger(__name__)
 
@@ -66,6 +66,7 @@ def handler(event, context):
             dynamo.update_job(job_id, params=params)
 
         analysis_result = body_json.get("analysis_result")
+        analysis_source = "body" if analysis_result else "none"
         if analysis_result and isinstance(analysis_result, dict):
             dynamo.update_job(job_id, analysis_result=analysis_result)
             if isinstance(analysis_result.get("pdf_integrity"), dict):
@@ -80,6 +81,14 @@ def handler(event, context):
             stored = job.get("analysis_result")
             if isinstance(stored, dict):
                 analysis_result = stored
+                analysis_source = "dynamo_backfill"
+
+        log_event("info", "dispatch_analysis_resolved", None,
+                  job_id=job_id,
+                  analysis_source=analysis_source,
+                  needs_ocr=needs_ocr,
+                  has_ocr_indices=bool((analysis_result or {}).get("ocr_page_indices")),
+                  operation=job.get("operation"))
 
         job_meta = operations.OPERATIONS.get(job.get("operation"), {})
         input_types = {str(item).lower().lstrip(".") for item in job_meta.get("input_types", [])}
