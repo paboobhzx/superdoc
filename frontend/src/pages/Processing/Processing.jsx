@@ -188,8 +188,9 @@ export function Processing() {
                     />
                   </div>
                   <div className="mt-1.5 flex items-center justify-between">
-                    <span className="text-xs text-on-surface-variant">
+                    <span className="text-xs text-on-surface-variant flex items-center gap-1.5">
                       {job.progress_message || t("processing.working")}
+                      <span className="loading-dots"><span /><span /><span /></span>
                     </span>
                     <span className="text-xs font-bold tabular-nums text-primary">{job.progress}%</span>
                   </div>

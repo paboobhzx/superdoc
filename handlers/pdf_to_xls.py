@@ -14,7 +14,8 @@ def _normalize_cell(value):
     return "" if value is None else str(value)
 
 
-def _rows_from_words(words: list[dict], y_tolerance: float = 3.5) -> list[list[str]]:
+def _rows_from_words(words: list[dict], y_tolerance: float = 5.0) -> list[list[str]]:
+    """Group words into rows by Y position. Simple sequential output."""
     rows: list[list[str]] = []
     current_bucket: int | None = None
     current_row: list[tuple[float, str]] = []
@@ -33,6 +34,109 @@ def _rows_from_words(words: list[dict], y_tolerance: float = 3.5) -> list[list[s
         rows.append([text for _x, text in sorted(current_row, key=lambda item: item[0])])
 
     return rows
+
+
+def _cluster_columns(x_positions: list[float], x_tolerance: float = 15.0) -> list[float]:
+    """Cluster X positions into column boundaries. Returns sorted cluster centres."""
+    if not x_positions:
+        return []
+    sorted_xs = sorted(x_positions)
+    clusters: list[list[float]] = [[sorted_xs[0]]]
+    for x in sorted_xs[1:]:
+        if x - clusters[-1][-1] <= x_tolerance:
+            clusters[-1].append(x)
+        else:
+            clusters.append([x])
+    return [sum(c) / len(c) for c in clusters]
+
+
+def _assign_column(x0: float, col_centres: list[float]) -> int:
+    """Return the index of the nearest column centre."""
+    best_idx = 0
+    best_dist = abs(x0 - col_centres[0])
+    for i, cx in enumerate(col_centres[1:], start=1):
+        d = abs(x0 - cx)
+        if d < best_dist:
+            best_dist = d
+            best_idx = i
+    return best_idx
+
+
+def _rows_from_words_columnar(words: list[dict], y_tolerance: float = 5.0,
+                               x_tolerance: float = 15.0) -> list[list[str]]:
+    """Group words into rows with proper column alignment using X clustering."""
+    if not words:
+        return []
+
+    # Build column centres from all x0 values
+    all_x0 = [float(w.get("x0", 0.0)) for w in words]
+    col_centres = _cluster_columns(all_x0, x_tolerance)
+    n_cols = len(col_centres)
+    if n_cols == 0:
+        return _rows_from_words(words, y_tolerance)
+
+    # Group words into rows by Y bucket
+    sorted_words = sorted(words, key=lambda w: (float(w.get("top", 0.0)), float(w.get("x0", 0.0))))
+    row_buckets: list[list[dict]] = []
+    current_bucket: int | None = None
+    current_group: list[dict] = []
+
+    for w in sorted_words:
+        bucket = int(round(float(w.get("top", 0.0)) / y_tolerance))
+        if current_bucket is None:
+            current_bucket = bucket
+        if bucket != current_bucket and current_group:
+            row_buckets.append(current_group)
+            current_group = []
+            current_bucket = bucket
+        current_group.append(w)
+    if current_group:
+        row_buckets.append(current_group)
+
+    # Build output rows with column assignment
+    rows: list[list[str]] = []
+    for group in row_buckets:
+        row = [""] * n_cols
+        for w in group:
+            col_idx = _assign_column(float(w.get("x0", 0.0)), col_centres)
+            existing = row[col_idx]
+            text = _normalize_cell(w.get("text"))
+            row[col_idx] = f"{existing} {text}".strip() if existing else text
+        rows.append(row)
+
+    return rows
+
+
+def _detect_table_start(rows: list[list[str]], n_cols: int) -> int:
+    """Find the first row where the clean table begins.
+
+    Strategy: scan rows top-down. A "clean" table row uses most of the columns.
+    The header region of irregular documents (like Brazilian payslips) has rows
+    where words are scattered across fewer columns than the main table.
+
+    Returns the index of the first row that starts the consistent table region.
+    """
+    if not rows or n_cols <= 1:
+        return 0
+
+    # A row is "full" if it populates >= 60% of columns
+    threshold = max(2, int(n_cols * 0.6))
+
+    # Find the first stretch of 2+ consecutive "full" rows — that's the table
+    consecutive = 0
+    start_candidate = 0
+    for i, row in enumerate(rows):
+        filled = sum(1 for cell in row if cell.strip())
+        if filled >= threshold:
+            if consecutive == 0:
+                start_candidate = i
+            consecutive += 1
+            if consecutive >= 2:
+                return start_candidate
+        else:
+            consecutive = 0
+
+    return 0
 
 
 def _page_rows(page) -> list[list[str]]:
@@ -142,7 +246,16 @@ def _build_workbook(pdf_bytes: bytes, *, ocr_page_indices: list[int] | None = No
                                   first_words=[w.text for w in (r.words if r else [])[:5]])
                         if r and r.words:
                             ocr_words = [w.to_pdfplumber_dict() for w in r.words]
-                            rows = _rows_from_words(ocr_words)
+                            rows = _rows_from_words_columnar(ocr_words)
+                            # Skip irregular header region
+                            n_cols = max((len(row) for row in rows), default=0)
+                            table_start = _detect_table_start(rows, n_cols)
+                            if table_start > 0:
+                                log_event("info", "header_skipped", job,
+                                          page_index=page_0,
+                                          skipped_rows=table_start,
+                                          total_rows=len(rows))
+                                rows = rows[table_start:]
                             non_empty = _non_empty_row_count(rows)
                             sheet.title = f"Page {page_index} (OCR)"
                             warnings.append(

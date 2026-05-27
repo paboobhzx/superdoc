@@ -295,9 +295,10 @@ def _build_ocr_text_docx(pdf_bytes: bytes, ocr_page_indices: list[int]) -> bytes
                 log_event("info", "ocr_docx_page_skipped", None,
                           page_index=page_num, reason="not_in_ocr_set")
     finally:
+        page_count = doc.page_count
         doc.close()
     log_event("info", "ocr_docx_built", None,
-              total_paragraphs=total_paragraphs, page_count=doc.page_count)
+              total_paragraphs=total_paragraphs, page_count=page_count)
     out = io.BytesIO()
     docx_doc.save(out)
     return out.getvalue()
@@ -510,14 +511,8 @@ def _process(pdf_bytes: bytes, body: dict) -> bytes:
         )
 
     # ── Mode 0: pdf2docx on the full document, QA gate, fallback ─────────────
-    #
-    # We run pdf2docx on the whole document (not per-page) because:
-    # 1. pdf2docx is designed for full documents — it resolves cross-page layout
-    # 2. Per-page extraction + merge produced "unreadable content" errors in Word
-    # 3. The QA gate can still detect catastrophic failures and fall back
-    #
-    # For large PDFs that exceed CHUNK_SIZE, split by page range, convert each
-    # chunk as a whole, then merge. This preserves whole-chunk layout continuity.
+
+    dynamo.update_progress(job_id, 20, "Analysing pages")
 
     # Count total extractable words for QA gate
     total_pdf_words = 0
@@ -532,6 +527,8 @@ def _process(pdf_bytes: bytes, body: dict) -> bytes:
             fitz_doc.close()
     except Exception:
         pass
+
+    dynamo.update_progress(job_id, 30, "Converting to DOCX")
 
     if n_pages <= _CHUNK_SIZE:
         docx_result = _pdf2docx_convert(pdf_bytes, body)
@@ -552,6 +549,8 @@ def _process(pdf_bytes: bytes, body: dict) -> bytes:
             )
             docx_chunks.append(_pdf2docx_convert(chunk_buf.getvalue(), body))
         docx_result = _merge_docx(docx_chunks)
+
+    dynamo.update_progress(job_id, 60, "Quality check")
 
     # QA gate: check word retention.
     if total_pdf_words == 0:
@@ -580,17 +579,30 @@ def _process(pdf_bytes: bytes, body: dict) -> bytes:
                     _doc.close()
                 log_event("info", "inline_scan_detection", None,
                           job_id=job_id, detected_ocr_indices=ocr_indices)
+            except Exception as _det_exc:
+                log_event("error", "inline_scan_detection_failed", None,
+                          job_id=job_id, error=str(_det_exc))
+
+        # Safety net: if still no OCR indices, assume all pages are scanned
+        if not ocr_indices:
+            try:
+                import pymupdf as _mu2
+                _doc2 = _mu2.open(stream=pdf_bytes, filetype="pdf")
+                ocr_indices = list(range(_doc2.page_count))
+                _doc2.close()
+                log_event("info", "assuming_all_pages_scanned", None,
+                          job_id=job_id, page_count=len(ocr_indices))
             except Exception:
-                log_event("error", "inline_scan_detection_failed", None, job_id=job_id)
+                pass
 
         if ocr_indices:
+            dynamo.update_progress(job_id, 65, "Running OCR")
             log_event("info", "using_ocr_text_docx", None,
                       job_id=job_id, ocr_indices=ocr_indices)
             docx_result = _build_ocr_text_docx(pdf_bytes, ocr_indices)
-        elif fallback_strategy == "image":
-            docx_result = _build_image_fallback_docx(pdf_bytes)
         else:
-            docx_result = _build_text_fallback_docx(pdf_bytes)
+            # text fallback for scanned PDF is guaranteed empty — use image instead
+            docx_result = _build_image_fallback_docx(pdf_bytes)
     elif total_pdf_words > 0:
         try:
             docx_words = _count_words_docx(docx_result)

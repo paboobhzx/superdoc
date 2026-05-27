@@ -63,8 +63,9 @@ function AnalysisStrip({ analysisState, analysisResult, analysisStartedAt, integ
       <div className="mb-4 rounded-xl border border-outline-variant/20 bg-surface-container px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent shrink-0" />
-          <span className="text-sm font-semibold text-on-surface">
+          <span className="text-sm font-semibold text-on-surface flex items-center gap-1.5">
             {analyzeMessage}
+            <span className="loading-dots text-primary"><span /><span /><span /></span>
           </span>
           <span className="ml-auto text-xs tabular-nums text-on-surface-variant">
             {elapsed}{t("params.pdfAnalyze.seconds")}

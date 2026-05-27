@@ -695,9 +695,15 @@ OPERATIONS: dict[str, dict] = {
         "requires_multiple": False,
         "params_schema": {
             "language": {
-                "type": "string",
+                "type": "enum",
                 "default": "eng+por",
                 "label": "OCR language",
+                "values": ["eng+por", "eng", "por"],
+                "labels": {
+                    "eng+por": "English + Portuguese",
+                    "eng": "English",
+                    "por": "Portuguese",
+                },
             },
         },
         "category": "pdf",

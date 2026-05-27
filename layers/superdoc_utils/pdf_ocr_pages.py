@@ -41,7 +41,8 @@ class OcrWord:
 
     def to_pdfplumber_dict(self) -> dict:
         """Return a dict compatible with ``_rows_from_words`` in pdf_to_xls."""
-        return {"text": self.text, "top": self.top, "x0": self.x0}
+        return {"text": self.text, "top": self.top, "x0": self.x0,
+                "x1": self.x1, "bottom": self.bottom}
 
 
 @dataclass(frozen=True)
