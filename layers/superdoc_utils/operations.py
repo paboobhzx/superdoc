@@ -16,6 +16,41 @@ from operation_constants import (
 from operation_validation import ValidationResult, validate_params
 
 
+PDF_EXTRACTION_MODE_PARAM = {
+    "type": "string",
+    "required": False,
+    "default": "auto",
+    "enum": ["auto", "text", "tables", "visual"],
+    "label": "Extraction mode",
+    "labels": {
+        "auto": "Automatic",
+        "text": "Prioritize text",
+        "tables": "Prioritize tables",
+        "visual": "Preserve visual when uncertain",
+    },
+}
+
+PDF_OCR_LANGUAGE_PARAM = {
+    "type": "string",
+    "required": False,
+    "default": "eng+por",
+    "enum": ["eng+por", "eng", "por"],
+    "label": "OCR language",
+    "labels": {
+        "eng+por": "English + Portuguese",
+        "eng": "English",
+        "por": "Portuguese",
+    },
+}
+
+PDF_INCLUDE_DIAGNOSTICS_PARAM = {
+    "type": "boolean",
+    "required": False,
+    "default": True,
+    "label": "Include diagnostics",
+}
+
+
 # Canonical public capability catalog.
 # Operations intentionally not exposed here:
 # - PDF rotate backend edit
@@ -232,6 +267,9 @@ OPERATIONS: dict[str, dict] = {
                 "default": "",
                 "label": "Page range (e.g. 1-10, 3, 5-8)",
             },
+            "extraction_mode": PDF_EXTRACTION_MODE_PARAM,
+            "ocr_language": PDF_OCR_LANGUAGE_PARAM,
+            "include_diagnostics": PDF_INCLUDE_DIAGNOSTICS_PARAM,
         },
         "category": "convert",
         "label": "PDF to Word (.docx)",
@@ -245,7 +283,11 @@ OPERATIONS: dict[str, dict] = {
         "targets": ["xlsx"],
         "editor_route": None,
         "requires_multiple": False,
-        "params_schema": {},
+        "params_schema": {
+            "extraction_mode": PDF_EXTRACTION_MODE_PARAM,
+            "ocr_language": PDF_OCR_LANGUAGE_PARAM,
+            "include_diagnostics": PDF_INCLUDE_DIAGNOSTICS_PARAM,
+        },
         "category": "convert",
         "label": "PDF to Excel (.xlsx)",
         "lambda_suffix": "pdf-to-xls",

@@ -182,6 +182,33 @@ def validate_params(operation: str, params: dict | None) -> ValidationResult:
         if raw_fs:
             cleaned["fallback_strategy"] = raw_fs.lower()
 
+    if operation in ("pdf_to_docx", "pdf_to_xls"):
+        raw_mode = params.get("extraction_mode")
+        ok_flag, err_msg = _one_of(
+            raw_mode,
+            name="extraction_mode",
+            allowed={"auto", "text", "tables", "visual"},
+        )
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if raw_mode:
+            cleaned["extraction_mode"] = raw_mode.lower()
+
+        raw_ocr_language = params.get("ocr_language")
+        ok_flag, err_msg = _one_of(
+            raw_ocr_language,
+            name="ocr_language",
+            allowed={"eng+por", "eng", "por"},
+        )
+        if not ok_flag:
+            return ValidationResult(ok=False, error=err_msg)
+        if raw_ocr_language:
+            cleaned["ocr_language"] = raw_ocr_language.lower()
+
+        err = _bool_param(params, cleaned, "include_diagnostics")
+        if err:
+            return err
+
     if operation in ("pdf_annotate", "pdf_remove_watermark"):
         err = _string_param(params, cleaned, "watermark_text", max_len=200)
         if err:

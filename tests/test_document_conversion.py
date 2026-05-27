@@ -18,6 +18,8 @@ def _install_handler_stubs():
 
     dynamo = types.SimpleNamespace(
         update_job=lambda *args, **kwargs: None,
+        update_progress=lambda *args, **kwargs: None,
+        record_page_result=lambda *args, **kwargs: None,
         mark_done=lambda *args, **kwargs: None,
         mark_failed=lambda *args, **kwargs: None,
     )
@@ -29,7 +31,7 @@ def _install_handler_stubs():
     logger = types.SimpleNamespace(get_logger=lambda name: types.SimpleNamespace(
         info=lambda *args, **kwargs: None,
         exception=lambda *args, **kwargs: None,
-    ))
+    ), log_event=lambda *args, **kwargs: None)
     limits = types.SimpleNamespace(
         assert_pdf_page_limit=lambda *args, **kwargs: None,
         count_pdf_pages=lambda *args, **kwargs: 1,

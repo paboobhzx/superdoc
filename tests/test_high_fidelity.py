@@ -80,6 +80,15 @@ class OperationsSchemaTests(unittest.TestCase):
         self.assertIn("page_range", schema)
         self.assertEqual(schema["page_range"]["type"], "string")
         self.assertFalse(schema["page_range"]["required"])
+        self.assertIn("extraction_mode", schema)
+        self.assertIn("ocr_language", schema)
+        self.assertIn("include_diagnostics", schema)
+
+    def test_extraction_params_in_schema_for_pdf_to_xls(self):
+        schema = self.ops.OPERATIONS["pdf_to_xls"]["params_schema"]
+        self.assertIn("extraction_mode", schema)
+        self.assertIn("ocr_language", schema)
+        self.assertIn("include_diagnostics", schema)
 
     def test_high_fidelity_not_in_schema_for_pdf_to_image(self):
         schema = self.ops.OPERATIONS["pdf_to_image"]["params_schema"]
@@ -129,6 +138,20 @@ class ParamsValidationTests(unittest.TestCase):
         result = self.validation.validate_params("pdf_to_docx", {"page_range": "1" * 201})
         self.assertFalse(result.ok)
         self.assertIn("page_range is too long", result.error)
+
+    def test_pdf_to_docx_accepts_extraction_mode_auto(self):
+        result = self.validation.validate_params("pdf_to_docx", {"extraction_mode": "auto"})
+        self.assertTrue(result.ok)
+        self.assertEqual(result.params["extraction_mode"], "auto")
+
+    def test_pdf_to_xls_rejects_invalid_extraction_mode(self):
+        result = self.validation.validate_params("pdf_to_xls", {"extraction_mode": "contracheque"})
+        self.assertFalse(result.ok)
+
+    def test_pdf_to_xls_accepts_ocr_language_eng_por(self):
+        result = self.validation.validate_params("pdf_to_xls", {"ocr_language": "eng+por"})
+        self.assertTrue(result.ok)
+        self.assertEqual(result.params["ocr_language"], "eng+por")
 
 
 def _make_dispatch_module(invocations: list) -> types.ModuleType:
