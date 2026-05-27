@@ -65,7 +65,7 @@
       "alternativeHint": "Voce ainda pode escolher outro formato de saida abaixo.",
       "scannedTitle": "Paginas digitalizadas detectadas",
       "scannedBody": "Este PDF contem paginas digitalizadas. O OCR sera executado automaticamente durante a conversao para extrair o texto.",
-      "scannedMakeEditableHint": "Para um PDF pesquisavel/selecionavel sem converter, use \"Tornar PDF Editavel\".",
+      "scannedMakeEditableHint": "Quando necessario, tentaremos reconhecer texto automaticamente durante a conversao. O resultado pode ser limitado em PDFs de baixa qualidade.",
       "ocrPageCount": "{{count}} pagina(s) usarao OCR",
       "encryptedTitle": "PDF protegido por senha",
       "encryptedBody": "Este PDF esta criptografado. Algumas operacoes podem ser restritas dependendo das permissoes definidas pelo proprietario do documento.",

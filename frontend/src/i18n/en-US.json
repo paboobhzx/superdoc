@@ -65,7 +65,7 @@
       "alternativeHint": "You can still choose a different output format below.",
       "scannedTitle": "Scanned pages detected",
       "scannedBody": "This PDF contains scanned pages. OCR will run automatically during conversion to extract text.",
-      "scannedMakeEditableHint": "For a searchable/selectable PDF without converting, use \"Make PDF Editable\".",
+      "scannedMakeEditableHint": "When needed, we will try to recognize text automatically during conversion. Results may be limited on low-quality PDFs.",
       "ocrPageCount": "{{count}} page(s) will use OCR",
       "encryptedTitle": "Password-protected PDF",
       "encryptedBody": "This PDF is encrypted. Some operations may be restricted depending on the permissions set by the document owner.",

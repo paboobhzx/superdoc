@@ -99,6 +99,10 @@ class OperationCatalogTests(unittest.TestCase):
         ops = {item["operation"] for item in self.operations.list_operations("docx")}
         self.assertTrue({"doc_edit", "docx_to_txt", "docx_to_pdf"}.issubset(ops))
 
+    def test_pdf_make_editable_not_in_catalog(self):
+        ops = {item["operation"] for item in self.operations.list_operations("pdf")}
+        self.assertNotIn("pdf_make_editable", ops)
+
 
 class PdfToDocxTests(unittest.TestCase):
     def setUp(self):
