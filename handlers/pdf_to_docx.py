@@ -265,6 +265,7 @@ def _build_ocr_text_docx(pdf_bytes: bytes, ocr_page_indices: list[int]) -> bytes
     ocr_set = set(ocr_page_indices)
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     docx_doc = DocxDocument()
+    total_paragraphs = 0
     try:
         for page_num in range(doc.page_count):
             if page_num > 0:
@@ -274,13 +275,30 @@ def _build_ocr_text_docx(pdf_bytes: bytes, ocr_page_indices: list[int]) -> bytes
                 for line in native_text.split("\n"):
                     if line.strip():
                         docx_doc.add_paragraph(line.strip())
+                        total_paragraphs += 1
+                log.info("ocr_docx_page_native", extra={"page": page_num, "text_len": len(native_text)})
             elif page_num in ocr_set:
+                log.info("ocr_docx_page_ocr_start", extra={"page": page_num})
                 results = ocr_pdf_pages(pdf_bytes, page_indices=[page_num])
-                if results and results[0].lines:
-                    for line in results[0].lines:
+                r = results[0] if results else None
+                log.info(
+                    "ocr_docx_page_ocr_result",
+                    extra={
+                        "page": page_num,
+                        "source": r.source if r else "none",
+                        "word_count": len(r.words) if r else 0,
+                        "line_count": len(r.lines) if r else 0,
+                    },
+                )
+                if r and r.lines:
+                    for line in r.lines:
                         docx_doc.add_paragraph(line)
+                        total_paragraphs += 1
+            else:
+                log.info("ocr_docx_page_skipped", extra={"page": page_num, "not_in_ocr_set": True})
     finally:
         doc.close()
+    log.info("ocr_docx_built", extra={"total_paragraphs": total_paragraphs, "pages": doc.page_count})
     out = io.BytesIO()
     docx_doc.save(out)
     return out.getvalue()
@@ -541,7 +559,36 @@ def _process(pdf_bytes: bytes, body: dict) -> bytes:
         # Scanned PDF — pdf2docx produced empty result. Use OCR or image fallback.
         analysis_result = body.get("analysis_result") or {}
         ocr_indices = analysis_result.get("ocr_page_indices") or []
+        log.info(
+            "qa_gate scanned pdf detected, total_pdf_words=0",
+            extra={
+                "job_id": job_id,
+                "ocr_indices_from_analysis": ocr_indices,
+                "has_analysis_result": bool(analysis_result),
+                "fallback_strategy": fallback_strategy,
+            },
+        )
+        # If analysis_result didn't provide ocr_page_indices, detect scanned
+        # pages inline using pymupdf (no text + has images = scanned).
+        if not ocr_indices:
+            try:
+                import pymupdf as _mu
+                _doc = _mu.open(stream=pdf_bytes, filetype="pdf")
+                try:
+                    for _pn in range(_doc.page_count):
+                        _pg = _doc.load_page(_pn)
+                        _txt = (_pg.get_text("text") or "").strip()
+                        _imgs = _pg.get_images(full=False)
+                        if len(_txt) <= 10 and len(_imgs) > 0:
+                            ocr_indices.append(_pn)
+                finally:
+                    _doc.close()
+                log.info("inline_scan_detection", extra={"job_id": job_id, "detected_ocr_indices": ocr_indices})
+            except Exception:
+                log.exception("inline_scan_detection_failed", extra={"job_id": job_id})
+
         if ocr_indices:
+            log.info("using ocr_text_docx", extra={"job_id": job_id, "ocr_indices": ocr_indices})
             docx_result = _build_ocr_text_docx(pdf_bytes, ocr_indices)
         elif fallback_strategy == "image":
             docx_result = _build_image_fallback_docx(pdf_bytes)
