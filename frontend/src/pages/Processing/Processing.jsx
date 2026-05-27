@@ -189,18 +189,37 @@ export function Processing() {
 
             <div>
               <h2 className="text-sm font-bold text-on-surface mb-3">{t("processing.status")}</h2>
-              <div className="flex items-center gap-1 mb-2">
-                {STEPS.map((step, i) => (
-                  <div key={step} className={`flex-1 h-2 rounded-full transition-all ${
-                    i <= stepIdx ? 'bg-primary' : 'bg-outline-variant/45'
-                  }`} />
-                ))}
-              </div>
-              <div className="flex justify-between text-[11px] text-on-surface-variant font-semibold">
-                {STEPS.map((step, i) => (
-                  <span key={step} className={i <= stepIdx ? 'text-primary' : ''}>{t(`processing.${step}`)}</span>
-                ))}
-              </div>
+              {typeof job.progress === "number" && !isDone && !isFailed ? (
+                <div>
+                  <div className="relative h-3 w-full rounded-full bg-outline-variant/25 overflow-hidden">
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-500 ease-out"
+                      style={{ width: `${Math.min(job.progress, 100)}%` }}
+                    />
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <span className="text-xs text-on-surface-variant">
+                      {job.progress_message || t("processing.working")}
+                    </span>
+                    <span className="text-xs font-bold tabular-nums text-primary">{job.progress}%</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1 mb-2">
+                    {STEPS.map((step, i) => (
+                      <div key={step} className={`flex-1 h-2 rounded-full transition-all ${
+                        i <= stepIdx ? 'bg-primary' : 'bg-outline-variant/45'
+                      }`} />
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-[11px] text-on-surface-variant font-semibold">
+                    {STEPS.map((step, i) => (
+                      <span key={step} className={i <= stepIdx ? 'text-primary' : ''}>{t(`processing.${step}`)}</span>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container border border-outline-variant/40">
