@@ -10,14 +10,43 @@ const PAPER_SIZES = [
 ]
 
 const BESPOKE_KEYS = new Set(["paper_size", "high_fidelity", "target_format"])
+const UPPERCASE_TOKENS = new Set(["pdf", "docx", "xlsx", "xls", "txt", "csv", "md", "html", "png", "jpg", "jpeg", "gif", "webp", "ocr"])
 
 function schemaOptions(definition) {
   return definition?.values || definition?.enum || []
 }
 
+function fallbackLabel(value) {
+  const raw = String(value || "")
+  const parts = raw.split(/[_\s-]+/).filter(Boolean)
+  if (parts.length === 0) return raw
+  return parts
+    .map((part, index) => {
+      const lower = part.toLowerCase()
+      if (UPPERCASE_TOKENS.has(lower)) return lower.toUpperCase()
+      if (index === 0) return lower.charAt(0).toUpperCase() + lower.slice(1)
+      return lower
+    })
+    .join(" ")
+}
+
 function labelFor(key, definition, t) {
   if (key === "fallback_strategy") return t("paramsPanel.fallbackStrategyLabel")
-  return definition?.label || key.replaceAll("_", " ")
+  if (definition?.label) return definition.label
+  const translated = t(`paramsPanel.paramLabels.${key}`)
+  if (translated !== `paramsPanel.paramLabels.${key}`) return translated
+  return fallbackLabel(key)
+}
+
+function optionLabelFor(option, definition, t) {
+  const optionKey = String(option)
+  if (definition?.labels && typeof definition.labels === "object") {
+    const fromSchema = definition.labels[option] ?? definition.labels[optionKey]
+    if (fromSchema) return fromSchema
+  }
+  const translated = t(`paramsPanel.optionLabels.${optionKey}`)
+  if (translated !== `paramsPanel.optionLabels.${optionKey}`) return translated
+  return fallbackLabel(optionKey)
 }
 
 function defaultValueFor(definition) {
@@ -383,7 +412,7 @@ export function ParamsPanel({
                     onChange={(e) => updateGenericParam(key, e.target.checked)}
                     className="mt-0.5 accent-primary h-4 w-4 shrink-0"
                   />
-                  <span className="text-sm font-semibold capitalize text-on-surface">{label}</span>
+                  <span className="text-sm font-semibold text-on-surface">{label}</span>
                 </label>
               )
             }
@@ -397,7 +426,7 @@ export function ParamsPanel({
                     className="min-h-11 w-full rounded-[var(--radius-md)] border border-outline-variant bg-surface-container-low px-3 text-sm text-on-surface"
                   >
                     {options.map((option) => (
-                      <option key={option} value={option}>{String(option)}</option>
+                      <option key={option} value={option}>{optionLabelFor(option, definition, t)}</option>
                     ))}
                   </select>
                 </label>

@@ -57,8 +57,9 @@ export function useConversionFlow() {
   const [analysisResult, setAnalysisResult] = useState(null)
   const [analysisStartedAt, setAnalysisStartedAt] = useState(null)
   const [integrityDecision, setIntegrityDecision] = useState(null)
-  // Ref for the pre-uploaded job_id (avoids stale closure issues in callbacks)
-  const preUploadedJobIdRef = useRef(null)
+  // Ref for the pre-uploaded job metadata (avoids stale closure issues in callbacks)
+  // Shape: { jobId: string, operation: string } | null
+  const preUploadedJobRef = useRef(null)
   const analysisCancelRef = useRef(false)
   const analysisRunKeyRef = useRef("")
 
@@ -79,7 +80,7 @@ export function useConversionFlow() {
     setAnalysisStartedAt(null)
     setIntegrityDecision(null)
     setRetentionExtended(false)
-    preUploadedJobIdRef.current = null
+    preUploadedJobRef.current = null
     analysisCancelRef.current = true
     analysisRunKeyRef.current = ""
   }, [])
@@ -99,7 +100,7 @@ export function useConversionFlow() {
 
   const handleFiles = useCallback((files) => {
     analysisCancelRef.current = true
-    preUploadedJobIdRef.current = null
+    preUploadedJobRef.current = null
     setAnalysisState("idle")
     setAnalysisResult(null)
     setAnalysisStartedAt(null)
@@ -158,7 +159,7 @@ export function useConversionFlow() {
 
   const _runPreAnalysis = useCallback(async (opMeta, file, runKey) => {
     analysisCancelRef.current = false
-    preUploadedJobIdRef.current = null
+    preUploadedJobRef.current = null
     setAnalysisState("uploading")
     setAnalysisResult(null)
     setAnalysisStartedAt(Date.now())
@@ -173,7 +174,7 @@ export function useConversionFlow() {
         retentionChoice: retentionExtended ? "extended" : "default",
       })
       if (analysisCancelRef.current || analysisRunKeyRef.current !== runKey) return
-      preUploadedJobIdRef.current = job_id
+      preUploadedJobRef.current = { jobId: job_id, operation: opMeta.operation }
       setAnalysisState("analyzing")
 
       const result = await api.analyzePdf(job_id, getSessionId())
@@ -205,7 +206,7 @@ export function useConversionFlow() {
     _runPreAnalysis(analysisOp, pendingFile, runKey)
   }, [pendingFile, batchFiles.length, loadingOps, operations, retentionExtended, _runPreAnalysis])
 
-  const _startConvert = useCallback(async (opMeta, preJobId = null) => {
+  const _startConvert = useCallback(async (opMeta, preUploadedJob = null) => {
     if (!pendingFile || !opMeta || uploading) return
     setErr(null)
     setUploading(true)
@@ -216,10 +217,31 @@ export function useConversionFlow() {
       phase: "uploading",
     })
     try {
-      if (preJobId) {
+      const selectedOperation = opMeta.operation || ""
+      const preJobId = preUploadedJob?.jobId || null
+      const preJobOperation = preUploadedJob?.operation || null
+      const finalAnalysisResult = opMeta.analysisResult || (analysisState === "ready" ? {
+        ...analysisResult,
+        integrity_decision: integrityDecision || null,
+      } : null)
+
+      if (preJobId && preJobOperation && preJobOperation !== selectedOperation) {
+        console.debug("[conversion] skipping pre-uploaded job reuse due to operation mismatch", {
+          selected_operation: selectedOperation,
+          pre_job_operation: preJobOperation,
+          final_operation: selectedOperation,
+        })
+      }
+
+      if (preJobId && preJobOperation === selectedOperation) {
+        console.debug("[conversion] reusing pre-uploaded job for selected operation", {
+          selected_operation: selectedOperation,
+          pre_job_operation: preJobOperation,
+          final_operation: selectedOperation,
+        })
         // File already in S3 — trigger with final user-chosen params
         setActiveWork((current) => current ? { ...current, phase: "processing" } : current)
-        await api.triggerProcess(preJobId, opMeta.params || null, opMeta.analysisResult || null)
+        await api.triggerProcess(preJobId, opMeta.params || null, finalAnalysisResult)
         setPendingFile(null)
         setOperations([])
         navigate(`/processing/${preJobId}`)
@@ -231,10 +253,7 @@ export function useConversionFlow() {
         auth,
         sessionId: getSessionId(),
         retentionChoice: retentionExtended ? "extended" : "default",
-        analysisResult: analysisState === "ready" ? {
-          ...analysisResult,
-          integrity_decision: integrityDecision || null,
-        } : null,
+        analysisResult: finalAnalysisResult,
       })
 
       setPendingFile(null)
@@ -276,12 +295,17 @@ export function useConversionFlow() {
     }
     setPendingOp(null)
     analysisCancelRef.current = true
-    const preJobId = preUploadedJobIdRef.current
-    preUploadedJobIdRef.current = null
+    const preUploadedJob = preUploadedJobRef.current
+    preUploadedJobRef.current = null
+    console.debug("[conversion] confirm convert", {
+      selected_operation: pendingOp.operation || "",
+      pre_job_operation: preUploadedJob?.operation || null,
+      final_operation: merged.operation || "",
+    })
     setAnalysisState("idle")
     setAnalysisResult(null)
     setIntegrityDecision(null)
-    _startConvert(merged, preJobId)
+    _startConvert(merged, preUploadedJob)
   }, [pendingOp, _startConvert, analysisState, analysisResult, integrityDecision])
 
   const cancelPending = useCallback(() => {
@@ -290,11 +314,11 @@ export function useConversionFlow() {
     setAnalysisState("idle")
     setAnalysisResult(null)
     setIntegrityDecision(null)
-    preUploadedJobIdRef.current = null
+    preUploadedJobRef.current = null
   }, [])
 
   const repairPendingPdf = useCallback(async () => {
-    const jobId = preUploadedJobIdRef.current
+    const jobId = preUploadedJobRef.current?.jobId
     if (!jobId) return
     const repaired = await api.repairPdf(jobId, getSessionId())
     if (repaired?.pdf_integrity) {

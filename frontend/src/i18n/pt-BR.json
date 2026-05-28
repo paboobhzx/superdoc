@@ -37,7 +37,18 @@
   "paramsPanel": {
     "pageSize": "Tamanho da pagina",
     "convert": "Converter",
-    "fallbackStrategyLabel": "Se não funcionar, tente converter o documento para:"
+    "fallbackStrategyLabel": "Se não funcionar, tente converter o documento para:",
+    "paramLabels": {
+      "extraction_mode": "Modo de extracao",
+      "include_diagnostics": "Incluir diagnosticos",
+      "fallback_strategy": "Estrategia de fallback"
+    },
+    "optionLabels": {
+      "auto": "Automatico",
+      "text": "Texto",
+      "tables": "Tabelas",
+      "visual": "Visual"
+    }
   },
   "params": {
     "highFidelity": "Alta fidelidade",

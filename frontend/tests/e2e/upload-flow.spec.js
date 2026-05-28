@@ -137,6 +137,132 @@ async function clickTarget(page, label) {
   await page.getByRole("button", { name: new RegExp(`^${label}\\b`, "i") }).click();
 }
 
+async function mockPdfRecommendationFlow(page) {
+  const statusCalls = new Map();
+  const createdJobs = [];
+  const processedJobs = [];
+  const jobsById = new Map();
+  const operations = [
+    {
+      operation: "pdf_to_docx",
+      kind: "backend_job",
+      intent: "convert",
+      label: "PDF to Word (.docx)",
+      category: "convert",
+      targets: ["docx"],
+      params_schema: {
+        extraction_mode: { type: "enum", values: ["auto", "text"], default: "auto" },
+        include_diagnostics: { type: "boolean", default: false },
+      },
+    },
+    {
+      operation: "pdf_to_xls",
+      kind: "backend_job",
+      intent: "convert",
+      label: "PDF to Excel (.xlsx)",
+      category: "convert",
+      targets: ["xlsx"],
+      output_type: "xlsx",
+      params_schema: {
+        extraction_mode: { type: "enum", values: ["auto", "tables", "visual"], default: "auto" },
+        include_diagnostics: { type: "boolean", default: false },
+      },
+    },
+  ];
+
+  await page.route("**/*", async (route) => {
+    const req = route.request();
+    const url = req.url();
+
+    if (url === `${apiBase}/auth/me` && req.method() === "GET") {
+      await route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Unauthorized" }) });
+      return;
+    }
+
+    if (url === `${apiBase}/operations` && req.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ operations, count: operations.length }),
+      });
+      return;
+    }
+
+    if (url === `${apiBase}/operations?input_type=pdf` && req.method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ operations, count: operations.length }),
+      });
+      return;
+    }
+
+    if (url === `${apiBase}/jobs` && req.method() === "POST") {
+      const body = req.postDataJSON();
+      const jobId = `job-${createdJobs.length + 1}`;
+      createdJobs.push(body);
+      jobsById.set(jobId, body.operation);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(uploadFor(jobId, body.file_name)),
+      });
+      return;
+    }
+
+    const analyzeMatch = url.match(new RegExp(`${apiBase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/jobs/([^/]+)/analyze(?:\\?.*)?$`));
+    if (analyzeMatch && req.method() === "POST") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ recommendation: "xlsx", estimated_seconds: { text: 2, image: 3 } }),
+      });
+      return;
+    }
+
+    const processMatch = url.match(new RegExp(`${apiBase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/jobs/([^/]+)/process(?:\\?.*)?$`));
+    if (processMatch && req.method() === "POST") {
+      processedJobs.push({ jobId: processMatch[1], body: req.postDataJSON() || {} });
+      await route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, estimated_seconds: 1 }),
+      });
+      return;
+    }
+
+    const statusMatch = url.match(new RegExp(`${apiBase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/jobs/([^/?]+)(?:\\?.*)?$`));
+    if (statusMatch && req.method() === "GET") {
+      const jobId = statusMatch[1];
+      const n = (statusCalls.get(jobId) || 0) + 1;
+      statusCalls.set(jobId, n);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          job_id: jobId,
+          status: n < 2 ? "QUEUED" : "DONE",
+          operation: jobsById.get(jobId) || "pdf_to_docx",
+          file_size_bytes: 1024,
+          estimated_seconds: 1,
+          actual_seconds: 1,
+          download_url: n < 2 ? undefined : "https://download.example.com/out.docx",
+        }),
+      });
+      return;
+    }
+
+    if (url.startsWith(s3Url) && req.method() === "POST") {
+      await route.fulfill({ status: 204, body: "" });
+      return;
+    }
+
+    await route.fallback();
+  });
+
+  return { createdJobs, processedJobs };
+}
+
 test.describe("Upload flow (mocked API + S3)", () => {
   test("chooses Convert, creates a job, and reaches processing", async ({ page }) => {
     const jobId = "11111111-1111-1111-1111-111111111111";
@@ -223,5 +349,54 @@ test.describe("Upload flow (mocked API + S3)", () => {
     });
 
     await expect(page.getByText(/Actions are temporarily unavailable/i)).toBeVisible();
+  });
+});
+
+test.describe("PDF recommendation flow", () => {
+  test("respects selected XLSX conversion and formats params labels", async ({ page }) => {
+    const calls = await mockPdfRecommendationFlow(page);
+
+    await page.goto("/");
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "sample.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4\n%mock\n"),
+    });
+
+    await expect.poll(() => calls.createdJobs.length).toBeGreaterThanOrEqual(1);
+    await clickTarget(page, "XLSX");
+
+    await expect(page.getByText("Extraction mode")).toBeVisible();
+    await expect(page.getByLabel("Extraction mode").locator("option[value='auto']")).toHaveText("Automatic");
+    await expect(page.getByRole("checkbox", { name: /Include diagnostics/i })).toBeVisible();
+
+    await page.getByLabel("Extraction mode").selectOption("tables");
+    await page.getByRole("button", { name: /Convert/i }).click();
+
+    await expect(page).toHaveURL(/\/processing\/job-2$/);
+    expect(calls.createdJobs.map((job) => job.operation)).toEqual(["pdf_to_docx", "pdf_to_xls"]);
+    expect(calls.processedJobs[0]?.jobId).toBe("job-2");
+  });
+
+  test("reuses pre-job only when selected operation matches", async ({ page }) => {
+    const calls = await mockPdfRecommendationFlow(page);
+
+    await page.goto("/");
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "sample.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4\n%mock\n"),
+    });
+
+    await expect.poll(() => calls.createdJobs.length).toBeGreaterThanOrEqual(1);
+    await clickTarget(page, "DOCX");
+
+    await page.getByLabel("Extraction mode").selectOption("text");
+    await page.getByRole("button", { name: /Convert/i }).click();
+
+    await expect(page).toHaveURL(/\/processing\/job-1$/);
+    expect(calls.createdJobs.map((job) => job.operation)).toEqual(["pdf_to_docx"]);
+    expect(calls.processedJobs[0]?.jobId).toBe("job-1");
+    expect(calls.processedJobs[0]?.body?.params).toEqual({ extraction_mode: "text", include_diagnostics: false });
   });
 });

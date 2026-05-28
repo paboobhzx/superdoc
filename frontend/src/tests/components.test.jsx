@@ -278,6 +278,31 @@ describe("ParamsPanel", () => {
       __extraFiles: [{ role: "watermark_image", file }],
     }));
   });
+
+  it("formats fallback parameter and option labels when schema labels are missing", async () => {
+    const { ParamsPanel } = await import("../components/ParamsPanel");
+    render(
+      <Providers>
+        <ParamsPanel
+          opMeta={{
+            operation: "pdf_to_xls",
+            params_schema: {
+              extraction_mode: { type: "enum", values: ["auto", "tables", "visual"], default: "auto", labels: { tables: "Table-focused" } },
+              include_diagnostics: { type: "boolean", default: false },
+            },
+          }}
+          onConfirm={() => {}}
+          onCancel={() => {}}
+        />
+      </Providers>
+    );
+
+    expect(screen.getByLabelText(/extraction mode/i)).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Automatic" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Table-focused" })).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: /include diagnostics/i })).toBeTruthy();
+    expect(screen.queryByText("include_diagnostics")).toBeNull();
+  });
 });
 
 // ── Home page ──────────────────────────────────────────────────────────────
@@ -402,6 +427,104 @@ describe("Home page", () => {
     });
 
     expect(await screen.findByText("Recommended")).toBeTruthy();
+  });
+
+  it("uses the selected final operation when PDF analysis pre-job was created with a different operation", async () => {
+    const createJobCallStart = api.createJob.mock.calls.length;
+    const triggerProcessCallStart = api.triggerProcess.mock.calls.length;
+    localStorage.setItem("superdoc-locale", "en-US");
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word", targets: ["docx"], output_type: "docx", params_schema: { extraction_mode: { type: "enum", values: ["auto", "text"], default: "auto" } } },
+        { operation: "pdf_to_xls", kind: "backend_job", intent: "convert", label: "PDF to Excel", targets: ["xlsx"], output_type: "xlsx", params_schema: { extraction_mode: { type: "enum", values: ["auto", "tables", "visual"], default: "auto" } } },
+      ],
+    });
+    api.createJob
+      .mockResolvedValueOnce({ job_id: "job-pre-docx", upload: { url: "https://upload", fields: {} } })
+      .mockResolvedValueOnce({ job_id: "job-final-xlsx", upload: { url: "https://upload", fields: {} } });
+    api.uploadToS3.mockResolvedValue(undefined);
+    api.analyzePdf.mockResolvedValue({ recommendation: "xlsx" });
+    api.triggerProcess.mockResolvedValue(undefined);
+
+    const { Home } = await import("../pages/Home/Home");
+    render(
+      <BrowserRouter>
+        <Providers>
+          <Home />
+        </Providers>
+      </BrowserRouter>
+    );
+
+    fireEvent.change(screen.getByRole("button", { name: "File upload drop zone" }).querySelector("input"), {
+      target: { files: [new File(["x"], "sample.pdf", { type: "application/pdf" })] },
+    });
+
+    await screen.findByText("Recommended");
+    fireEvent.click(await screen.findByRole("button", { name: /^XLSX\b/i }));
+    fireEvent.change(await screen.findByLabelText(/extraction mode/i), { target: { value: "tables" } });
+    fireEvent.click(screen.getByRole("button", { name: /convert/i }));
+
+    await waitFor(() => expect(api.createJob.mock.calls.length).toBeGreaterThanOrEqual(createJobCallStart + 2));
+    const newCreateCalls = api.createJob.mock.calls.slice(createJobCallStart).map(([payload]) => payload);
+    expect(newCreateCalls[0].operation).toBe("pdf_to_docx");
+    expect(newCreateCalls.some((payload) => payload.operation === "pdf_to_xls" && payload.params?.extraction_mode === "tables")).toBe(true);
+
+    await waitFor(() => expect(api.triggerProcess.mock.calls.length).toBeGreaterThan(triggerProcessCallStart));
+    const newTriggerCalls = api.triggerProcess.mock.calls.slice(triggerProcessCallStart);
+    const xlsxTriggerCall = newTriggerCalls.find(([jobId]) => jobId === "job-final-xlsx");
+    expect(xlsxTriggerCall).toBeTruthy();
+    expect(xlsxTriggerCall).toEqual([
+      "job-final-xlsx",
+      null,
+      expect.objectContaining({ recommendation: "xlsx" }),
+    ]);
+  });
+
+  it("reuses the pre-uploaded PDF job only when the selected final operation matches", async () => {
+    const createJobCallStart = api.createJob.mock.calls.length;
+    const triggerProcessCallStart = api.triggerProcess.mock.calls.length;
+    localStorage.setItem("superdoc-locale", "en-US");
+    api.getOperations.mockResolvedValue({
+      operations: [
+        { operation: "pdf_to_docx", kind: "backend_job", intent: "convert", label: "PDF to Word", targets: ["docx"], output_type: "docx", params_schema: { extraction_mode: { type: "enum", values: ["auto", "text"], default: "auto" } } },
+        { operation: "pdf_to_xls", kind: "backend_job", intent: "convert", label: "PDF to Excel", targets: ["xlsx"], output_type: "xlsx", params_schema: { extraction_mode: { type: "enum", values: ["auto", "tables"], default: "auto" } } },
+      ],
+    });
+    api.createJob.mockResolvedValue({ job_id: "job-pre-docx", upload: { url: "https://upload", fields: {} } });
+    api.uploadToS3.mockResolvedValue(undefined);
+    api.analyzePdf.mockResolvedValue({ recommendation: "text" });
+    api.triggerProcess.mockResolvedValue(undefined);
+
+    const { Home } = await import("../pages/Home/Home");
+    render(
+      <BrowserRouter>
+        <Providers>
+          <Home />
+        </Providers>
+      </BrowserRouter>
+    );
+
+    fireEvent.change(screen.getByRole("button", { name: "File upload drop zone" }).querySelector("input"), {
+      target: { files: [new File(["x"], "sample.pdf", { type: "application/pdf" })] },
+    });
+
+    await screen.findByText("Recommended");
+    fireEvent.click(await screen.findByRole("button", { name: /^DOCX\b/i }));
+    fireEvent.change(await screen.findByLabelText(/extraction mode/i), { target: { value: "text" } });
+    fireEvent.click(screen.getByRole("button", { name: /convert/i }));
+
+    await waitFor(() => expect(api.triggerProcess.mock.calls.length).toBeGreaterThan(triggerProcessCallStart));
+    const newCreateCalls = api.createJob.mock.calls.slice(createJobCallStart).map(([payload]) => payload);
+    expect(newCreateCalls.length).toBe(1);
+    expect(newCreateCalls[0].operation).toBe("pdf_to_docx");
+
+    const newTriggerCalls = api.triggerProcess.mock.calls.slice(triggerProcessCallStart);
+    const docxTriggerCall = newTriggerCalls.find(([jobId]) => jobId === "job-pre-docx");
+    expect(docxTriggerCall).toEqual([
+      "job-pre-docx",
+      { extraction_mode: "text" },
+      expect.objectContaining({ recommendation: "text" }),
+    ]);
   });
 
   it("shows the same retention checkbox for desktop batch selection", async () => {
